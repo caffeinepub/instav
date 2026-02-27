@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Social media app with photo feed and user profiles. Users can log in via Internet Identity to set up a profile with a profile picture (uploaded from device), display name, bio, and a unique handle. Profiles are publicly discoverable by searching a handle, and profile info (picture + handle) appears alongside posts in the feed.",
+  "architectural_notes": [
+    "Authentication via Internet Identity (ICP) required to set/edit user profiles",
+    "Handles must be globally unique across all users; allow letters, numbers, and special characters"
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-update-the-profilepage-to-require-internet-identity-login-before-allowing-profile-setup-or-editing-logged-in-users-without-a-profile-should-be-shown-a-profile-setup-form-the-form-must-include-a-file-input-to-upload-a-profile-picture-from-the-device-a-display-name-field-a-bio-text-area-and-a-unique-handle-field-on-save-validate-that-the-handle-is-unique-show-an-error-if-taken-and-persist-the-profile-to-the-backend",
+      "title": "Update the ProfilePage to require Internet Identity login before allowing profile setup or editing. Logged-in users without a profile should be shown a profile setup form. The form must include: a file input to upload a profile picture from the device, a display name field, a bio text area, and a unique handle field. On save, validate that the handle is unique (show an error if taken) and persist the profile to the backend.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-or-update-the-public-userprofilepage-to-display-a-user-s-profile-picture-handle-display-name-bio-post-count-and-a-3-column-grid-of-their-posts-this-page-must-be-accessible-to-anyone-no-login-required-by-navigating-to-a-handle-based-route-e-g-profile-handle",
+      "title": "Create or update the public UserProfilePage to display a user's profile picture, handle, display name, bio, post count, and a 3-column grid of their posts. This page must be accessible to anyone (no login required) by navigating to a handle-based route (e.g., /profile/:handle).",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-handle-user-search-feature-to-the-explorepage-users-should-be-able-to-type-a-handle-into-a-search-input-and-see-matching-user-profiles-as-results-clicking-a-result-navigates-to-that-user-s-public-profile-page",
+      "title": "Add a handle/user search feature to the ExplorePage. Users should be able to type a handle into a search input and see matching user profiles as results. Clicking a result navigates to that user's public profile page.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-postcard-component-and-the-feed-feedpage-to-display-the-post-author-s-profile-picture-and-handle-alongside-each-post-clicking-on-the-author-s-handle-or-avatar-should-navigate-to-that-user-s-public-profile-page",
+      "title": "Update the PostCard component and the feed (FeedPage) to display the post author's profile picture and handle alongside each post. Clicking on the author's handle or avatar should navigate to that user's public profile page.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "User profile with Internet Identity login, profile picture upload, display name, bio, and unique handle",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Public profile discovery by searching a unique handle",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Display profile picture and handle alongside user posts in the feed",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Extend the backend data model to support user profiles with: a unique handle (string, enforced unique across all users), a display name (string), a bio (string), and a profile picture stored as a blob. Add backend functions to: create/update a profile (authenticated, tied to Internet Identity principal), get a profile by principal, get a profile by handle (public), and search/lookup handles (public).",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "InstaV",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

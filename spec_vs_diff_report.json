@@ -1,0 +1,73 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-27T20:14:05.615Z",
+  "summary": "The diff implements all five requirements with good coverage. REQ-1 backend profile model, REQ-2 ProfilePage with login/setup/edit, REQ-3 UserProfilePage with handle-based routing, REQ-4 ExplorePage user search, and REQ-5 PostCard author info are all present. A few minor acceptance criteria gaps are noted.",
+  "missing_requirements": [
+    {
+      "id": "REQ-1",
+      "requirement": "A search function accepts a handle string and returns matching profile(s) — returning full profile objects, not just handle strings.",
+      "reason": "The backend searchHandles function and useQueries.ts call returns string[] (handle strings only), not full profile objects. The AC says 'returns matching profile(s)' implying profile records. The frontend works around this by fetching each profile individually after getting handles.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ExplorePage.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "The public profile page must be accessible without logging in (no login required).",
+      "reason": "UserProfilePage uses useProfileByHandle and usePostsByHandle which depend on useActor. If useActor requires authentication to initialize, anonymous users may not be able to view public profiles. The immutable useActor.ts cannot be verified from the diff, leaving this uncertain.",
+      "evidence": [
+        "frontend/src/pages/UserProfilePage.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "A migration module (backend/migration.mo) was added to handle upgrading existing OldUserProfile records to the new schema.",
+      "reason": "The build request does not mention a migration strategy or require backward compatibility with an existing profile schema.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    },
+    {
+      "description": "Posts/Users tab switcher added to ExplorePage, separating post search from user search into distinct tabs.",
+      "reason": "The build request for REQ-4 asks for a search input on ExplorePage for handles/users but does not specify a tabbed interface splitting Posts and Users into separate tabs.",
+      "evidence": [
+        "frontend/src/pages/ExplorePage.tsx"
+      ]
+    },
+    {
+      "description": "Legacy /user/$principal route kept for backward compatibility in addition to the handle-based /profile/$handle route.",
+      "reason": "The build request only specifies a handle-based route (e.g., /profile/:handle). The principal-based route is an extra addition not requested.",
+      "evidence": [
+        "frontend/src/routeTree.ts",
+        "frontend/src/pages/UserProfilePage.tsx"
+      ]
+    },
+    {
+      "description": "Both saveCallerUserProfile and createOrUpdateProfile are exposed as separate backend functions doing essentially the same thing.",
+      "reason": "The build request specifies a single create/update profile function. Having two overlapping mutation functions was not requested.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
+  "confidence": 0.78,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/CommentsSheet.tsx",
+    "frontend/src/components/PostCard.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/CreatePostPage.tsx",
+    "frontend/src/pages/ExplorePage.tsx",
+    "frontend/src/pages/ProfilePage.tsx",
+    "frontend/src/pages/UserProfilePage.tsx",
+    "frontend/src/routeTree.ts",
+    "project_state.json"
+  ]
+}

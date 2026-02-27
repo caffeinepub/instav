@@ -1,0 +1,90 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-update-the-profilepage-to-require-internet-identity-login-before-allowing-profile-setup-or-editing-logged-in-users-without-a-profile-should-be-shown-a-profile-setup-form-the-form-must-include-a-file-input-to-upload-a-profile-picture-from-the-device-a-display-name-field-a-bio-text-area-and-a-unique-handle-field-on-save-validate-that-the-handle-is-unique-show-an-error-if-taken-and-persist-the-profile-to-the-backend",
+      "featureTitle": "Update the ProfilePage to require Internet Identity login before allowing profile setup or editing. Logged-in users without a profile should be shown a profile setup form. The form must include: a file input to upload a profile picture from the device, a display name field, a bio text area, and a unique handle field. On save, validate that the handle is unique (show an error if taken) and persist the profile to the backend.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-or-update-the-public-userprofilepage-to-display-a-user-s-profile-picture-handle-display-name-bio-post-count-and-a-3-column-grid-of-their-posts-this-page-must-be-accessible-to-anyone-no-login-required-by-navigating-to-a-handle-based-route-e-g-profile-handle",
+      "featureTitle": "Create or update the public UserProfilePage to display a user's profile picture, handle, display name, bio, post count, and a 3-column grid of their posts. This page must be accessible to anyone (no login required) by navigating to a handle-based route (e.g., /profile/:handle).",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/UserProfilePage.tsx",
+        "frontend/src/routeTree.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-handle-user-search-feature-to-the-explorepage-users-should-be-able-to-type-a-handle-into-a-search-input-and-see-matching-user-profiles-as-results-clicking-a-result-navigates-to-that-user-s-public-profile-page",
+      "featureTitle": "Add a handle/user search feature to the ExplorePage. Users should be able to type a handle into a search input and see matching user profiles as results. Clicking a result navigates to that user's public profile page.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ExplorePage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-postcard-component-and-the-feed-feedpage-to-display-the-post-author-s-profile-picture-and-handle-alongside-each-post-clicking-on-the-author-s-handle-or-avatar-should-navigate-to-that-user-s-public-profile-page",
+      "featureTitle": "Update the PostCard component and the feed (FeedPage) to display the post author's profile picture and handle alongside each post. Clicking on the author's handle or avatar should navigate to that user's public profile page.",
+      "files": [
+        "frontend/src/components/PostCard.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    }
+  ]
+}
