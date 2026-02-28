@@ -1,97 +1,46 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T20:14:05.618Z",
+  "generatedAt": "2026-02-28T04:56:41.418Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 4,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Extend the backend data model to support user profiles with: a unique handle (string, enforced unique across all users), a display name (string), a bio (string), and a profile picture stored as a blob. Add backend functions to: create/update a profile (authenticated, tied to Internet Identity principal), get a profile by principal, get a profile by handle (public), and search/lookup handles (public).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Update ShortSportPage to support TikTok-style vertical manual scrolling, where users can swipe or scroll up/down to navigate between video reels one at a time with snap-scrolling behavior.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx",
+          "frontend/src/index.css"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Update the ProfilePage to require Internet Identity login before allowing profile setup or editing. Logged-in users without a profile should be shown a profile setup form. The form must include: a file input to upload a profile picture from the device, a display name field, a bio text area, and a unique handle field. On save, validate that the handle is unique (show an error if taken) and persist the profile to the backend.",
+        "summary": "Add a floating auto-scroll toggle button in the bottom-right corner of ShortSportPage. When activated, the page automatically advances to the next reel at a set interval. Clicking the button again stops auto-scrolling. The button should visually indicate its active/inactive state.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ShortSportPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Create or update the public UserProfilePage to display a user's profile picture, handle, display name, bio, post count, and a 3-column grid of their posts. This page must be accessible to anyone (no login required) by navigating to a handle-based route (e.g., /profile/:handle).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/routeTree.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/routeTree.ts"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Add a handle/user search feature to the ExplorePage. Users should be able to type a handle into a search input and see matching user profiles as results. Clicking a result navigates to that user's public profile page.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/ExplorePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/ExplorePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Update the PostCard component and the feed (FeedPage) to display the post author's profile picture and handle alongside each post. Clicking on the author's handle or avatar should navigate to that user's public profile page.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/PostCard.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/PostCard.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ShortSportPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/CommentsSheet.tsx",
-    "frontend/src/components/PostCard.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/CreatePostPage.tsx",
-    "frontend/src/pages/ExplorePage.tsx",
-    "frontend/src/pages/ProfilePage.tsx",
-    "frontend/src/pages/UserProfilePage.tsx",
-    "frontend/src/routeTree.ts",
+    "frontend/src/pages/ShortSportPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

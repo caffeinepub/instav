@@ -1,102 +1,44 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add user profile with picture, bio, handle, and public discovery",
+  "title": "Add vertical manual scrolling and auto-scroll toggle to ShortSport",
   "requirements": [
     {
+      "id": "REQ-1",
+      "summary": "Implement TikTok-style vertical manual scrolling with snap behavior for video reels",
+      "acceptanceCriteria": [
+        "Each reel occupies the full viewport height and snaps into place when scrolling",
+        "Users can manually scroll up and down through video reels",
+        "Scroll snapping ensures only one reel is visible at a time"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "operation": "modify",
+          "description": "Replace the current auto-scroll implementation with a scroll-snap container. Wrap the video reels in a full-height scrollable container with CSS scroll-snap-type: y mandatory. Configure each video container with scroll-snap-align: start to ensure snap-to-viewport behavior. Remove or refactor the existing auto-advance timer logic to support the new manual scrolling paradigm while preserving the mute toggle and like functionality."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Add CSS utility classes or global styles to support scroll-snap behavior for vertical scrolling. Include styles for scroll-snap-type, scroll-snap-align, and any necessary smooth-scroll or overflow properties to ensure each video reel snaps cleanly into the viewport."
+        }
+      ]
+    },
+    {
       "id": "REQ-2",
-      "summary": "Update ProfilePage to require Internet Identity login and provide profile setup/editing with handle validation",
+      "summary": "Add floating auto-scroll toggle button with visual state indicator in the bottom-right corner",
       "acceptanceCriteria": [
-        "Unauthenticated users see a prompt to log in via Internet Identity before accessing profile setup.",
-        "After login, a user without a profile is shown the setup form with fields for handle, display name, bio, and profile picture upload.",
-        "A user with an existing profile sees their current data pre-filled and can edit it.",
-        "The handle field validates uniqueness on submit and shows a clear error if the handle is already taken.",
-        "The profile picture is uploaded from the device and stored as a blob via the backend.",
-        "On successful save, the profile is persisted and the page reflects the updated data."
+        "A floating button is visible in the bottom-right corner of the ShortSportPage",
+        "Clicking the button enables auto-scroll mode, which automatically advances to the next reel at a regular interval",
+        "Clicking the button again disables auto-scroll mode",
+        "The button changes appearance (e.g., color or icon) to reflect active vs inactive state",
+        "Auto-scroll stops when the last reel is reached or when manually toggled off"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ProfilePage.tsx",
+          "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Replace the current profile page implementation to require Internet Identity authentication before showing any profile content. For unauthenticated users, display a login prompt. For authenticated users without a profile, show a profile setup form with fields for handle (with uniqueness validation), display name, bio, and profile picture file upload using ExternalBlob. For users with an existing profile, pre-fill the form with current data and allow editing. On form submission, call createOrUpdateProfile from the backend interface and handle uniqueness errors for the handle field. Use the blob-storage component's ExternalBlob.fromBytes() to convert the uploaded file, and apply withUploadProgress to track upload progress. Show loading states during profile fetch and save operations."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a mutation hook useCreateOrUpdateProfile that wraps the backend's createOrUpdateProfile method. Accept UserProfileData (handle, displayName, bio, profilePicture) as input. On success, invalidate the 'currentUserProfile' query to refresh the cached profile data. Handle errors gracefully and return error messages for display in the UI, especially for handle uniqueness violations."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Create or update public UserProfilePage to display profile with posts grid accessible by handle route",
-      "acceptanceCriteria": [
-        "The public profile page is accessible without logging in.",
-        "It displays the user's profile picture (or a fallback avatar), handle, display name, bio, and post count.",
-        "A 3-column grid of the user's posts is shown.",
-        "The page is navigable via a handle-based route (e.g., /profile/:handle).",
-        "If no profile exists for the given handle, a clear 'User not found' message is shown."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
-          "operation": "modify",
-          "description": "Update the UserProfilePage to accept a handle route parameter instead of principal. Fetch the profile using getProfileByHandle from the backend interface. Display the user's profile picture using the AvatarPlaceholder component (which already supports ExternalBlob), handle, display name, bio, and post count. Fetch the user's posts using getPostsByUser (after retrieving the principal from the profile). Render posts in a 3-column grid with clickable thumbnails that open the CommentsSheet. Show a loading skeleton while fetching. If no profile is found for the given handle, display a 'User not found' message. Ensure the page is accessible without authentication."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a query hook useProfileByHandle that accepts a handle string and calls the backend's getProfileByHandle method. Return the UserProfileData or null if not found. Enable caching with the query key ['profile', 'handle', handle]. Add a query hook usePostsByUser that accepts a Principal and calls getPostsByUser, returning an array of Post objects. Cache with the query key ['posts', 'user', principal.toString()]."
-        },
-        {
-          "path": "frontend/src/routeTree.ts",
-          "operation": "modify",
-          "description": "Add or update a route definition for /profile/:handle that renders the UserProfilePage component. Ensure the handle parameter is passed as a route param. This route should be accessible without authentication and should be registered in the route tree alongside the existing /feed, /explore, /profile, and other routes."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Add handle/user search feature to ExplorePage with navigation to public profiles",
-      "acceptanceCriteria": [
-        "The ExplorePage includes a search input for finding users by handle.",
-        "As the user types, matching profiles are displayed (debounced or on submit).",
-        "Each result shows the user's profile picture, handle, and display name.",
-        "Clicking a result navigates to the user's public profile page at /profile/:handle.",
-        "If no matches are found, a 'No users found' message is shown."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/ExplorePage.tsx",
-          "operation": "modify",
-          "description": "Add a search input at the top of the ExplorePage for searching users by handle. Use a debounced onChange handler to call searchHandles from the backend interface. Display matching handle results in a list below the search input, showing each user's profile picture (fetch via getProfileByHandle), handle, and display name. Clicking a result navigates to /profile/:handle using the TanStack Router navigate function. If no results are found, display a 'No users found' message. Keep the existing 3-column post grid below the search results section."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a query hook useSearchHandles that accepts a search prefix string and calls the backend's searchHandles method. Return an array of handle strings. Use a query key ['search', 'handles', prefix] and enable the query only when the prefix is non-empty. Set a staleTime to reduce redundant requests during typing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Update PostCard and FeedPage to display author profile picture and handle with navigation to public profile",
-      "acceptanceCriteria": [
-        "Each PostCard shows the author's profile picture (or a fallback initials avatar) and handle.",
-        "Tapping/clicking the author's avatar or handle navigates to their public profile page.",
-        "If a post author has no profile set up, a generic placeholder avatar and 'Unknown' handle are shown.",
-        "The change is reflected in both the main feed (FeedPage) and any other place PostCard is rendered."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/PostCard.tsx",
-          "operation": "modify",
-          "description": "Update the PostCard component to fetch the post author's profile using getProfileByPrincipal (pass post.authorPrincipal). Display the author's profile picture using the AvatarPlaceholder component and the author's handle (or 'Unknown' if no profile exists). Make the avatar and handle clickable, navigating to /profile/:handle on click (use the TanStack Router navigate function). If the profile fetch returns null, show a fallback avatar with initials derived from post.authorName and display 'Unknown' as the handle. Ensure the component handles loading states gracefully without blocking the post display."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a query hook useProfileByPrincipal that accepts a Principal and calls the backend's getProfileByPrincipal method. Return UserProfileData or null. Cache with the query key ['profile', 'principal', principal.toString()]. This hook will be used by PostCard to fetch author profile data."
+          "description": "Add a floating toggle button positioned in the bottom-right corner of the page using fixed positioning. Implement state to track whether auto-scroll mode is active. When active, use a setInterval or requestAnimationFrame loop to programmatically scroll to the next reel using scrollIntoView or scrollBy. Change the button's icon or color to visually indicate active (e.g., pause icon or highlighted color) vs inactive (e.g., play icon or default color) state. Ensure auto-scroll stops when reaching the last reel or when the user manually toggles it off."
         }
       ]
     }

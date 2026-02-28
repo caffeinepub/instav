@@ -8,9 +8,9 @@ import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Map "mo:core/Map";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   type Post = {
     id : Nat;

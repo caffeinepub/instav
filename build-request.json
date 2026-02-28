@@ -1,133 +1,58 @@
 {
   "kind": "build_request",
-  "title": "Add user profile with picture, bio, handle, and public discovery",
+  "title": "Add vertical manual scrolling and auto-scroll toggle to ShortSport",
   "projectName": "InstaV",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Extend the backend data model to support user profiles with: a unique handle (string, enforced unique across all users), a display name (string), a bio (string), and a profile picture stored as a blob. Add backend functions to: create/update a profile (authenticated, tied to Internet Identity principal), get a profile by principal, get a profile by handle (public), and search/lookup handles (public).",
-      "target": "backend",
+      "text": "Update ShortSportPage to support TikTok-style vertical manual scrolling, where users can swipe or scroll up/down to navigate between video reels one at a time with snap-scrolling behavior.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4",
-          "msg-6"
+          "msg-8",
+          "msg-10"
         ],
         "quotes": [
-          "Add a feature to add a profile picture and bio name about to the user profile",
-          "unique handle(unique name that other have no use of number,alphabet, special character)"
+          "Manual scrolling: Vertical (TikTok-style swipe up/down)"
         ]
       },
       "acceptanceCriteria": [
-        "A user profile record stores: principal, handle (unique), displayName, bio, and profilePicture (blob).",
-        "Handles are enforced as unique — attempting to register a duplicate handle returns an error.",
-        "An authenticated user can create or update their own profile.",
-        "Any caller (including anonymous) can fetch a profile by handle.",
-        "Any caller can fetch a profile by principal.",
-        "A search function accepts a handle string and returns matching profile(s)."
+        "Each reel occupies the full viewport height and snaps into place when scrolling",
+        "Users can manually scroll up and down through video reels",
+        "Scroll snapping ensures only one reel is visible at a time"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the ProfilePage to require Internet Identity login before allowing profile setup or editing. Logged-in users without a profile should be shown a profile setup form. The form must include: a file input to upload a profile picture from the device, a display name field, a bio text area, and a unique handle field. On save, validate that the handle is unique (show an error if taken) and persist the profile to the backend.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-5",
-          "msg-6"
-        ],
-        "quotes": [
-          "yes should log in first",
-          "from their device",
-          "Profile setup: users can upload a profile picture from their device, set a display name, and write a bio"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Unauthenticated users see a prompt to log in via Internet Identity before accessing profile setup.",
-        "After login, a user without a profile is shown the setup form with fields for handle, display name, bio, and profile picture upload.",
-        "A user with an existing profile sees their current data pre-filled and can edit it.",
-        "The handle field validates uniqueness on submit and shows a clear error if the handle is already taken.",
-        "The profile picture is uploaded from the device and stored as a blob via the backend.",
-        "On successful save, the profile is persisted and the page reflects the updated data."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Create or update the public UserProfilePage to display a user's profile picture, handle, display name, bio, post count, and a 3-column grid of their posts. This page must be accessible to anyone (no login required) by navigating to a handle-based route (e.g., /profile/:handle).",
+      "text": "Add a floating auto-scroll toggle button in the bottom-right corner of ShortSportPage. When activated, the page automatically advances to the next reel at a set interval. Clicking the button again stops auto-scrolling. The button should visually indicate its active/inactive state.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4",
-          "msg-6"
+          "msg-8",
+          "msg-10"
         ],
         "quotes": [
-          "any one can see though search their handle",
-          "also by their post"
+          "Auto-scroll toggle button: Floating over the reels in the bottom-right corner"
         ]
       },
       "acceptanceCriteria": [
-        "The public profile page is accessible without logging in.",
-        "It displays the user's profile picture (or a fallback avatar), handle, display name, bio, and post count.",
-        "A 3-column grid of the user's posts is shown.",
-        "The page is navigable via a handle-based route (e.g., /profile/:handle).",
-        "If no profile exists for the given handle, a clear 'User not found' message is shown."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Add a handle/user search feature to the ExplorePage. Users should be able to type a handle into a search input and see matching user profiles as results. Clicking a result navigates to that user's public profile page.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-6"
-        ],
-        "quotes": [
-          "any one can see though search their handle"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The ExplorePage includes a search input for finding users by handle.",
-        "As the user types, matching profiles are displayed (debounced or on submit).",
-        "Each result shows the user's profile picture, handle, and display name.",
-        "Clicking a result navigates to the user's public profile page at /profile/:handle.",
-        "If no matches are found, a 'No users found' message is shown."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Update the PostCard component and the feed (FeedPage) to display the post author's profile picture and handle alongside each post. Clicking on the author's handle or avatar should navigate to that user's public profile page.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-6"
-        ],
-        "quotes": [
-          "also by their post",
-          "Profile on posts: profile picture and handle displayed alongside posts in the feed"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Each PostCard shows the author's profile picture (or a fallback initials avatar) and handle.",
-        "Tapping/clicking the author's avatar or handle navigates to their public profile page.",
-        "If a post author has no profile set up, a generic placeholder avatar and 'Unknown' handle are shown.",
-        "The change is reflected in both the main feed (FeedPage) and any other place PostCard is rendered."
+        "A floating button is visible in the bottom-right corner of the ShortSportPage",
+        "Clicking the button enables auto-scroll mode, which automatically advances to the next reel at a regular interval",
+        "Clicking the button again disables auto-scroll mode",
+        "The button changes appearance (e.g., color or icon) to reflect active vs inactive state",
+        "Auto-scroll stops when the last reel is reached or when manually toggled off"
       ]
     }
   ],
   "constraints": [
-    "All backend logic must remain in the single Motoko actor in backend/main.mo.",
-    "Profile pictures must be stored as blobs in the backend (same pattern as post media), not as external URLs.",
-    "Internet Identity is the only supported authentication method.",
-    "Immutable frontend paths (useInternetIdentity.ts, useActor.ts, main.tsx, components/ui) must not be modified."
+    "Do not change any backend logic or data models",
+    "Do not modify files listed in frontend.immutablePaths"
   ],
   "nonGoals": [
-    "Direct messaging or follower/following social graph features.",
-    "Third-party authentication (only Internet Identity is supported).",
-    "Profile privacy settings — all profiles are fully public.",
-    "Handle changes after initial setup (can be added later)."
+    "Horizontal scrolling between reels",
+    "Changes to the feed, explore, or any other pages",
+    "Backend changes"
   ],
   "imageRequirements": {
     "required": [],
