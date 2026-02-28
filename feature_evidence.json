@@ -2,10 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-shortsportpage-to-support-tiktok-style-vertical-manual-scrolling-where-users-can-swipe-or-scroll-up-down-to-navigate-between-video-reels-one-at-a-time-with-snap-scrolling-behavior",
-      "featureTitle": "Update ShortSportPage to support TikTok-style vertical manual scrolling, where users can swipe or scroll up/down to navigate between video reels one at a time with snap-scrolling behavior.",
+      "featureId": "feature-replace-the-existing-mock-based-messagespage-with-a-fully-functional-chat-page-display-a-conversation-list-showing-all-conversations-with-avatar-display-name-last-message-preview-and-unread-count-badge-clicking-a-conversation-opens-the-chat-thread-the-thread-shows-message-bubbles-sent-messages-right-aligned-received-left-aligned-with-timestamps-include-a-text-input-and-send-button-add-a-share-shortspot-button-that-opens-a-post-picker-modal-listing-the-user-s-or-recent-shortspot-posts-selecting-one-sends-it-as-a-special-message-containing-the-post-reference-auto-refresh-messages-every-5-seconds-using-polling",
+      "featureTitle": "Replace the existing mock-based MessagesPage with a fully functional chat page. Display a conversation list showing all conversations with avatar, display name, last message preview, and unread count badge. Clicking a conversation opens the chat thread. The thread shows message bubbles (sent messages right-aligned, received left-aligned) with timestamps. Include a text input and Send button. Add a 'Share Shortspot' button that opens a post picker modal listing the user's or recent shortspot posts; selecting one sends it as a special message containing the post reference. Auto-refresh messages every 5 seconds using polling.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/components/PostPickerModal.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/MessagesPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -17,15 +19,17 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-4"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-floating-auto-scroll-toggle-button-in-the-bottom-right-corner-of-shortsportpage-when-activated-the-page-automatically-advances-to-the-next-reel-at-a-set-interval-clicking-the-button-again-stops-auto-scrolling-the-button-should-visually-indicate-its-active-inactive-state",
-      "featureTitle": "Add a floating auto-scroll toggle button in the bottom-right corner of ShortSportPage. When activated, the page automatically advances to the next reel at a set interval. Clicking the button again stops auto-scrolling. The button should visually indicate its active/inactive state.",
+      "featureId": "feature-add-a-follow-shadows-feature-to-user-profile-pages-userprofilepage-and-profilepage-on-a-public-user-s-profile-userprofilepage-show-a-follow-unfollow-button-for-authenticated-users-display-the-shadows-count-follower-count-prominently-on-all-profile-pages-with-the-label-shadows-also-display-following-count-the-follow-button-should-call-followuser-and-trigger-an-optimistic-ui-update",
+      "featureTitle": "Add a Follow / Shadows feature to user profile pages (UserProfilePage and ProfilePage). On a public user's profile (UserProfilePage), show a Follow/Unfollow button for authenticated users. Display the Shadows count (follower count) prominently on all profile pages with the label 'Shadows'. Also display Following count. The Follow button should call followUser and trigger an optimistic UI update.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx",
+        "frontend/src/pages/UserProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -37,7 +41,70 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-2"
+        "REQ-5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-an-in-app-notifications-panel-accessible-from-the-topbar-bell-icon-with-unread-badge-the-panel-lists-notifications-including-new-shadow-events-e-g-username-started-shadowing-you-each-notification-shows-the-type-sender-avatar-message-and-timestamp-clicking-a-notification-marks-it-as-read-and-navigates-to-the-relevant-profile-or-content-poll-for-new-notifications-every-15-seconds",
+      "featureTitle": "Add an in-app notifications panel accessible from the TopBar (bell icon with unread badge). The panel lists notifications including 'new_shadow' events (e.g. '@username started shadowing you'). Each notification shows the type, sender avatar, message, and timestamp. Clicking a notification marks it as read and navigates to the relevant profile or content. Poll for new notifications every 15 seconds.",
+      "files": [
+        "frontend/src/components/NotificationsPanel.tsx",
+        "frontend/src/components/TopBar.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-messages-icon-tab-to-the-bottomnav-or-topbar-that-navigates-to-the-messagespage-ensure-the-new-chat-and-notifications-features-are-properly-wired-into-the-tanstack-router-route-tree-in-routetree-ts-with-appropriate-routes-e-g-messages-messages-principalid",
+      "featureTitle": "Add a Messages icon/tab to the BottomNav or TopBar that navigates to the MessagesPage. Ensure the new chat and notifications features are properly wired into the TanStack Router route tree in routeTree.ts with appropriate routes (e.g. /messages, /messages/:principalId).",
+      "files": [
+        "frontend/src/components/BottomNav.tsx",
+        "frontend/src/routeTree.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-send-message-button-on-userprofilepage-so-that-an-authenticated-user-can-initiate-or-continue-a-direct-message-conversation-with-that-user-clicking-it-navigates-to-messages-principalid-of-that-user",
+      "featureTitle": "Add a 'Send Message' button on UserProfilePage so that an authenticated user can initiate or continue a direct message conversation with that user. Clicking it navigates to /messages/:principalId of that user.",
+      "files": [
+        "frontend/src/pages/UserProfilePage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-8"
       ],
       "confidence": "high"
     }

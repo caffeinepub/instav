@@ -1,371 +1,387 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, User, Loader2, Camera, Edit2, X, AtSign } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  useGetCallerUserProfile,
+  useCreateOrUpdateProfile,
+  useGetPostsByUser,
+  useGetFollowers,
+  useGetFollowing,
+} from '../hooks/useQueries';
+import AvatarPlaceholder from '../components/AvatarPlaceholder';
+import CommentsSheet from '../components/CommentsSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useCreateOrUpdateProfile } from '../hooks/useQueries';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { Edit2, LogOut, Camera, Film, ImageIcon, Eye, Users } from 'lucide-react';
 import { ExternalBlob } from '../backend';
-import AvatarPlaceholder from '../components/AvatarPlaceholder';
+import type { Post } from '../backend';
+
+function PostGrid({
+  posts,
+  onCommentClick,
+}: {
+  posts: Post[];
+  onCommentClick: (post: Post) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-0.5">
+      {posts.map((post) => {
+        const mediaUrl = post.media?.getDirectURL();
+        const isVideo = post.mediaType === 'video';
+        return (
+          <button
+            key={post.id.toString()}
+            onClick={() => onCommentClick(post)}
+            className="relative aspect-square bg-muted overflow-hidden group"
+          >
+            {mediaUrl ? (
+              isVideo ? (
+                <video
+                  src={mediaUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  preload="metadata"
+                />
+              ) : (
+                <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
+              )
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                {isVideo ? <Film size={20} /> : <ImageIcon size={20} />}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <span className="flex items-center gap-1 text-white text-sm font-semibold">
+                <Eye size={14} /> {post.viewCount.toString()}
+              </span>
+            </div>
+            {isVideo && (
+              <div className="absolute top-1 right-1 bg-black/60 rounded p-0.5">
+                <Film size={10} className="text-white" />
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
-  const { identity, login, clear, loginStatus } = useInternetIdentity();
+  const navigate = useNavigate();
+  const { identity, clear, loginStatus, login } = useInternetIdentity();
   const queryClient = useQueryClient();
-  const {
-    data: userProfile,
-    isLoading: profileLoading,
-    isFetched,
-  } = useGetCallerUserProfile();
-  const createOrUpdateProfile = useCreateOrUpdateProfile();
-
   const [isEditing, setIsEditing] = useState(false);
-  const [handle, setHandle] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
-  const [profilePictureBlob, setProfilePictureBlob] = useState<ExternalBlob | null>(null);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
-  const needsSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+  const myPrincipal = identity?.getPrincipal().toString();
 
-  // When entering edit mode, pre-fill form with existing profile data
+  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+  const createOrUpdateProfile = useCreateOrUpdateProfile();
+  const { data: posts, isLoading: postsLoading } = useGetPostsByUser(myPrincipal);
+  const { data: followers } = useGetFollowers(myPrincipal);
+  const { data: following } = useGetFollowing(myPrincipal);
+
+  const [formData, setFormData] = useState({
+    handle: '',
+    displayName: '',
+    bio: '',
+    profilePicture: undefined as ExternalBlob | undefined,
+  });
+  const [uploadingPic, setUploadingPic] = useState(false);
+
+  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+
   useEffect(() => {
-    if (isEditing && userProfile) {
-      setHandle(userProfile.handle || '');
-      setDisplayName(userProfile.displayName || '');
-      setBio(userProfile.bio || '');
-      setProfilePictureBlob(userProfile.profilePicture ?? null);
-      setProfilePicturePreview(
-        userProfile.profilePicture ? userProfile.profilePicture.getDirectURL() : null
-      );
+    if (userProfile) {
+      setFormData({
+        handle: userProfile.handle ?? '',
+        displayName: userProfile.displayName ?? '',
+        bio: userProfile.bio ?? '',
+        profilePicture: userProfile.profilePicture,
+      });
     }
-  }, [isEditing]);
+  }, [userProfile]);
 
-  // When setup mode activates, clear the form
-  useEffect(() => {
-    if (needsSetup) {
-      setHandle('');
-      setDisplayName('');
-      setBio('');
-      setProfilePictureBlob(null);
-      setProfilePicturePreview(null);
+  const handleSave = async () => {
+    if (!formData.handle.trim() || !formData.displayName.trim()) {
+      toast.error('Handle and display name are required');
+      return;
     }
-  }, [needsSetup]);
-
-  const handleLogin = async () => {
     try {
-      await login();
-    } catch (err: any) {
-      if (err?.message === 'User is already authenticated') {
-        await clear();
-        setTimeout(() => login(), 300);
+      await createOrUpdateProfile.mutateAsync({
+        handle: formData.handle.trim().toLowerCase(),
+        displayName: formData.displayName.trim(),
+        bio: formData.bio.trim(),
+        profilePicture: formData.profilePicture,
+      });
+      toast.success('Profile saved!');
+      setIsEditing(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('Handle already in use')) {
+        toast.error('That handle is already taken. Please choose another.');
+      } else {
+        toast.error('Failed to save profile');
       }
+    }
+  };
+
+  const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPic(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const blob = ExternalBlob.fromBytes(new Uint8Array(arrayBuffer));
+      setFormData((prev) => ({ ...prev, profilePicture: blob }));
+    } catch {
+      toast.error('Failed to process image');
+    } finally {
+      setUploadingPic(false);
     }
   };
 
   const handleLogout = async () => {
     await clear();
     queryClient.clear();
-    toast.success('Signed out');
+    navigate({ to: '/' });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    setProfilePicturePreview(previewUrl);
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-      setUploadProgress(pct);
-    });
-    setProfilePictureBlob(blob);
-    setUploadProgress(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!handle.trim()) {
-      toast.error('Handle is required');
-      return;
-    }
-    if (!displayName.trim()) {
-      toast.error('Display name is required');
-      return;
-    }
-
-    createOrUpdateProfile.mutate(
-      {
-        handle: handle.trim().toLowerCase(),
-        displayName: displayName.trim(),
-        bio: bio.trim(),
-        profilePicture: profilePictureBlob ?? undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success(needsSetup ? 'Welcome to InstaV! 🎉' : 'Profile updated!');
-          setIsEditing(false);
-          setUploadProgress(null);
-        },
-        onError: (err: any) => {
-          const msg = err?.message || '';
-          if (msg.includes('Handle already in use')) {
-            toast.error('That handle is already taken. Please choose another.');
-          } else {
-            toast.error('Failed to save profile. Please try again.');
-          }
-        },
-      }
-    );
-  };
-
-  // ── Unauthenticated ──────────────────────────────────────────────────────
+  // ── Not authenticated ──
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 pb-24 gap-6">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-          <User className="w-10 h-10 text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-6 text-center">
+        <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+          <Users size={32} className="text-muted-foreground" />
         </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Sign In</h2>
-          <p className="text-muted-foreground text-sm">
-            Sign in to create posts, like, and comment
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Your Profile</h2>
+          <p className="text-muted-foreground text-sm max-w-xs">
+            Sign in to create your profile, post content, and connect with others.
           </p>
         </div>
         <Button
-          onClick={handleLogin}
-          disabled={isLoggingIn}
-          className="rounded-full px-8"
-          size="lg"
+          onClick={() => login()}
+          disabled={loginStatus === 'logging-in'}
+          className="rounded-full px-8 gap-2"
         >
-          {isLoggingIn ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Signing in...
-            </>
-          ) : (
-            'Sign In'
+          {loginStatus === 'logging-in' && (
+            <span className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
           )}
+          {loginStatus === 'logging-in' ? 'Signing in...' : 'Sign In'}
         </Button>
       </div>
     );
   }
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  // ── Loading ──
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-4 mb-6">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
       </div>
     );
   }
 
-  // ── Profile Setup / Edit Form ────────────────────────────────────────────
-  if (needsSetup || isEditing) {
+  // ── Profile Setup / Edit Form ──
+  if (showProfileSetup || isEditing) {
     return (
-      <div className="min-h-screen bg-background pb-24">
-        <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
-          <div className="max-w-lg mx-auto flex items-center justify-between">
-            <h1 className="font-bold text-lg text-foreground">
-              {needsSetup ? 'Set Up Profile' : 'Edit Profile'}
-            </h1>
-            {isEditing && (
-              <button
-                onClick={() => setIsEditing(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            )}
+      <div className="max-w-md mx-auto px-4 py-8">
+        <h2 className="text-2xl font-bold mb-6">
+          {showProfileSetup ? 'Set Up Your Profile' : 'Edit Profile'}
+        </h2>
+
+        {/* Profile Picture */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative">
+            <AvatarPlaceholder
+              name={formData.displayName || 'You'}
+              profilePicture={formData.profilePicture}
+              size="xl"
+            />
+            <label className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 cursor-pointer hover:bg-primary/90 transition-colors">
+              <Camera size={14} />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePictureUpload}
+                disabled={uploadingPic}
+              />
+            </label>
           </div>
+          {uploadingPic && (
+            <p className="text-xs text-muted-foreground mt-2">Processing...</p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="max-w-lg mx-auto px-4 py-6 space-y-6">
-          {/* Profile picture upload */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              {profilePicturePreview ? (
-                <img
-                  src={profilePicturePreview}
-                  alt="Profile preview"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-primary/30"
-                />
-              ) : (
-                <AvatarPlaceholder name={displayName || 'You'} size="xl" />
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
-              >
-                <Camera className="w-4 h-4 text-primary-foreground" />
-              </button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="handle">Handle</Label>
+            <Input
+              id="handle"
+              value={formData.handle}
+              onChange={(e) =>
+                setFormData((p) => ({ ...p, handle: e.target.value.toLowerCase() }))
+              }
+              placeholder="yourhandle"
+              className="mt-1"
             />
-            {uploadProgress !== null && (
-              <p className="text-xs text-muted-foreground">Uploading... {uploadProgress}%</p>
-            )}
-            <p className="text-xs text-muted-foreground">Tap the camera icon to upload a photo</p>
           </div>
-
-          {/* Handle */}
-          <div className="space-y-1.5">
-            <Label htmlFor="handle" className="text-sm font-medium">
-              Handle <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="handle"
-                value={handle}
-                onChange={(e) =>
-                  setHandle(e.target.value.toLowerCase().replace(/\s/g, ''))
-                }
-                placeholder="yourhandle"
-                maxLength={30}
-                className="pl-9"
-                required
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Unique identifier — others can find you by this
-            </p>
-          </div>
-
-          {/* Display name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="displayName" className="text-sm font-medium">
-              Display Name <span className="text-destructive">*</span>
-            </Label>
+          <div>
+            <Label htmlFor="displayName">Display Name</Label>
             <Input
               id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              value={formData.displayName}
+              onChange={(e) => setFormData((p) => ({ ...p, displayName: e.target.value }))}
               placeholder="Your Name"
-              maxLength={50}
-              required
+              className="mt-1"
             />
           </div>
-
-          {/* Bio */}
-          <div className="space-y-1.5">
-            <Label htmlFor="bio" className="text-sm font-medium">
-              Bio
-            </Label>
+          <div>
+            <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              value={formData.bio}
+              onChange={(e) => setFormData((p) => ({ ...p, bio: e.target.value }))}
               placeholder="Tell the world about yourself..."
-              maxLength={200}
+              className="mt-1 resize-none"
               rows={3}
-              className="resize-none"
             />
-            <p className="text-xs text-muted-foreground text-right">{bio.length}/200</p>
           </div>
+        </div>
 
+        <div className="flex gap-3 mt-6">
           <Button
-            type="submit"
-            disabled={
-              !handle.trim() || !displayName.trim() || createOrUpdateProfile.isPending
-            }
-            className="w-full rounded-full"
-            size="lg"
+            onClick={handleSave}
+            disabled={createOrUpdateProfile.isPending}
+            className="flex-1 rounded-full"
           >
-            {createOrUpdateProfile.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : needsSetup ? (
-              'Get Started'
-            ) : (
-              'Save Changes'
+            {createOrUpdateProfile.isPending && (
+              <span className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-2" />
             )}
+            Save Profile
           </Button>
-        </form>
+          {isEditing && (
+            <Button
+              variant="outline"
+              onClick={() => setIsEditing(false)}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
-  // ── Profile View ─────────────────────────────────────────────────────────
+  // ── Profile View ──
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <h1 className="font-bold text-lg text-foreground">Profile</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setHandle(userProfile?.handle || '');
-                setDisplayName(userProfile?.displayName || '');
-                setBio(userProfile?.bio || '');
-                setProfilePictureBlob(userProfile?.profilePicture ?? null);
-                setProfilePicturePreview(
-                  userProfile?.profilePicture
-                    ? userProfile.profilePicture.getDirectURL()
-                    : null
-                );
-                setIsEditing(true);
-              }}
-              className="text-muted-foreground hover:text-foreground gap-1"
-            >
-              <Edit2 className="w-4 h-4" />
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-destructive gap-1"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="flex flex-col items-center gap-4 mb-8">
+    <div className="max-w-2xl mx-auto pb-24">
+      {/* Header */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex items-start gap-4">
           <AvatarPlaceholder
-            name={userProfile?.displayName || '?'}
-            profilePicture={userProfile?.profilePicture ?? null}
+            name={userProfile?.displayName ?? 'You'}
+            profilePicture={userProfile?.profilePicture}
             size="xl"
           />
-
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-foreground">{userProfile?.displayName}</h2>
-            {userProfile?.handle && (
-              <p className="text-sm text-primary font-medium mt-0.5">
-                @{userProfile.handle}
-              </p>
-            )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold truncate">{userProfile?.displayName}</h1>
+            <p className="text-muted-foreground text-sm">@{userProfile?.handle}</p>
             {userProfile?.bio && (
-              <p className="text-sm text-muted-foreground mt-2 max-w-xs leading-relaxed">
+              <p className="text-sm mt-2 text-foreground/80 leading-relaxed">
                 {userProfile.bio}
               </p>
             )}
-          </div>
 
-          <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
-            {identity?.getPrincipal().toString().slice(0, 20)}...
-          </p>
+            {/* Stats */}
+            <div className="flex items-center gap-4 mt-3">
+              <div className="text-center">
+                <p className="font-bold text-sm">{posts?.length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Posts</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-sm">{followers?.length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Shadows</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-sm">{following?.length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Following</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                className="gap-1.5 rounded-full"
+              >
+                <Edit2 size={13} />
+                Edit Profile
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleLogout}
+                className="gap-1.5 rounded-full text-muted-foreground"
+              >
+                <LogOut size={13} />
+                Sign Out
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+
+      <div className="border-t border-border" />
+
+      {/* Posts Grid */}
+      {postsLoading ? (
+        <div className="grid grid-cols-3 gap-0.5 mt-0.5">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="aspect-square" />
+          ))}
+        </div>
+      ) : posts && posts.length > 0 ? (
+        <PostGrid posts={posts} onCommentClick={setSelectedPost} />
+      ) : (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <Film size={32} className="mb-2 opacity-40" />
+          <p className="text-sm">No posts yet</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate({ to: '/create' })}
+            className="mt-3 rounded-full"
+          >
+            Create your first post
+          </Button>
+        </div>
+      )}
+
+      {/* Comments Sheet — uses open/onOpenChange convention */}
+      <CommentsSheet
+        post={selectedPost}
+        open={!!selectedPost}
+        onOpenChange={(val) => { if (!val) setSelectedPost(null); }}
+      />
     </div>
   );
 }

@@ -15,15 +15,31 @@ import { useGetComments, useAddComment, useGetCallerUserProfile } from '../hooks
 
 interface CommentsSheetProps {
   post: Post | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  // Convenience aliases used by ProfilePage / UserProfilePage
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function CommentsSheet({ post, open, onOpenChange }: CommentsSheetProps) {
+export default function CommentsSheet({
+  post,
+  open,
+  onOpenChange,
+  isOpen,
+  onClose,
+}: CommentsSheetProps) {
   const { identity } = useInternetIdentity();
   const [commentText, setCommentText] = useState('');
 
-  const { data: comments, isLoading } = useGetComments(post?.id ?? null);
+  // Support both prop-naming conventions
+  const isSheetOpen = open ?? isOpen ?? false;
+  const handleOpenChange = (val: boolean) => {
+    if (onOpenChange) onOpenChange(val);
+    if (!val && onClose) onClose();
+  };
+
+  const { data: comments, isLoading } = useGetComments(post?.id ?? undefined);
   const { data: userProfile } = useGetCallerUserProfile();
   const addComment = useAddComment();
 
@@ -63,7 +79,7 @@ export default function CommentsSheet({ post, open, onOpenChange }: CommentsShee
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={isSheetOpen} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
         <SheetHeader className="px-4 py-3 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-base">
@@ -92,8 +108,12 @@ export default function CommentsSheet({ post, open, onOpenChange }: CommentsShee
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-semibold text-sm text-foreground">{comment.authorName}</span>
-                    <span className="text-xs text-muted-foreground">{formatTime(comment.timestamp)}</span>
+                    <span className="font-semibold text-sm text-foreground">
+                      {comment.authorName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatTime(comment.timestamp)}
+                    </span>
                   </div>
                   <p className="text-sm text-foreground mt-0.5 break-words">{comment.text}</p>
                 </div>

@@ -1,14 +1,15 @@
-import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import BottomNav from './BottomNav';
+import React from 'react';
+import { Outlet } from '@tanstack/react-router';
 import TopBar from './TopBar';
+import BottomNav from './BottomNav';
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-background flex flex-col max-w-screen-sm mx-auto relative">
+    <div className="flex flex-col min-h-screen">
       <TopBar />
-      <main className="flex-1 pb-20 pt-14">
+      <div className="flex-1">
         <Outlet />
-      </main>
+      </div>
       <BottomNav />
     </div>
   );

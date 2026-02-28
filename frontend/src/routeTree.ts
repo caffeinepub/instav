@@ -1,12 +1,5 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-} from '@tanstack/react-router';
-import React from 'react';
-import TopBar from './components/TopBar';
-import BottomNav from './components/BottomNav';
+import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import Layout from './components/Layout';
 import FeedPage from './pages/FeedPage';
 import ExplorePage from './pages/ExplorePage';
 import EditorPage from './pages/EditorPage';
@@ -14,16 +7,8 @@ import ProfilePage from './pages/ProfilePage';
 import ShortSportPage from './pages/ShortSportPage';
 import CreatePostPage from './pages/CreatePostPage';
 import UserProfilePage from './pages/UserProfilePage';
-
-function Layout() {
-  return React.createElement(
-    'div',
-    { className: 'flex flex-col min-h-screen' },
-    React.createElement(TopBar, null),
-    React.createElement('div', { className: 'flex-1' }, React.createElement(Outlet, null)),
-    React.createElement(BottomNav, null)
-  );
-}
+import MessagesPage from './pages/MessagesPage';
+import MessageThreadPage from './pages/MessageThreadPage';
 
 const rootRoute = createRootRoute({
   component: Layout,
@@ -47,14 +32,13 @@ const editorRoute = createRoute({
   component: EditorPage,
 });
 
-// Static /profile route — own profile management
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
   component: ProfilePage,
 });
 
-const shortsportRoute = createRoute({
+const shortSportRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/shortsport',
   component: ShortSportPage,
@@ -66,18 +50,28 @@ const createPostRoute = createRoute({
   component: CreatePostPage,
 });
 
-// Legacy principal-based route — kept for backward compatibility
 const userProfileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/user/$principal',
   component: UserProfilePage,
 });
 
-// Handle-based public profile route — e.g. /profile/johndoe
 const handleProfileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile/$handle',
   component: UserProfilePage,
+});
+
+const messagesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/messages',
+  component: MessagesPage,
+});
+
+const messageThreadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/messages/$principalId',
+  component: MessageThreadPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -85,10 +79,12 @@ const routeTree = rootRoute.addChildren([
   exploreRoute,
   editorRoute,
   profileRoute,
-  shortsportRoute,
+  shortSportRoute,
   createPostRoute,
   userProfileRoute,
   handleProfileRoute,
+  messagesRoute,
+  messageThreadRoute,
 ]);
 
 export const router = createRouter({ routeTree });

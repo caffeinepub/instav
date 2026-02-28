@@ -1,24 +1,52 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Sports app with a ShortSport reels section featuring TikTok-style vertical scrolling and a floating auto-scroll toggle button in the bottom-right corner.",
-  "architectural_notes": [],
+  "summary": "A sports social app (ShortSport + Feed) with comments, sharing, one-like-per-user, login via Internet Identity, in-app chat with shortspot sharing, and a follow system where followers are called 'Shadows' with in-app follow notifications.",
+  "architectural_notes": [
+    "Authentication via Internet Identity; required for posting comments, liking, chatting, and following",
+    "Chat uses periodic polling (no WebSockets); shortspots shared in chat are tap-to-view embeds",
+    "Follow system uses 'Shadows' terminology for followers; in-app notifications sent on new follow"
+  ],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-update-shortsportpage-to-support-tiktok-style-vertical-manual-scrolling-where-users-can-swipe-or-scroll-up-down-to-navigate-between-video-reels-one-at-a-time-with-snap-scrolling-behavior",
-      "title": "Update ShortSportPage to support TikTok-style vertical manual scrolling, where users can swipe or scroll up/down to navigate between video reels one at a time with snap-scrolling behavior.",
+      "id": "feature-replace-the-existing-mock-based-messagespage-with-a-fully-functional-chat-page-display-a-conversation-list-showing-all-conversations-with-avatar-display-name-last-message-preview-and-unread-count-badge-clicking-a-conversation-opens-the-chat-thread-the-thread-shows-message-bubbles-sent-messages-right-aligned-received-left-aligned-with-timestamps-include-a-text-input-and-send-button-add-a-share-shortspot-button-that-opens-a-post-picker-modal-listing-the-user-s-or-recent-shortspot-posts-selecting-one-sends-it-as-a-special-message-containing-the-post-reference-auto-refresh-messages-every-5-seconds-using-polling",
+      "title": "Replace the existing mock-based MessagesPage with a fully functional chat page. Display a conversation list showing all conversations with avatar, display name, last message preview, and unread count badge. Clicking a conversation opens the chat thread. The thread shows message bubbles (sent messages right-aligned, received left-aligned) with timestamps. Include a text input and Send button. Add a 'Share Shortspot' button that opens a post picker modal listing the user's or recent shortspot posts; selecting one sends it as a special message containing the post reference. Auto-refresh messages every 5 seconds using polling.",
       "reqIds": [
-        "REQ-1"
+        "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-a-floating-auto-scroll-toggle-button-in-the-bottom-right-corner-of-shortsportpage-when-activated-the-page-automatically-advances-to-the-next-reel-at-a-set-interval-clicking-the-button-again-stops-auto-scrolling-the-button-should-visually-indicate-its-active-inactive-state",
-      "title": "Add a floating auto-scroll toggle button in the bottom-right corner of ShortSportPage. When activated, the page automatically advances to the next reel at a set interval. Clicking the button again stops auto-scrolling. The button should visually indicate its active/inactive state.",
+      "id": "feature-add-a-follow-shadows-feature-to-user-profile-pages-userprofilepage-and-profilepage-on-a-public-user-s-profile-userprofilepage-show-a-follow-unfollow-button-for-authenticated-users-display-the-shadows-count-follower-count-prominently-on-all-profile-pages-with-the-label-shadows-also-display-following-count-the-follow-button-should-call-followuser-and-trigger-an-optimistic-ui-update",
+      "title": "Add a Follow / Shadows feature to user profile pages (UserProfilePage and ProfilePage). On a public user's profile (UserProfilePage), show a Follow/Unfollow button for authenticated users. Display the Shadows count (follower count) prominently on all profile pages with the label 'Shadows'. Also display Following count. The Follow button should call followUser and trigger an optimistic UI update.",
       "reqIds": [
-        "REQ-2"
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-in-app-notifications-panel-accessible-from-the-topbar-bell-icon-with-unread-badge-the-panel-lists-notifications-including-new-shadow-events-e-g-username-started-shadowing-you-each-notification-shows-the-type-sender-avatar-message-and-timestamp-clicking-a-notification-marks-it-as-read-and-navigates-to-the-relevant-profile-or-content-poll-for-new-notifications-every-15-seconds",
+      "title": "Add an in-app notifications panel accessible from the TopBar (bell icon with unread badge). The panel lists notifications including 'new_shadow' events (e.g. '@username started shadowing you'). Each notification shows the type, sender avatar, message, and timestamp. Clicking a notification marks it as read and navigates to the relevant profile or content. Poll for new notifications every 15 seconds.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-messages-icon-tab-to-the-bottomnav-or-topbar-that-navigates-to-the-messagespage-ensure-the-new-chat-and-notifications-features-are-properly-wired-into-the-tanstack-router-route-tree-in-routetree-ts-with-appropriate-routes-e-g-messages-messages-principalid",
+      "title": "Add a Messages icon/tab to the BottomNav or TopBar that navigates to the MessagesPage. Ensure the new chat and notifications features are properly wired into the TanStack Router route tree in routeTree.ts with appropriate routes (e.g. /messages, /messages/:principalId).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-send-message-button-on-userprofilepage-so-that-an-authenticated-user-can-initiate-or-continue-a-direct-message-conversation-with-that-user-clicking-it-navigates-to-messages-principalid-of-that-user",
+      "title": "Add a 'Send Message' button on UserProfilePage so that an authenticated user can initiate or continue a direct message conversation with that user. Clicking it navigates to /messages/:principalId of that user.",
+      "reqIds": [
+        "REQ-8"
       ],
       "version": 1
     }
@@ -26,13 +54,49 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "ShortSport section: vertical (TikTok-style) manual scrolling and floating auto-scroll toggle button in bottom-right corner",
+      "summary": "Add comments and share options to ShortSport and Feed sections (comments visible to all, posting requires login; in-app share shows full video, external share generates link)",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Enforce one-like-per-user per video/post with toggle on/off; show login prompt for unauthenticated users",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Add simple chat system with auto-refresh polling, ability to share shortspots in chat (tap to view), and a follow system where followers are called 'Shadows' with visible count and in-app follow notifications",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Extend the backend actor to support a direct messaging system: store conversations between two users (identified by principal), store messages with sender, timestamp, text content, and an optional shortspot reference (post ID). Expose functions: sendMessage(recipientPrincipal, text, ?postId), getConversations(), getMessages(otherPrincipal), and markMessagesRead(otherPrincipal).",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Extend the backend actor to support a follow system: users can follow/unfollow other users. Store follow relationships as (follower principal → followed principal). Expose functions: followUser(targetPrincipal), unfollowUser(targetPrincipal), getFollowers(principal), getFollowing(principal), isFollowing(targetPrincipal). The follower count on a user's profile should be called 'Shadows'.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Extend the backend actor to support in-app notifications. Store notifications per user principal with fields: type (e.g. 'new_shadow', 'message'), fromPrincipal, timestamp, read status, and optional postId. Expose functions: getNotifications(), markNotificationRead(notificationId). Automatically create a notification when a user is followed (type = 'new_shadow').",
+      "reqIds": [
+        "REQ-3"
+      ],
       "status": "pending"
     }
   ],
   "gameProjectType": "none",
-  "projectName": "InstaV",
+  "projectName": "ShortSport",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

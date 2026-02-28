@@ -1,31 +1,53 @@
-import React from 'react';
-import { useRouterState, useNavigate } from '@tanstack/react-router';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'InstaV',
-  '/explore': 'Explore',
-  '/editor': 'Editor',
-  '/profile': 'Profile',
-  '/create': 'Create Post',
-};
+import { useGetNotifications } from '../hooks/useQueries';
+import NotificationsPanel from './NotificationsPanel';
+import { Bell, LogIn, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function TopBar() {
-  const routerState = useRouterState();
   const navigate = useNavigate();
+  const routerState = useRouterState();
   const { identity, login, clear, loginStatus } = useInternetIdentity();
   const queryClient = useQueryClient();
-  const currentPath = routerState.location.pathname;
-
-  // Hide on shortsport full-screen page
-  if (currentPath === '/shortsport') return null;
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
+  const currentPath = routerState.location.pathname;
 
-  const title = PAGE_TITLES[currentPath] || 'InstaV';
+  const { data: notifications } = useGetNotifications();
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+
+  // Close notifications panel on outside click — must be before any early return
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
+  // Hide on shortsport route — after all hooks
+  if (currentPath === '/shortsport') return null;
+
+  const getPageTitle = () => {
+    if (currentPath === '/') return 'Home';
+    if (currentPath === '/explore') return 'Explore';
+    if (currentPath === '/profile') return 'Profile';
+    if (currentPath === '/create') return 'Create Post';
+    if (currentPath === '/editor') return 'Editor';
+    if (currentPath.startsWith('/messages')) return 'Messages';
+    if (currentPath.startsWith('/profile/')) return 'Profile';
+    if (currentPath.startsWith('/user/')) return 'Profile';
+    return 'InstaV';
+  };
 
   const handleAuth = async () => {
     if (isAuthenticated) {
@@ -34,8 +56,11 @@ export default function TopBar() {
     } else {
       try {
         await login();
-      } catch (err: any) {
-        if (err?.message === 'User is already authenticated') {
+      } catch (error: unknown) {
+        if (
+          error instanceof Error &&
+          error.message === 'User is already authenticated'
+        ) {
           await clear();
           setTimeout(() => login(), 300);
         }
@@ -44,32 +69,69 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto">
+        {/* Brand */}
         <button
           onClick={() => navigate({ to: '/' })}
-          className="font-bold text-xl text-primary tracking-tight"
+          className="font-bold text-lg tracking-tight text-foreground hover:text-primary transition-colors"
+          style={{ fontFamily: 'Syne, sans-serif' }}
         >
           InstaV
         </button>
 
-        <h1 className="absolute left-1/2 -translate-x-1/2 font-semibold text-sm text-foreground">
-          {title}
-        </h1>
+        {/* Page Title */}
+        <span className="text-sm font-medium text-muted-foreground absolute left-1/2 -translate-x-1/2">
+          {getPageTitle()}
+        </span>
 
-        <button
-          onClick={handleAuth}
-          disabled={isLoggingIn}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            isAuthenticated
-              ? 'bg-muted text-muted-foreground hover:bg-muted/80'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
-          } disabled:opacity-50`}
-        >
-          {isLoggingIn ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : isAuthenticated ? 'Sign Out' : 'Sign In'}
-        </button>
+        {/* Right Actions */}
+        <div className="flex items-center gap-2">
+          {/* Bell Icon — only for authenticated users */}
+          {isAuthenticated && (
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setShowNotifications((v) => !v)}
+                className="relative p-2 rounded-full hover:bg-muted transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5 leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 z-50">
+                  <NotificationsPanel onClose={() => setShowNotifications(false)} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Auth Button */}
+          <Button
+            variant={isAuthenticated ? 'outline' : 'default'}
+            size="sm"
+            onClick={handleAuth}
+            disabled={loginStatus === 'logging-in'}
+            className="gap-1.5 rounded-full text-xs"
+          >
+            {loginStatus === 'logging-in' ? (
+              <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+            ) : isAuthenticated ? (
+              <LogOut size={13} />
+            ) : (
+              <LogIn size={13} />
+            )}
+            {loginStatus === 'logging-in'
+              ? 'Signing in...'
+              : isAuthenticated
+              ? 'Sign Out'
+              : 'Sign In'}
+          </Button>
+        </div>
       </div>
     </header>
   );

@@ -14,6 +14,10 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
+export interface Conversation {
+    participants: [Principal, Principal];
+    lastUpdated: bigint;
+}
 export interface Comment {
     id: bigint;
     text: string;
@@ -39,11 +43,32 @@ export interface UserProfileData {
     handle: string;
     profilePicture?: ExternalBlob;
 }
+export interface Notification {
+    id: bigint;
+    notificationType: NotificationType;
+    read: boolean;
+    fromPrincipal: Principal;
+    timestamp: bigint;
+    postId?: bigint;
+}
 export interface PostInput {
     media?: ExternalBlob;
     authorName: string;
     caption: string;
     mediaType: string;
+}
+export interface Message {
+    content: string;
+    read: boolean;
+    recipient: Principal;
+    sender: Principal;
+    timestamp: bigint;
+    postId?: bigint;
+}
+export enum NotificationType {
+    comment = "comment",
+    message = "message",
+    new_shadow = "new_shadow"
 }
 export enum UserRole {
     admin = "admin",
@@ -55,17 +80,28 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createOrUpdateProfile(profileData: UserProfileData): Promise<void>;
     createPost(post: PostInput): Promise<bigint>;
+    followUser(target: Principal): Promise<void>;
     getAllPosts(): Promise<Array<Post>>;
     getCallerUserProfile(): Promise<UserProfileData | null>;
     getCallerUserRole(): Promise<UserRole>;
     getComments(postId: bigint): Promise<Array<Comment>>;
+    getConversations(): Promise<Array<Conversation>>;
+    getFollowers(user: Principal): Promise<Array<Principal>>;
+    getFollowing(user: Principal): Promise<Array<Principal>>;
+    getMessages(otherParticipant: Principal): Promise<Array<Message>>;
+    getNotifications(): Promise<Array<Notification>>;
     getPostsByUser(authorPrincipal: Principal): Promise<Array<Post>>;
     getProfileByHandle(handle: string): Promise<UserProfileData | null>;
     getProfileByPrincipal(principal: Principal): Promise<UserProfileData | null>;
     getUserProfile(principal: Principal): Promise<UserProfileData | null>;
     isCallerAdmin(): Promise<boolean>;
+    isFollowing(target: Principal): Promise<boolean>;
     likePost(postId: bigint): Promise<void>;
+    markMessagesRead(otherParticipant: Principal): Promise<void>;
+    markNotificationRead(notificationId: bigint): Promise<void>;
     recordView(postId: bigint): Promise<void>;
     saveCallerUserProfile(profileData: UserProfileData): Promise<void>;
     searchHandles(prefix: string): Promise<Array<string>>;
+    sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
+    unfollowUser(target: Principal): Promise<void>;
 }

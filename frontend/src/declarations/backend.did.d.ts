@@ -18,7 +18,30 @@ export interface Comment {
   'authorPrincipal' : Principal,
   'postId' : bigint,
 }
+export interface Conversation {
+  'participants' : [Principal, Principal],
+  'lastUpdated' : bigint,
+}
 export type ExternalBlob = Uint8Array;
+export interface Message {
+  'content' : string,
+  'read' : boolean,
+  'recipient' : Principal,
+  'sender' : Principal,
+  'timestamp' : bigint,
+  'postId' : [] | [bigint],
+}
+export interface Notification {
+  'id' : bigint,
+  'notificationType' : NotificationType,
+  'read' : boolean,
+  'fromPrincipal' : Principal,
+  'timestamp' : bigint,
+  'postId' : [] | [bigint],
+}
+export type NotificationType = { 'comment' : null } |
+  { 'message' : null } |
+  { 'new_shadow' : null };
 export interface Post {
   'id' : bigint,
   'media' : [] | [ExternalBlob],
@@ -77,19 +100,30 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createOrUpdateProfile' : ActorMethod<[UserProfileData], undefined>,
   'createPost' : ActorMethod<[PostInput], bigint>,
+  'followUser' : ActorMethod<[Principal], undefined>,
   'getAllPosts' : ActorMethod<[], Array<Post>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfileData]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getComments' : ActorMethod<[bigint], Array<Comment>>,
+  'getConversations' : ActorMethod<[], Array<Conversation>>,
+  'getFollowers' : ActorMethod<[Principal], Array<Principal>>,
+  'getFollowing' : ActorMethod<[Principal], Array<Principal>>,
+  'getMessages' : ActorMethod<[Principal], Array<Message>>,
+  'getNotifications' : ActorMethod<[], Array<Notification>>,
   'getPostsByUser' : ActorMethod<[Principal], Array<Post>>,
   'getProfileByHandle' : ActorMethod<[string], [] | [UserProfileData]>,
   'getProfileByPrincipal' : ActorMethod<[Principal], [] | [UserProfileData]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfileData]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isFollowing' : ActorMethod<[Principal], boolean>,
   'likePost' : ActorMethod<[bigint], undefined>,
+  'markMessagesRead' : ActorMethod<[Principal], undefined>,
+  'markNotificationRead' : ActorMethod<[bigint], undefined>,
   'recordView' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfileData], undefined>,
   'searchHandles' : ActorMethod<[string], Array<string>>,
+  'sendMessage' : ActorMethod<[Principal, string, [] | [bigint]], undefined>,
+  'unfollowUser' : ActorMethod<[Principal], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

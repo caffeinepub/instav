@@ -21,7 +21,8 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
   const viewRecorded = useRef(false);
   const [optimisticLikes, setOptimisticLikes] = useState<number | null>(null);
 
-  const { data: authorProfile } = useProfileByPrincipal(post.authorPrincipal);
+  // Convert Principal to string for the hook
+  const { data: authorProfile } = useProfileByPrincipal(post.authorPrincipal.toString());
 
   const likeCount =
     optimisticLikes !== null ? optimisticLikes : Number(post.likeCount);
@@ -61,7 +62,10 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     if (authorProfile?.handle) {
       navigate({ to: '/profile/$handle', params: { handle: authorProfile.handle } });
     } else {
-      navigate({ to: '/user/$principal', params: { principal: post.authorPrincipal.toString() } });
+      navigate({
+        to: '/user/$principal',
+        params: { principal: post.authorPrincipal.toString() },
+      });
     }
   };
 
