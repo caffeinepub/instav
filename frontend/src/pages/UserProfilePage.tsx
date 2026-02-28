@@ -12,11 +12,22 @@ import {
   useGetPostsByUser,
   usePostsByHandle,
   usePrincipalByHandle,
+  useGetFriendshipStatus,
+  useSendFriendRequest,
+  useRespondToFriendRequest,
+  useCancelFriendRequest,
+  useUnfriend,
 } from '../hooks/useQueries';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
 import CommentsSheet from '../components/CommentsSheet';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import {
   UserPlus,
   UserMinus,
@@ -26,8 +37,14 @@ import {
   Film,
   ImageIcon,
   LogIn,
+  UserCheck,
+  UserX,
+  ChevronDown,
+  Clock,
+  X,
 } from 'lucide-react';
 import type { Post } from '../backend';
+import { FriendshipStatusEnum } from '../backend';
 import { toast } from 'sonner';
 
 // ─── Post Grid ────────────────────────────────────────────────────────────────
@@ -86,6 +103,189 @@ function PostGrid({
         );
       })}
     </div>
+  );
+}
+
+// ─── Friend Action Button ─────────────────────────────────────────────────────
+
+interface FriendActionButtonProps {
+  targetPrincipal: string;
+}
+
+function FriendActionButton({ targetPrincipal }: FriendActionButtonProps) {
+  const { data: friendshipStatus, isLoading: statusLoading } =
+    useGetFriendshipStatus(targetPrincipal);
+
+  const sendRequest = useSendFriendRequest();
+  const cancelRequest = useCancelFriendRequest();
+  const respondRequest = useRespondToFriendRequest();
+  const unfriendMutation = useUnfriend();
+
+  const isMutating =
+    sendRequest.isPending ||
+    cancelRequest.isPending ||
+    respondRequest.isPending ||
+    unfriendMutation.isPending;
+
+  const handleSend = async () => {
+    try {
+      await sendRequest.mutateAsync(targetPrincipal);
+      toast.success('Friend request sent!');
+    } catch {
+      toast.error('Failed to send friend request.');
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await cancelRequest.mutateAsync(targetPrincipal);
+      toast.success('Friend request cancelled.');
+    } catch {
+      toast.error('Failed to cancel friend request.');
+    }
+  };
+
+  const handleAccept = async () => {
+    try {
+      await respondRequest.mutateAsync({ senderPrincipal: targetPrincipal, accept: true });
+      toast.success('Friend request accepted! 🎉');
+    } catch {
+      toast.error('Failed to accept friend request.');
+    }
+  };
+
+  const handleDecline = async () => {
+    try {
+      await respondRequest.mutateAsync({ senderPrincipal: targetPrincipal, accept: false });
+      toast.success('Friend request declined.');
+    } catch {
+      toast.error('Failed to decline friend request.');
+    }
+  };
+
+  const handleUnfriend = async () => {
+    try {
+      await unfriendMutation.mutateAsync(targetPrincipal);
+      toast.success('Unfriended successfully.');
+    } catch {
+      toast.error('Failed to unfriend.');
+    }
+  };
+
+  if (statusLoading) {
+    return (
+      <Button size="sm" variant="outline" disabled className="gap-1.5 rounded-full">
+        <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+        Loading…
+      </Button>
+    );
+  }
+
+  const status = friendshipStatus ?? FriendshipStatusEnum.notConnected;
+
+  if (status === FriendshipStatusEnum.friends) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isMutating}
+            className="gap-1.5 rounded-full border-green-500/50 text-green-600 hover:text-green-700"
+          >
+            {isMutating ? (
+              <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+            ) : (
+              <UserCheck size={14} />
+            )}
+            Friends
+            <ChevronDown size={12} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem
+            onClick={handleUnfriend}
+            className="text-destructive focus:text-destructive gap-2"
+          >
+            <UserX size={14} />
+            Unfriend
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  if (status === FriendshipStatusEnum.pendingOutgoing) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleCancel}
+        disabled={isMutating}
+        className="gap-1.5 rounded-full text-muted-foreground"
+      >
+        {isMutating ? (
+          <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+        ) : (
+          <Clock size={14} />
+        )}
+        {isMutating ? 'Cancelling…' : 'Request Sent'}
+        {!isMutating && <X size={12} className="ml-0.5 opacity-60" />}
+      </Button>
+    );
+  }
+
+  if (status === FriendshipStatusEnum.pendingIncoming) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <Button
+          size="sm"
+          variant="default"
+          onClick={handleAccept}
+          disabled={isMutating}
+          className="gap-1.5 rounded-full"
+        >
+          {respondRequest.isPending ? (
+            <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+          ) : (
+            <UserCheck size={14} />
+          )}
+          Accept
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDecline}
+          disabled={isMutating}
+          className="gap-1.5 rounded-full"
+        >
+          {respondRequest.isPending ? (
+            <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+          ) : (
+            <UserX size={14} />
+          )}
+          Decline
+        </Button>
+      </div>
+    );
+  }
+
+  // notConnected
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={handleSend}
+      disabled={isMutating}
+      className="gap-1.5 rounded-full"
+    >
+      {isMutating ? (
+        <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+      ) : (
+        <UserPlus size={14} />
+      )}
+      {isMutating ? 'Sending…' : 'Add Friend'}
+    </Button>
   );
 }
 
@@ -159,7 +359,7 @@ export default function UserProfilePage() {
         await followUser.mutateAsync(targetPrincipal);
         toast.success('Now following!');
       }
-    } catch (err) {
+    } catch {
       toast.error('Something went wrong. Please try again.');
     }
   };
@@ -242,9 +442,10 @@ export default function UserProfilePage() {
 
             {/* Action Buttons — only for other users' profiles */}
             {!isOwnProfile && (
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex flex-wrap items-center gap-2 mt-3">
                 {identity ? (
                   <>
+                    {/* Follow / Unfollow */}
                     <Button
                       size="sm"
                       variant={isFollowingUser ? 'outline' : 'default'}
@@ -267,6 +468,13 @@ export default function UserProfilePage() {
                           ? 'Unfollow'
                           : 'Follow'}
                     </Button>
+
+                    {/* Friend Action Button */}
+                    {targetPrincipal && (
+                      <FriendActionButton targetPrincipal={targetPrincipal} />
+                    )}
+
+                    {/* Message */}
                     {targetPrincipal && (
                       <Button
                         size="sm"

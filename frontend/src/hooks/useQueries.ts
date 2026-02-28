@@ -1,6 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { UserProfileData, Post, Comment, Notification, Message, Conversation } from '../backend';
+import type {
+  UserProfileData,
+  Post,
+  Comment,
+  Notification,
+  Message,
+  Conversation,
+  UserProfileSummary,
+  FriendRequest,
+} from '../backend';
+import { FriendshipStatusEnum } from '../backend';
 import { Principal } from '@dfinity/principal';
 
 // ─── Profile Hooks ────────────────────────────────────────────────────────────
@@ -61,6 +71,19 @@ export function useSearchHandles(prefix: string) {
       return actor.searchHandles(prefix);
     },
     enabled: !!actor && !isFetching && prefix.length > 0,
+  });
+}
+
+export function useSearchUsers(searchStr: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<UserProfileSummary[]>({
+    queryKey: ['users', 'search', searchStr],
+    queryFn: async () => {
+      if (!actor || !searchStr.trim()) return [];
+      return actor.searchUsers(searchStr.trim());
+    },
+    enabled: !!actor && !isFetching && searchStr.trim().length > 0,
   });
 }
 
@@ -137,7 +160,6 @@ export function usePrincipalByHandle(handle: string | undefined) {
     queryKey: ['principalByHandle', handle],
     queryFn: async () => {
       if (!actor || !handle) return null;
-      // Fetch all posts and find one authored by this handle's user
       const [allPosts, profileData] = await Promise.all([
         actor.getAllPosts(),
         actor.getProfileByHandle(handle),
@@ -316,11 +338,12 @@ export function useMarkMessagesRead() {
 export function useGetFollowers(principal: string | undefined) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Principal[]>({
+  return useQuery<string[]>({
     queryKey: ['followers', principal],
     queryFn: async () => {
       if (!actor || !principal) return [];
-      return actor.getFollowers(Principal.fromText(principal));
+      const result = await actor.getFollowers(Principal.fromText(principal));
+      return result.map((p) => p.toString());
     },
     enabled: !!actor && !isFetching && !!principal,
   });
@@ -329,11 +352,12 @@ export function useGetFollowers(principal: string | undefined) {
 export function useGetFollowing(principal: string | undefined) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Principal[]>({
+  return useQuery<string[]>({
     queryKey: ['following', principal],
     queryFn: async () => {
       if (!actor || !principal) return [];
-      return actor.getFollowing(Principal.fromText(principal));
+      const result = await actor.getFollowing(Principal.fromText(principal));
+      return result.map((p) => p.toString());
     },
     enabled: !!actor && !isFetching && !!principal,
   });
@@ -364,7 +388,6 @@ export function useFollowUser() {
     onSuccess: (_data, targetPrincipal) => {
       queryClient.invalidateQueries({ queryKey: ['followers', targetPrincipal] });
       queryClient.invalidateQueries({ queryKey: ['isFollowing', targetPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['following'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
@@ -382,7 +405,6 @@ export function useUnfollowUser() {
     onSuccess: (_data, targetPrincipal) => {
       queryClient.invalidateQueries({ queryKey: ['followers', targetPrincipal] });
       queryClient.invalidateQueries({ queryKey: ['isFollowing', targetPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['following'] });
     },
   });
 }
@@ -399,8 +421,7 @@ export function useGetNotifications() {
       return actor.getNotifications();
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 15000,
-    select: (data) => [...data].sort((a, b) => Number(b.timestamp - a.timestamp)),
+    refetchInterval: 10000,
   });
 }
 
@@ -415,6 +436,161 @@ export function useMarkNotificationRead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+// ─── Friend System Hooks ──────────────────────────────────────────────────────
+
+const FRIEND_QUERY_KEYS = {
+  friendshipStatus: (otherPrincipal: string) => ['friendshipStatus', otherPrincipal],
+  incomingRequests: ['incomingFriendRequests'],
+  outgoingRequests: ['outgoingFriendRequests'],
+  friendsList: ['friendsList'],
+};
+
+/** Get the friendship status between the caller and another user. */
+export function useGetFriendshipStatus(otherPrincipal: string | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<FriendshipStatusEnum>({
+    queryKey: FRIEND_QUERY_KEYS.friendshipStatus(otherPrincipal ?? ''),
+    queryFn: async () => {
+      if (!actor || !otherPrincipal) return FriendshipStatusEnum.notConnected;
+      return actor.getFriendshipStatus(Principal.fromText(otherPrincipal));
+    },
+    enabled: !!actor && !isFetching && !!otherPrincipal,
+    staleTime: 30_000,
+  });
+}
+
+/** Get all incoming (pending) friend requests for the caller. */
+export function useGetIncomingFriendRequests() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<FriendRequest[]>({
+    queryKey: FRIEND_QUERY_KEYS.incomingRequests,
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getIncomingFriendRequests();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+/** Get all outgoing (pending) friend requests sent by the caller. */
+export function useGetOutgoingFriendRequests() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<FriendRequest[]>({
+    queryKey: FRIEND_QUERY_KEYS.outgoingRequests,
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getOutgoingFriendRequests();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+/** Get the list of accepted friends (as principal strings) for the caller. */
+export function useGetFriendsList() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: FRIEND_QUERY_KEYS.friendsList,
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getFriendsList();
+      return result.map((p) => p.toString());
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+/** Invalidate all friend-related queries. */
+function invalidateFriendQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  otherPrincipal?: string
+) {
+  if (otherPrincipal) {
+    queryClient.invalidateQueries({
+      queryKey: FRIEND_QUERY_KEYS.friendshipStatus(otherPrincipal),
+    });
+  }
+  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.incomingRequests });
+  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.outgoingRequests });
+  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.friendsList });
+}
+
+/** Send a friend request to a user. */
+export function useSendFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (receiverPrincipal: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.sendFriendRequest(Principal.fromText(receiverPrincipal));
+    },
+    onSuccess: (_data, receiverPrincipal) => {
+      invalidateFriendQueries(queryClient, receiverPrincipal);
+    },
+  });
+}
+
+/** Respond to an incoming friend request (accept or decline). */
+export function useRespondToFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      senderPrincipal,
+      accept,
+    }: {
+      senderPrincipal: string;
+      accept: boolean;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.respondToFriendRequest(Principal.fromText(senderPrincipal), accept);
+    },
+    onSuccess: (_data, variables) => {
+      invalidateFriendQueries(queryClient, variables.senderPrincipal);
+    },
+  });
+}
+
+/** Cancel an outgoing friend request. */
+export function useCancelFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (receiverPrincipal: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.cancelFriendRequest(Principal.fromText(receiverPrincipal));
+    },
+    onSuccess: (_data, receiverPrincipal) => {
+      invalidateFriendQueries(queryClient, receiverPrincipal);
+    },
+  });
+}
+
+/** Unfriend an existing friend. */
+export function useUnfriend() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (friendPrincipal: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.unfriend(Principal.fromText(friendPrincipal));
+    },
+    onSuccess: (_data, friendPrincipal) => {
+      invalidateFriendQueries(queryClient, friendPrincipal);
     },
   });
 }

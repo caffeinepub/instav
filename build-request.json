@@ -1,73 +1,91 @@
 {
   "kind": "build_request",
-  "title": "Replace logo with text-only 'Smileup' wordmark in TopBar and LandingPage",
+  "title": "Step 1: Add Friend System (send/accept/decline requests, friends list)",
   "projectName": "Smileup",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
-      "target": "frontend",
+      "text": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3",
-          "msg-4"
+          "msg-18"
         ],
         "quotes": [
-          "hide it background colour white and just write the name Smileup with the same combination of colors that contrast on the black background of the pagee",
-          "remove the logo image and replace it with a stylish text-only 'Smileup' wordmark using the existing color combination"
+          "Send/receive friend requests",
+          "Accept/decline requests"
         ]
       },
       "acceptanceCriteria": [
-        "No logo image is rendered in the TopBar",
-        "The TopBar displays 'Smileup' as styled text using the existing brand accent colors",
-        "The wordmark looks sharp and professional against the black page background",
-        "No broken image references remain in the TopBar component"
+        "FriendRequest type exists with fields: sender (Principal), receiver (Principal), status (Pending | Accepted | Declined), createdAt (Int)",
+        "Stable storage for friend requests is initialized in the actor"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
-      "target": "frontend",
+      "text": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-18"
         ],
         "quotes": [
-          "hide it background colour white and just write the name Smileup with the same combination of colors that contrast on the black background of the pagee"
+          "send/accept/decline requests",
+          "friends list with unfriend option"
         ]
       },
       "acceptanceCriteria": [
-        "No logo image is rendered on the LandingPage",
-        "The LandingPage displays 'Smileup' as styled text using the same brand colors as the TopBar wordmark",
-        "The wordmark is legible and professional on the black background",
-        "No broken image references remain in the LandingPage component"
+        "sendFriendRequest creates a Pending request if none exists and caller != receiver",
+        "respondToFriendRequest updates status to Accepted or Declined",
+        "unfriend removes both directions of the friendship",
+        "getFriendsList returns only Accepted connections for the caller",
+        "getFriendshipStatus returns the current status (or null) between caller and target"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
+      "text": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-18"
         ]
       },
       "acceptanceCriteria": [
-        "The initialization splash screen shows 'Smileup' as styled text, not an image",
-        "The wordmark style is consistent with TopBar and LandingPage"
+        "Each mutation hook calls its corresponding backend method via useActor",
+        "Query hooks use appropriate staleTime and invalidate related queries on mutation success"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-18"
+        ],
+        "quotes": [
+          "Send/receive friend requests from profile pages"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Friend button states correctly reflect getFriendshipStatus result",
+        "Actions trigger the corresponding mutation hooks",
+        "UI updates optimistically or refetches after each action"
       ]
     }
   ],
   "constraints": [
-    "Use only existing brand/accent colors already present in the app — do not introduce new colors",
-    "Do not edit any files under frontend/src/hooks/ or frontend/src/components/ui",
-    "No backend changes required"
+    "Do not modify files under frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "Keep all Motoko logic in backend/main.mo as a single actor",
+    "Do NOT build Friend Zone Page, messaging, or sharing in this step — only the core friend request system"
   ],
   "nonGoals": [
-    "Redesigning the overall color scheme or page layout",
-    "Adding any new logo image assets",
-    "Changing navigation structure or page routing"
+    "Friend Zone Page (dedicated section) — saved for next step",
+    "Direct messaging — saved for a later step",
+    "Sharing features — saved for a later step",
+    "Real-time notifications for friend requests"
   ],
   "imageRequirements": {
     "required": [],

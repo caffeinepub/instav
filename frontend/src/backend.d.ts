@@ -14,10 +14,6 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
-export interface Conversation {
-    participants: [Principal, Principal];
-    lastUpdated: bigint;
-}
 export interface Comment {
     id: bigint;
     text: string;
@@ -25,6 +21,22 @@ export interface Comment {
     timestamp: bigint;
     authorPrincipal: Principal;
     postId: bigint;
+}
+export interface UserProfileSummary {
+    bio: string;
+    postCount: bigint;
+    principal: Principal;
+    displayName: string;
+    avatarUrl?: ExternalBlob;
+    followerCount: bigint;
+    handle: string;
+    followingCount: bigint;
+}
+export interface FriendRequest {
+    status: FriendRequestStatus;
+    recipient: Principal;
+    sender: Principal;
+    timestamp: bigint;
 }
 export interface Post {
     id: bigint;
@@ -37,17 +49,25 @@ export interface Post {
     mediaType: string;
     authorPrincipal: Principal;
 }
+export interface Notification {
+    id: bigint;
+    notificationType: NotificationType;
+    read: boolean;
+    fromPrincipal: Principal;
+    timestamp: bigint;
+    postId?: bigint;
+}
 export interface UserProfileData {
     bio: string;
     displayName: string;
     handle: string;
     profilePicture?: ExternalBlob;
 }
-export interface Notification {
-    id: bigint;
-    notificationType: NotificationType;
+export interface Message {
+    content: string;
     read: boolean;
-    fromPrincipal: Principal;
+    recipient: Principal;
+    sender: Principal;
     timestamp: bigint;
     postId?: bigint;
 }
@@ -57,13 +77,20 @@ export interface PostInput {
     caption: string;
     mediaType: string;
 }
-export interface Message {
-    content: string;
-    read: boolean;
-    recipient: Principal;
-    sender: Principal;
-    timestamp: bigint;
-    postId?: bigint;
+export interface Conversation {
+    participants: [Principal, Principal];
+    lastUpdated: bigint;
+}
+export enum FriendRequestStatus {
+    pending = "pending",
+    accepted = "accepted",
+    declined = "declined"
+}
+export enum FriendshipStatusEnum {
+    notConnected = "notConnected",
+    pendingOutgoing = "pendingOutgoing",
+    friends = "friends",
+    pendingIncoming = "pendingIncoming"
 }
 export enum NotificationType {
     comment = "comment",
@@ -78,6 +105,7 @@ export enum UserRole {
 export interface backendInterface {
     addComment(postId: bigint, authorName: string, text: string): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    cancelFriendRequest(receiver: Principal): Promise<void>;
     createOrUpdateProfile(profileData: UserProfileData): Promise<void>;
     createPost(post: PostInput): Promise<bigint>;
     followUser(target: Principal): Promise<void>;
@@ -88,8 +116,12 @@ export interface backendInterface {
     getConversations(): Promise<Array<Conversation>>;
     getFollowers(user: Principal): Promise<Array<Principal>>;
     getFollowing(user: Principal): Promise<Array<Principal>>;
+    getFriendsList(): Promise<Array<Principal>>;
+    getFriendshipStatus(otherPrincipal: Principal): Promise<FriendshipStatusEnum>;
+    getIncomingFriendRequests(): Promise<Array<FriendRequest>>;
     getMessages(otherParticipant: Principal): Promise<Array<Message>>;
     getNotifications(): Promise<Array<Notification>>;
+    getOutgoingFriendRequests(): Promise<Array<FriendRequest>>;
     getPostsByUser(authorPrincipal: Principal): Promise<Array<Post>>;
     getProfileByHandle(handle: string): Promise<UserProfileData | null>;
     getProfileByPrincipal(principal: Principal): Promise<UserProfileData | null>;
@@ -100,8 +132,12 @@ export interface backendInterface {
     markMessagesRead(otherParticipant: Principal): Promise<void>;
     markNotificationRead(notificationId: bigint): Promise<void>;
     recordView(postId: bigint): Promise<void>;
+    respondToFriendRequest(sender: Principal, accept: boolean): Promise<void>;
     saveCallerUserProfile(profileData: UserProfileData): Promise<void>;
     searchHandles(prefix: string): Promise<Array<string>>;
+    searchUsers(searchStr: string): Promise<Array<UserProfileSummary>>;
+    sendFriendRequest(receiver: Principal): Promise<void>;
     sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
     unfollowUser(target: Principal): Promise<void>;
+    unfriend(friendPrincipal: Principal): Promise<void>;
 }

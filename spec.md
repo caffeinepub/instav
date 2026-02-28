@@ -1,11 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Replace all logo image elements throughout the app with a text-only "Smileup" wordmark using the existing brand accent colors.
+**Goal:** Add a core friend system to Smileup, allowing users to send, receive, accept, decline, cancel, and remove friend connections.
 
 **Planned changes:**
-- In `TopBar.tsx`, remove the logo image and replace it with a styled text-only "Smileup" wordmark using existing brand accent colors that contrast on the black background
-- In `LandingPage.tsx`, remove the logo image and replace it with the same text-only "Smileup" wordmark matching the TopBar style
-- In `App.tsx` (splash/initialization screen), replace any logo image with the same text-only "Smileup" wordmark for visual consistency
+- Add a `FriendRequest` data model to the backend with fields for sender, receiver, status (Pending/Accepted/Declined), and timestamp, with stable storage
+- Add backend functions: `sendFriendRequest`, `respondToFriendRequest`, `cancelFriendRequest`, `unfriend`, `getIncomingFriendRequests`, `getOutgoingFriendRequests`, `getFriendsList`, and `getFriendshipStatus`
+- Add React Query hooks in `useQueries.ts` for all new friend system backend functions (mutations and queries)
+- Update `UserProfilePage` to show a dynamic friend button reflecting the current friendship status: "Add Friend", "Request Sent" (with cancel), "Accept"/"Decline", or "Friends" (with unfriend dropdown)
 
-**User-visible outcome:** Everywhere a logo image previously appeared (TopBar, LandingPage, splash screen), users now see a clean, typographic "Smileup" wordmark styled with the existing brand colors against the black background — no image assets are used.
+**User-visible outcome:** Users can visit another user's profile and send a friend request, cancel it, accept or decline incoming requests, and unfriend existing friends. The friend button on profile pages dynamically reflects the current relationship state.

@@ -1,58 +1,66 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T13:57:14.970Z",
+  "generatedAt": "2026-02-28T15:57:10.959Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 4,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/TopBar.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/TopBar.tsx"
-        ]
+        "summary": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/LandingPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/LandingPage.tsx"
-        ]
+        "summary": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
+        "summary": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/components/TopBar.tsx",
-    "frontend/src/pages/LandingPage.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/UserProfilePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

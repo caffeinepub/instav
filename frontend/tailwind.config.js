@@ -65,15 +65,42 @@ export default {
                     'accent-foreground': 'oklch(var(--sidebar-accent-foreground))',
                     border: 'oklch(var(--sidebar-border))',
                     ring: 'oklch(var(--sidebar-ring))'
+                },
+                gold: {
+                    DEFAULT: '#f5c842',
+                    light: '#fde68a',
+                    dark: '#e8a020',
+                },
+                coral: {
+                    DEFAULT: '#ff6b6b',
+                    light: '#ffa8a8',
+                    dark: '#e85555',
+                },
+                surface: {
+                    DEFAULT: 'oklch(0.12 0.01 260)',
+                    elevated: 'oklch(0.16 0.012 260)',
+                    overlay: 'oklch(0.20 0.015 260)',
                 }
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Syne', 'Inter', 'system-ui', 'sans-serif'],
             },
             borderRadius: {
                 lg: 'var(--radius)',
                 md: 'calc(var(--radius) - 2px)',
-                sm: 'calc(var(--radius) - 4px)'
+                sm: 'calc(var(--radius) - 4px)',
+                '2xl': '1rem',
+                '3xl': '1.5rem',
+                '4xl': '2rem',
             },
             boxShadow: {
-                xs: '0 1px 2px 0 rgba(0,0,0,0.05)'
+                xs: '0 1px 2px 0 rgba(0,0,0,0.05)',
+                'card': '0 4px 24px -4px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.2)',
+                'card-hover': '0 8px 40px -8px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3)',
+                'gold-glow': '0 0 20px rgba(245,200,66,0.25)',
+                'coral-glow': '0 0 20px rgba(255,107,107,0.25)',
+                'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.06)',
             },
             keyframes: {
                 'accordion-down': {
@@ -83,11 +110,26 @@ export default {
                 'accordion-up': {
                     from: { height: 'var(--radix-accordion-content-height)' },
                     to: { height: '0' }
+                },
+                'slide-in-right': {
+                    from: { transform: 'translateX(100%)', opacity: '0' },
+                    to: { transform: 'translateX(0)', opacity: '1' }
+                },
+                'fade-in': {
+                    from: { opacity: '0' },
+                    to: { opacity: '1' }
+                },
+                'scale-in': {
+                    from: { transform: 'scale(0.95)', opacity: '0' },
+                    to: { transform: 'scale(1)', opacity: '1' }
                 }
             },
             animation: {
                 'accordion-down': 'accordion-down 0.2s ease-out',
-                'accordion-up': 'accordion-up 0.2s ease-out'
+                'accordion-up': 'accordion-up 0.2s ease-out',
+                'slide-in-right': 'slide-in-right 0.3s ease-out',
+                'fade-in': 'fade-in 0.3s ease-out',
+                'scale-in': 'scale-in 0.2s ease-out',
             }
         }
     },

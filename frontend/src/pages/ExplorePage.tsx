@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye } from 'lucide-react';
+import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye, UserCheck } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
-import { useGetAllPosts, useSearchHandles, useProfileByHandle } from '../hooks/useQueries';
-import type { Post } from '../backend';
+import { useGetAllPosts, useSearchUsers } from '../hooks/useQueries';
+import type { Post, UserProfileSummary } from '../backend';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
 
 export default function ExplorePage() {
@@ -12,13 +12,14 @@ export default function ExplorePage() {
   const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
   const { data: posts, isLoading: postsLoading } = useGetAllPosts();
 
-  // Debounce search input
+  // Debounce search input (300ms)
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const { data: handleResults, isLoading: handlesLoading } = useSearchHandles(
+  // Use the new searchUsers hook for fuzzy + exact search
+  const { data: userResults, isLoading: usersLoading } = useSearchUsers(
     activeTab === 'users' ? debouncedQuery : ''
   );
 
@@ -47,7 +48,9 @@ export default function ExplorePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
-                activeTab === 'users' ? 'Search by handle...' : 'Search posts, users...'
+                activeTab === 'users'
+                  ? 'Search by name or handle...'
+                  : 'Search posts, users...'
               }
               className="w-full bg-muted rounded-full pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
             />
@@ -85,9 +88,11 @@ export default function ExplorePage() {
         {activeTab === 'users' ? (
           <UserSearchResults
             query={debouncedQuery}
-            handles={handleResults ?? []}
-            isLoading={handlesLoading}
-            onNavigate={(h) => navigate({ to: '/profile/$handle', params: { handle: h } })}
+            users={userResults ?? []}
+            isLoading={usersLoading}
+            onNavigate={(handle) =>
+              navigate({ to: '/profile/$handle', params: { handle } })
+            }
           />
         ) : (
           <>
@@ -127,12 +132,12 @@ export default function ExplorePage() {
 
 function UserSearchResults({
   query,
-  handles,
+  users,
   isLoading,
   onNavigate,
 }: {
   query: string;
-  handles: string[];
+  users: UserProfileSummary[];
   isLoading: boolean;
   onNavigate: (handle: string) => void;
 }) {
@@ -140,7 +145,8 @@ function UserSearchResults({
     return (
       <div className="text-center py-20 text-muted-foreground">
         <AtSign className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">Type a handle to search for users</p>
+        <p className="text-sm font-medium">Find people on Smileup</p>
+        <p className="text-xs mt-1 opacity-70">Search by name or @handle</p>
       </div>
     );
   }
@@ -153,55 +159,69 @@ function UserSearchResults({
     );
   }
 
-  if (handles.length === 0) {
+  if (users.length === 0) {
     return (
       <div className="text-center py-20 text-muted-foreground">
         <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">No users found for &ldquo;{query}&rdquo;</p>
+        <p className="text-sm font-medium">No users found</p>
+        <p className="text-xs mt-1 opacity-70">
+          No results for &ldquo;{query}&rdquo;
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      {handles.map((handle) => (
-        <UserResultCard key={handle} handle={handle} onNavigate={onNavigate} />
+      <p className="text-xs text-muted-foreground mb-3">
+        {users.length} result{users.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+      </p>
+      {users.map((user) => (
+        <UserResultCard
+          key={user.principal.toString()}
+          user={user}
+          onNavigate={onNavigate}
+        />
       ))}
     </div>
   );
 }
 
 function UserResultCard({
-  handle,
+  user,
   onNavigate,
 }: {
-  handle: string;
+  user: UserProfileSummary;
   onNavigate: (handle: string) => void;
 }) {
-  const { data: profile, isLoading } = useProfileByHandle(handle);
-
   return (
     <button
-      onClick={() => onNavigate(handle)}
+      onClick={() => onNavigate(user.handle)}
       className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors text-left"
     >
-      {isLoading ? (
-        <div className="w-10 h-10 rounded-full bg-muted animate-pulse shrink-0" />
-      ) : (
-        <AvatarPlaceholder
-          name={profile?.displayName || handle}
-          profilePicture={profile?.profilePicture ?? null}
-          size="md"
-        />
-      )}
+      <AvatarPlaceholder
+        name={user.displayName || user.handle}
+        profilePicture={user.avatarUrl ?? null}
+        size="md"
+      />
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground truncate">
-          {profile?.displayName || handle}
+          {user.displayName || user.handle}
         </p>
-        <p className="text-xs text-primary truncate">@{handle}</p>
-        {profile?.bio && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{profile.bio}</p>
+        <p className="text-xs text-primary truncate">@{user.handle}</p>
+        {user.bio && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
         )}
+      </div>
+      <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <UserCheck className="w-3 h-3" />
+          {Number(user.followerCount)}
+        </span>
+        <span className="flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" />
+          {Number(user.postCount)}
+        </span>
       </div>
     </button>
   );

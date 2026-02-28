@@ -2,50 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-topbar-tsx-remove-any-logo-image-element-and-replace-it-with-a-text-only-smileup-wordmark-the-wordmark-should-use-the-existing-brand-color-combination-e-g-gradient-or-contrasting-accent-colors-already-present-on-the-black-page-background-and-have-a-clean-professional-typographic-style-no-image-assets",
-      "featureTitle": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
+      "featureId": "feature-add-react-query-hooks-in-usequeries-ts-for-all-new-friend-system-backend-functions-usesendfriendrequest-userespondtofriendrequest-usecancelfriendrequest-useunfriend-usegetincomingfriendrequests-usegetoutgoingfriendrequests-usegetfriendslist-usegetfriendshipstatus",
+      "featureTitle": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
       "files": [
-        "frontend/src/components/TopBar.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-in-landingpage-tsx-remove-any-logo-image-element-and-replace-it-with-the-same-text-only-smileup-wordmark-matching-the-typographic-style-and-color-treatment-used-in-the-topbar-ensure-it-reads-clearly-on-the-black-background",
-      "featureTitle": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
-      "files": [
-        "frontend/src/pages/LandingPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-if-the-app-still-references-a-splash-logo-screen-in-app-tsx-shown-during-initialization-replace-the-logo-image-there-too-with-the-same-text-only-smileup-wordmark-for-visual-consistency",
-      "featureTitle": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
-      "files": [
-        "frontend/src/App.tsx"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -58,6 +18,26 @@
       ],
       "testIds": [
         "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-the-userprofilepage-to-show-a-dynamic-friend-request-button-based-on-friendship-status-if-not-friends-show-add-friend-button-if-request-pending-outgoing-show-request-sent-cancel-option-if-request-pending-incoming-show-accept-and-decline-buttons-if-already-friends-show-friends-with-an-unfriend-option-in-a-dropdown",
+      "featureTitle": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "files": [
+        "frontend/src/pages/UserProfilePage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

@@ -39,6 +39,15 @@ export interface User {
   isFollowing: boolean;
 }
 
+export interface Story {
+  id: string;
+  userId: string;
+  handle: string;
+  displayName: string;
+  viewed: boolean;
+  timestamp: Date;
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -121,6 +130,87 @@ export const MOCK_USERS: User[] = [
     posts: 389,
     isFollowing: false,
   },
+  {
+    id: 'u6',
+    username: 'felix_lens',
+    displayName: 'Felix Müller',
+    avatarUrl: '',
+    bio: '📷 Street photography | Berlin 🇩🇪',
+    followers: 74300,
+    following: 650,
+    posts: 156,
+    isFollowing: false,
+  },
+  {
+    id: 'u7',
+    username: 'sofia_art',
+    displayName: 'Sofia Reyes',
+    avatarUrl: '',
+    bio: '🎨 Digital artist & illustrator | Mexico City',
+    followers: 193000,
+    following: 310,
+    posts: 421,
+    isFollowing: true,
+  },
+];
+
+export const MOCK_STORIES: Story[] = [
+  {
+    id: 's1',
+    userId: 'u3',
+    handle: 'zara.vibes',
+    displayName: 'Zara Williams',
+    viewed: false,
+    timestamp: new Date(Date.now() - 1 * 3600000),
+  },
+  {
+    id: 's2',
+    userId: 'u1',
+    handle: 'aurora_creates',
+    displayName: 'Aurora Chen',
+    viewed: false,
+    timestamp: new Date(Date.now() - 2 * 3600000),
+  },
+  {
+    id: 's3',
+    userId: 'u5',
+    handle: 'luna_edits',
+    displayName: 'Luna Park',
+    viewed: true,
+    timestamp: new Date(Date.now() - 3 * 3600000),
+  },
+  {
+    id: 's4',
+    userId: 'u2',
+    handle: 'marco_films',
+    displayName: 'Marco Rossi',
+    viewed: false,
+    timestamp: new Date(Date.now() - 4 * 3600000),
+  },
+  {
+    id: 's5',
+    userId: 'u7',
+    handle: 'sofia_art',
+    displayName: 'Sofia Reyes',
+    viewed: true,
+    timestamp: new Date(Date.now() - 5 * 3600000),
+  },
+  {
+    id: 's6',
+    userId: 'u4',
+    handle: 'kai_motion',
+    displayName: 'Kai Nakamura',
+    viewed: false,
+    timestamp: new Date(Date.now() - 6 * 3600000),
+  },
+  {
+    id: 's7',
+    userId: 'u6',
+    handle: 'felix_lens',
+    displayName: 'Felix Müller',
+    viewed: true,
+    timestamp: new Date(Date.now() - 8 * 3600000),
+  },
 ];
 
 export const MOCK_POSTS: Post[] = [
@@ -186,15 +276,15 @@ export const MOCK_POSTS: Post[] = [
     avatarUrl: '',
     videoUrl: '',
     thumbnailUrl: '/assets/generated/hero-background.dim_1440x900.png',
-    caption: 'New beat + visuals 🎵 Tokyo nights never disappoint 🗼',
+    caption: 'New beat just dropped 🎵 Produced this one in 3 hours straight. Link in bio!',
     likes: 9800,
-    comments: 143,
-    shares: 420,
+    comments: 134,
+    shares: 445,
     isLiked: false,
     isFollowing: true,
-    createdAt: new Date(Date.now() - 24 * 3600000),
-    duration: 41,
-    tags: ['music', 'tokyo', 'beats'],
+    createdAt: new Date(Date.now() - 18 * 3600000),
+    duration: 24,
+    tags: ['music', 'producer', 'beats'],
   },
   {
     id: 'p5',
@@ -204,62 +294,14 @@ export const MOCK_POSTS: Post[] = [
     avatarUrl: '',
     videoUrl: '',
     thumbnailUrl: '/assets/generated/hero-background.dim_1440x900.png',
-    caption: 'Dreamy pastel edit 🌸 Using the new filter pack I just released! Link in bio',
+    caption: 'Dreamy Seoul nights 🌙✨ This city never sleeps and neither do I',
     likes: 42100,
     comments: 891,
-    shares: 3400,
+    shares: 3200,
     isLiked: true,
     isFollowing: false,
-    createdAt: new Date(Date.now() - 36 * 3600000),
-    duration: 28,
-    tags: ['pastel', 'aesthetic', 'dreamy'],
+    createdAt: new Date(Date.now() - 24 * 3600000),
+    duration: 41,
+    tags: ['seoul', 'nightlife', 'aesthetic'],
   },
 ];
-
-export const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'c1',
-    user: MOCK_USERS[0],
-    lastMessage: 'Love your latest edit! 🔥',
-    lastMessageAt: new Date(Date.now() - 15 * 60000),
-    unread: 2,
-    messages: [
-      { id: 'm1', senderId: 'u1', text: 'Hey! Loved your latest video 🔥', createdAt: new Date(Date.now() - 30 * 60000), isRead: true },
-      { id: 'm2', senderId: 'me', text: 'Thank you so much! Working on a new one', createdAt: new Date(Date.now() - 25 * 60000), isRead: true },
-      { id: 'm3', senderId: 'u1', text: 'Love your latest edit! 🔥', createdAt: new Date(Date.now() - 15 * 60000), isRead: false },
-    ],
-  },
-  {
-    id: 'c2',
-    user: MOCK_USERS[1],
-    lastMessage: 'Can we collab on something?',
-    lastMessageAt: new Date(Date.now() - 2 * 3600000),
-    unread: 0,
-    messages: [
-      { id: 'm4', senderId: 'u2', text: 'Hey! Big fan of your work', createdAt: new Date(Date.now() - 3 * 3600000), isRead: true },
-      { id: 'm5', senderId: 'u2', text: 'Can we collab on something?', createdAt: new Date(Date.now() - 2 * 3600000), isRead: true },
-    ],
-  },
-  {
-    id: 'c3',
-    user: MOCK_USERS[2],
-    lastMessage: 'Check out my new dance video!',
-    lastMessageAt: new Date(Date.now() - 5 * 3600000),
-    unread: 1,
-    messages: [
-      { id: 'm6', senderId: 'u3', text: 'Check out my new dance video!', createdAt: new Date(Date.now() - 5 * 3600000), isRead: false },
-    ],
-  },
-];
-
-export const MOCK_COMMENTS: Comment[] = [
-  { id: 'cm1', userId: 'u1', username: 'aurora_creates', avatarUrl: '', text: 'This is absolutely stunning! 😍', likes: 234, createdAt: new Date(Date.now() - 1 * 3600000) },
-  { id: 'cm2', userId: 'u4', username: 'kai_motion', avatarUrl: '', text: 'The color grading is 🔥🔥🔥', likes: 189, createdAt: new Date(Date.now() - 2 * 3600000) },
-  { id: 'cm3', userId: 'u5', username: 'luna_edits', avatarUrl: '', text: 'Tutorial please!! 🙏', likes: 156, createdAt: new Date(Date.now() - 3 * 3600000) },
-  { id: 'cm4', userId: 'u2', username: 'marco_films', avatarUrl: '', text: 'Incredible work as always ✨', likes: 98, createdAt: new Date(Date.now() - 4 * 3600000) },
-];
-
-export const AVATAR_GRADIENT = (userId: string) => {
-  const idx = parseInt(userId.replace(/\D/g, ''), 10) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[idx];
-};

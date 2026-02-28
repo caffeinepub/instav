@@ -1,39 +1,75 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Smileup project with a black background page. The header/logo area uses white background with a text-only 'Smileup' wordmark styled using the existing color combination for contrast.",
+  "summary": "Social media app with premium home page, profile pages, and a friend system including friend requests, friend zone page, direct messaging (real-time polling-based chat), and sharing features (posts, content, links via chat).",
   "architectural_notes": [
-    "Logo replaced with text-only 'Smileup' wordmark; header/logo area has white background; page background is black; wordmark uses existing color combination for contrast."
+    "Platform does not support WebSockets; use fast polling for near-real-time messaging.",
+    "App runs on Internet Computer as a web application (not native Android/iOS); PWA install is possible but no Play Store publishing."
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Initial attempt to build full friend system + messaging in one pass failed with an AI error; rebuilding step by step."
+  ],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-in-topbar-tsx-remove-any-logo-image-element-and-replace-it-with-a-text-only-smileup-wordmark-the-wordmark-should-use-the-existing-brand-color-combination-e-g-gradient-or-contrasting-accent-colors-already-present-on-the-black-page-background-and-have-a-clean-professional-typographic-style-no-image-assets",
-      "title": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-in-landingpage-tsx-remove-any-logo-image-element-and-replace-it-with-the-same-text-only-smileup-wordmark-matching-the-typographic-style-and-color-treatment-used-in-the-topbar-ensure-it-reads-clearly-on-the-black-background",
-      "title": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-if-the-app-still-references-a-splash-logo-screen-in-app-tsx-shown-during-initialization-replace-the-logo-image-there-too-with-the-same-text-only-smileup-wordmark-for-visual-consistency",
-      "title": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
+      "id": "feature-add-react-query-hooks-in-usequeries-ts-for-all-new-friend-system-backend-functions-usesendfriendrequest-userespondtofriendrequest-usecancelfriendrequest-useunfriend-usegetincomingfriendrequests-usegetoutgoingfriendrequests-usegetfriendslist-usegetfriendshipstatus",
+      "title": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-userprofilepage-to-show-a-dynamic-friend-request-button-based-on-friendship-status-if-not-friends-show-add-friend-button-if-request-pending-outgoing-show-request-sent-cancel-option-if-request-pending-incoming-show-accept-and-decline-buttons-if-already-friends-show-friends-with-an-unfriend-option-in-a-dropdown",
+      "title": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Friend system: send/accept/decline friend requests from profile pages or user search, friends list with unfriend option",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Friend Zone Page: pending requests (incoming & outgoing), people you may know / user search, friends list",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Direct Messaging (friends only): chat inbox, message threads with fast polling for near-instant updates, message history per conversation",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Sharing: share posts, content, and links directly to a friend via chat; share profile links",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    }
+  ],
   "gameProjectType": "none",
   "projectName": "Smileup",
   "clarification_mode": "instant",
