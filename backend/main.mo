@@ -11,9 +11,9 @@ import Iter "mo:core/Iter";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Set "mo:core/Set";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   type Post = {
     id : Nat;

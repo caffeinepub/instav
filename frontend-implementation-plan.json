@@ -1,39 +1,54 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix follow button functionality and follower count display",
+  "title": "Replace logo with text-only 'Smileup' wordmark in TopBar and LandingPage",
   "requirements": [
     {
-      "id": "REQ-2",
-      "summary": "Fix the follow/unfollow button on UserProfilePage to trigger backend mutations, show loading states, update button labels, and refresh follower counts immediately",
+      "id": "REQ-1",
+      "summary": "Replace logo image with text-only 'Smileup' wordmark in TopBar using existing brand colors",
       "acceptanceCriteria": [
-        "Tapping the Follow button triggers a backend follow call and the button enters a loading/disabled state",
-        "After a successful follow, the button label changes to 'Following' and follower count increments by 1",
-        "Tapping the Following button triggers a backend unfollow call and the button reverts to 'Follow' with follower count decremented by 1",
-        "Follower and following counts on the profile page reflect the updated values without requiring a page reload",
-        "If the backend call fails, an error toast is shown and the button state reverts"
+        "No logo image is rendered in the TopBar",
+        "The TopBar displays 'Smileup' as styled text using the existing brand accent colors",
+        "The wordmark looks sharp and professional against the black page background",
+        "No broken image references remain in the TopBar component"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
+          "path": "frontend/src/components/TopBar.tsx",
           "operation": "modify",
-          "description": "Wire the follow/unfollow button to call the useFollowUser and useUnfollowUser mutation hooks from useQueries.ts. Add loading state during mutation (disable button, show loading indicator). On success, update the button label between 'Follow' and 'Following', and trigger immediate refetch of follower/following counts and isFollowing status. On error, show a toast notification using the Toaster component and revert button state. Ensure the button state reflects the current isFollowing status from the backend query."
+          "description": "Remove any logo image element (such as references to generated/smileup-logo.dim_400x300.png or generated/vibeshare-logo.dim_256x256.png) and replace it with a text-only 'Smileup' wordmark. Apply a gradient or multi-color treatment using the existing brand accent colors (e.g., using Tailwind gradient utilities like bg-gradient-to-r from-primary to-secondary or similar existing color tokens) to ensure the wordmark contrasts well on the black background. Use a clean, professional typographic style with appropriate font weight and sizing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Replace logo image with text-only 'Smileup' wordmark in LandingPage matching TopBar style",
+      "acceptanceCriteria": [
+        "No logo image is rendered on the LandingPage",
+        "The LandingPage displays 'Smileup' as styled text using the same brand colors as the TopBar wordmark",
+        "The wordmark is legible and professional on the black background",
+        "No broken image references remain in the LandingPage component"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/LandingPage.tsx",
+          "operation": "modify",
+          "description": "Remove any logo image element (such as references to generated/smileup-logo.dim_400x300.png or generated/vibeshare-logo.dim_256x256.png) and replace it with a text-only 'Smileup' wordmark. Use the same gradient/color treatment and typographic style established in TopBar.tsx to ensure visual consistency. Ensure the wordmark reads clearly on the black background and maintains the same professional appearance."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Wire up follow/unfollow React Query mutation hooks in useQueries.ts to call backend actor methods and invalidate relevant queries on success",
+      "summary": "Replace splash screen logo with text-only 'Smileup' wordmark in App.tsx for consistency",
       "acceptanceCriteria": [
-        "useFollowUser and useUnfollowUser mutation hooks exist in useQueries.ts and call the correct backend actor methods",
-        "On mutation success, queries for the target user's profile and follower/following counts are invalidated and refetched",
-        "The isFollowing status is also refetched after follow/unfollow"
+        "The initialization splash screen shows 'Smileup' as styled text, not an image",
+        "The wordmark style is consistent with TopBar and LandingPage"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add useFollowUser and useUnfollowUser mutation hooks using useMutation from React Query. The useFollowUser hook should call actor.followUser(targetPrincipal) and the useUnfollowUser hook should call actor.unfollowUser(targetPrincipal). On mutation success, invalidate the following query keys using queryClient.invalidateQueries: ['profile', targetPrincipal], ['followers', targetPrincipal], ['following', targetPrincipal], ['isFollowing', targetPrincipal], and ['notifications'] to ensure all related data is refetched. Also add useGetFollowers, useGetFollowing, and useIsFollowing query hooks if they don't already exist, each calling the appropriate backend actor method (getFollowers, getFollowing, isFollowing) with the target principal parameter."
+          "description": "Locate the splash/logo screen shown during initialization and replace any logo image element with a text-only 'Smileup' wordmark. Apply the same gradient/color treatment and typographic style used in TopBar.tsx and LandingPage.tsx to maintain visual consistency across all loading and entry states."
         }
       ]
     }

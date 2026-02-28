@@ -1,81 +1,73 @@
 {
   "kind": "build_request",
-  "title": "Fix follow button functionality and follower count display",
-  "projectName": "InstaV",
+  "title": "Replace logo with text-only 'Smileup' wordmark in TopBar and LandingPage",
+  "projectName": "Smileup",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Ensure the backend follow/unfollow functions correctly persist the follow relationship between users, storing follower and following associations in stable state, and expose accurate follower/following count queries.",
-      "target": "backend",
+      "text": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-17",
-          "msg-19"
+          "msg-3",
+          "msg-4"
         ],
         "quotes": [
-          "Tap the button nothing response",
-          "the follower not shown"
+          "hide it background colour white and just write the name Smileup with the same combination of colors that contrast on the black background of the pagee",
+          "remove the logo image and replace it with a stylish text-only 'Smileup' wordmark using the existing color combination"
         ]
       },
       "acceptanceCriteria": [
-        "Calling the follow function with a valid principal saves the relationship persistently",
-        "Calling the unfollow function removes the relationship",
-        "getFollowerCount and getFollowingCount return accurate counts after follow/unfollow operations",
-        "isFollowing query returns true after following and false after unfollowing"
+        "No logo image is rendered in the TopBar",
+        "The TopBar displays 'Smileup' as styled text using the existing brand accent colors",
+        "The wordmark looks sharp and professional against the black page background",
+        "No broken image references remain in the TopBar component"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Fix the follow/unfollow button on the UserProfilePage so that tapping it triggers the backend follow/unfollow mutation, shows a loading state during the call, updates the button label (Follow ↔ Following) upon success, and refreshes the displayed follower/following counts immediately after the action.",
+      "text": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-17",
-          "msg-19"
+          "msg-3"
         ],
         "quotes": [
-          "Tap the button nothing response",
-          "the follower not shown"
+          "hide it background colour white and just write the name Smileup with the same combination of colors that contrast on the black background of the pagee"
         ]
       },
       "acceptanceCriteria": [
-        "Tapping the Follow button triggers a backend follow call and the button enters a loading/disabled state",
-        "After a successful follow, the button label changes to 'Following' and follower count increments by 1",
-        "Tapping the Following button triggers a backend unfollow call and the button reverts to 'Follow' with follower count decremented by 1",
-        "Follower and following counts on the profile page reflect the updated values without requiring a page reload",
-        "If the backend call fails, an error toast is shown and the button state reverts"
+        "No logo image is rendered on the LandingPage",
+        "The LandingPage displays 'Smileup' as styled text using the same brand colors as the TopBar wordmark",
+        "The wordmark is legible and professional on the black background",
+        "No broken image references remain in the LandingPage component"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Wire up the follow/unfollow React Query mutation hooks in useQueries.ts to correctly call the backend actor's follow and unfollow methods, and invalidate the relevant profile and follower count queries on success.",
+      "text": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-17",
-          "msg-19"
-        ],
-        "quotes": [
-          "Tap the button nothing response",
-          "the follower not shown"
+          "msg-3"
         ]
       },
       "acceptanceCriteria": [
-        "useFollowUser and useUnfollowUser mutation hooks exist in useQueries.ts and call the correct backend actor methods",
-        "On mutation success, queries for the target user's profile and follower/following counts are invalidated and refetched",
-        "The isFollowing status is also refetched after follow/unfollow"
+        "The initialization splash screen shows 'Smileup' as styled text, not an image",
+        "The wordmark style is consistent with TopBar and LandingPage"
       ]
     }
   ],
   "constraints": [
-    "Do not change the overall UI layout of UserProfilePage beyond the follow button and count display",
-    "All backend logic must remain in the single main actor file (backend/main.mo)"
+    "Use only existing brand/accent colors already present in the app — do not introduce new colors",
+    "Do not edit any files under frontend/src/hooks/ or frontend/src/components/ui",
+    "No backend changes required"
   ],
   "nonGoals": [
-    "Mutual follow approval flows — following should be one-sided and immediate",
-    "Follow notifications are out of scope for this fix",
-    "Changes to any immutable frontend paths (useInternetIdentity, useActor, main.tsx, ui components)"
+    "Redesigning the overall color scheme or page layout",
+    "Adding any new logo image assets",
+    "Changing navigation structure or page routing"
   ],
   "imageRequirements": {
     "required": [],

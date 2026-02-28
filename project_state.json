@@ -1,48 +1,41 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Social video app (InstaV) with follow functionality, UI layout (logo, notifications, profile/sign-out), and feed features.",
-  "architectural_notes": [],
-  "known_issues": [
-    "Follow button is unresponsive when tapped; follower/following counts not reflected in UI; follow relationship not persisted to backend"
+  "summary": "Smileup project with a black background page. The header/logo area uses white background with a text-only 'Smileup' wordmark styled using the existing color combination for contrast.",
+  "architectural_notes": [
+    "Logo replaced with text-only 'Smileup' wordmark; header/logo area has white background; page background is black; wordmark uses existing color combination for contrast."
   ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-fix-the-follow-unfollow-button-on-the-userprofilepage-so-that-tapping-it-triggers-the-backend-follow-unfollow-mutation-shows-a-loading-state-during-the-call-updates-the-button-label-follow-following-upon-success-and-refreshes-the-displayed-follower-following-counts-immediately-after-the-action",
-      "title": "Fix the follow/unfollow button on the UserProfilePage so that tapping it triggers the backend follow/unfollow mutation, shows a loading state during the call, updates the button label (Follow ↔ Following) upon success, and refreshes the displayed follower/following counts immediately after the action.",
+      "id": "feature-in-topbar-tsx-remove-any-logo-image-element-and-replace-it-with-a-text-only-smileup-wordmark-the-wordmark-should-use-the-existing-brand-color-combination-e-g-gradient-or-contrasting-accent-colors-already-present-on-the-black-page-background-and-have-a-clean-professional-typographic-style-no-image-assets",
+      "title": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-landingpage-tsx-remove-any-logo-image-element-and-replace-it-with-the-same-text-only-smileup-wordmark-matching-the-typographic-style-and-color-treatment-used-in-the-topbar-ensure-it-reads-clearly-on-the-black-background",
+      "title": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-wire-up-the-follow-unfollow-react-query-mutation-hooks-in-usequeries-ts-to-correctly-call-the-backend-actor-s-follow-and-unfollow-methods-and-invalidate-the-relevant-profile-and-follower-count-queries-on-success",
-      "title": "Wire up the follow/unfollow React Query mutation hooks in useQueries.ts to correctly call the backend actor's follow and unfollow methods, and invalidate the relevant profile and follower count queries on success.",
+      "id": "feature-if-the-app-still-references-a-splash-logo-screen-in-app-tsx-shown-during-initialization-replace-the-logo-image-there-too-with-the-same-text-only-smileup-wordmark-for-visual-consistency",
+      "title": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Fix follow button: tapping does nothing, follower counts not updating, follow relationship not saving to backend",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Ensure the backend follow/unfollow functions correctly persist the follow relationship between users, storing follower and following associations in stable state, and expose accurate follower/following count queries.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
-    }
-  ],
+  "new_feature_requests": [],
   "gameProjectType": "none",
-  "projectName": "InstaV",
+  "projectName": "Smileup",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

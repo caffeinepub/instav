@@ -1,12 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the follow/unfollow button on user profile pages so that it correctly calls the backend, persists follow relationships, and displays accurate follower/following counts.
+**Goal:** Replace all logo image elements throughout the app with a text-only "Smileup" wordmark using the existing brand accent colors.
 
 **Planned changes:**
-- Fix backend follow/unfollow functions to persistently store follower/following relationships and return accurate counts via `getFollowerCount`, `getFollowingCount`, and `isFollowing` queries
-- Wire up `useFollowUser` and `useUnfollowUser` React Query mutation hooks in `useQueries.ts` to call the correct backend actor methods and invalidate relevant queries on success
-- Fix the follow/unfollow button on `UserProfilePage` to trigger the backend mutation, show a loading/disabled state during the call, toggle the label between "Follow" and "Following", and refresh follower/following counts immediately after the action
-- Show an error toast and revert button state if the backend call fails
+- In `TopBar.tsx`, remove the logo image and replace it with a styled text-only "Smileup" wordmark using existing brand accent colors that contrast on the black background
+- In `LandingPage.tsx`, remove the logo image and replace it with the same text-only "Smileup" wordmark matching the TopBar style
+- In `App.tsx` (splash/initialization screen), replace any logo image with the same text-only "Smileup" wordmark for visual consistency
 
-**User-visible outcome:** Users can tap the Follow button on a profile page, see it respond with a loading state, update to "Following", and see the follower count increment — and vice versa when unfollowing — all without a page reload.
+**User-visible outcome:** Everywhere a logo image previously appeared (TopBar, LandingPage, splash screen), users now see a clean, typographic "Smileup" wordmark styled with the existing brand colors against the black background — no image assets are used.

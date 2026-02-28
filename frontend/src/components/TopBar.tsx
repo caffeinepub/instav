@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 export default function TopBar() {
   const navigate = useNavigate();
   const routerState = useRouterState();
-  const { identity, login, clear, loginStatus } = useInternetIdentity();
+  const { identity, clear, loginStatus } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -72,14 +72,24 @@ export default function TopBar() {
           )}
         </div>
 
-        {/* Center — InstaV brand logo (absolutely centered) */}
+        {/* Center — Smileup wordmark (absolutely centered) */}
         <div className="absolute left-1/2 -translate-x-1/2">
           <button
             onClick={() => navigate({ to: '/' })}
-            className="font-bold text-lg tracking-tight text-foreground hover:text-primary transition-colors"
-            style={{ fontFamily: 'Syne, sans-serif' }}
+            className="hover:opacity-80 transition-opacity"
+            aria-label="Smileup Home"
           >
-            InstaV
+            <span
+              className="font-display font-extrabold text-2xl tracking-tight select-none"
+              style={{
+                background: 'linear-gradient(135deg, #C026D3 0%, #7C3AED 50%, #38BDF8 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Smileup
+            </span>
           </button>
         </div>
 

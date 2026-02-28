@@ -2,10 +2,30 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-follow-unfollow-button-on-the-userprofilepage-so-that-tapping-it-triggers-the-backend-follow-unfollow-mutation-shows-a-loading-state-during-the-call-updates-the-button-label-follow-following-upon-success-and-refreshes-the-displayed-follower-following-counts-immediately-after-the-action",
-      "featureTitle": "Fix the follow/unfollow button on the UserProfilePage so that tapping it triggers the backend follow/unfollow mutation, shows a loading state during the call, updates the button label (Follow ↔ Following) upon success, and refreshes the displayed follower/following counts immediately after the action.",
+      "featureId": "feature-in-topbar-tsx-remove-any-logo-image-element-and-replace-it-with-a-text-only-smileup-wordmark-the-wordmark-should-use-the-existing-brand-color-combination-e-g-gradient-or-contrasting-accent-colors-already-present-on-the-black-page-background-and-have-a-clean-professional-typographic-style-no-image-assets",
+      "featureTitle": "In TopBar.tsx, remove any logo image element and replace it with a text-only 'Smileup' wordmark. The wordmark should use the existing brand color combination (e.g., gradient or contrasting accent colors already present on the black page background) and have a clean, professional typographic style — no image assets.",
       "files": [
-        "frontend/src/pages/UserProfilePage.tsx"
+        "frontend/src/components/TopBar.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-in-landingpage-tsx-remove-any-logo-image-element-and-replace-it-with-the-same-text-only-smileup-wordmark-matching-the-typographic-style-and-color-treatment-used-in-the-topbar-ensure-it-reads-clearly-on-the-black-background",
+      "featureTitle": "In LandingPage.tsx, remove any logo image element and replace it with the same text-only 'Smileup' wordmark — matching the typographic style and color treatment used in the TopBar. Ensure it reads clearly on the black background.",
+      "files": [
+        "frontend/src/pages/LandingPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -22,10 +42,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-wire-up-the-follow-unfollow-react-query-mutation-hooks-in-usequeries-ts-to-correctly-call-the-backend-actor-s-follow-and-unfollow-methods-and-invalidate-the-relevant-profile-and-follower-count-queries-on-success",
-      "featureTitle": "Wire up the follow/unfollow React Query mutation hooks in useQueries.ts to correctly call the backend actor's follow and unfollow methods, and invalidate the relevant profile and follower count queries on success.",
+      "featureId": "feature-if-the-app-still-references-a-splash-logo-screen-in-app-tsx-shown-during-initialization-replace-the-logo-image-there-too-with-the-same-text-only-smileup-wordmark-for-visual-consistency",
+      "featureTitle": "If the app still references a splash/logo screen in App.tsx (shown during initialization), replace the logo image there too with the same text-only 'Smileup' wordmark for visual consistency.",
       "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/App.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
