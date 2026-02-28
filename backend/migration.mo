@@ -1,65 +1,41 @@
 import Map "mo:core/Map";
+import Set "mo:core/Set";
 import Nat "mo:core/Nat";
-import List "mo:core/List";
 import Principal "mo:core/Principal";
-import AccessControl "authorization/access-control";
-import Storage "blob-storage/Storage";
 
 module {
+  // Types from old state before migration.
   type OldActor = {
-    postsMap : Map.Map<Nat, OldPost>;
-    commentsMap : Map.Map<Nat, OldComment>;
-    postCounter : Nat;
-    commentCounter : Nat;
-    accessControlState : AccessControl.AccessControlState;
-    userProfiles : Map.Map<Principal, OldUserProfile>;
-    handleToPrincipalMap : Map.Map<Text, Principal>;
+    followingMap : Map.Map<Principal, Principal>;
+    followersMap : Map.Map<Principal, Map.Map<Principal, ()>>;
   };
 
-  type OldPost = {
-    id : Nat;
-    authorPrincipal : Principal;
-    authorName : Text;
-    media : ?Storage.ExternalBlob;
-    mediaType : Text;
-    caption : Text;
-    timestamp : Int;
-    likeCount : Nat;
-    viewCount : Nat;
-  };
-
-  type OldComment = {
-    id : Nat;
-    postId : Nat;
-    authorPrincipal : Principal;
-    authorName : Text;
-    text : Text;
-    timestamp : Int;
-  };
-
-  type OldUserProfileData = {
-    handle : Text;
-    displayName : Text;
-    bio : Text;
-    profilePicture : ?Storage.ExternalBlob;
-  };
-
-  type OldUserProfile = {
-    caller : Principal;
-    data : OldUserProfileData;
-  };
-
+  // Types for new persistent state.
   type NewActor = {
-    postsMap : Map.Map<Nat, OldPost>;
-    commentsMap : Map.Map<Nat, OldComment>;
-    postCounter : Nat;
-    commentCounter : Nat;
-    accessControlState : AccessControl.AccessControlState;
-    userProfiles : Map.Map<Principal, OldUserProfile>;
-    handleToPrincipalMap : Map.Map<Text, Principal>;
+    followingMap : Map.Map<Principal, Set.Set<Principal>>;
+    followersMap : Map.Map<Principal, Set.Set<Principal>>;
   };
 
   public func run(old : OldActor) : NewActor {
-    old;
+    let newFollowingMap = old.followingMap.map<Principal, Principal, Set.Set<Principal>>(
+      func(_follower, following) {
+        let newSet = Set.empty<Principal>();
+        newSet.add(following);
+        newSet;
+      }
+    );
+
+    let newFollowersMap = old.followersMap.map<Principal, Map.Map<Principal, ()>, Set.Set<Principal>>(
+      func(_followee, followers) {
+        let newSet = Set.empty<Principal>();
+        followers.keys().forEach(func(follower) { newSet.add(follower) });
+        newSet;
+      }
+    );
+
+    {
+      followingMap = newFollowingMap;
+      followersMap = newFollowersMap;
+    };
   };
 };

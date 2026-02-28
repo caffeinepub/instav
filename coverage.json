@@ -1,103 +1,42 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T06:03:56.080Z",
+  "generatedAt": "2026-02-28T06:56:03.487Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 8,
-    "implemented": 5,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Extend the backend actor to support a direct messaging system: store conversations between two users (identified by principal), store messages with sender, timestamp, text content, and an optional shortspot reference (post ID). Expose functions: sendMessage(recipientPrincipal, text, ?postId), getConversations(), getMessages(otherPrincipal), and markMessagesRead(otherPrincipal).",
+        "summary": "Ensure the backend follow/unfollow functions correctly persist the follow relationship between users, storing follower and following associations in stable state, and expose accurate follower/following count queries.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Extend the backend actor to support a follow system: users can follow/unfollow other users. Store follow relationships as (follower principal → followed principal). Expose functions: followUser(targetPrincipal), unfollowUser(targetPrincipal), getFollowers(principal), getFollowing(principal), isFollowing(targetPrincipal). The follower count on a user's profile should be called 'Shadows'.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Fix the follow/unfollow button on the UserProfilePage so that tapping it triggers the backend follow/unfollow mutation, shows a loading state during the call, updates the button label (Follow ↔ Following) upon success, and refreshes the displayed follower/following counts immediately after the action.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ]
       },
       {
         "id": "REQ-3",
-        "summary": "Extend the backend actor to support in-app notifications. Store notifications per user principal with fields: type (e.g. 'new_shadow', 'message'), fromPrincipal, timestamp, read status, and optional postId. Expose functions: getNotifications(), markNotificationRead(notificationId). Automatically create a notification when a user is followed (type = 'new_shadow').",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Replace the existing mock-based MessagesPage with a fully functional chat page. Display a conversation list showing all conversations with avatar, display name, last message preview, and unread count badge. Clicking a conversation opens the chat thread. The thread shows message bubbles (sent messages right-aligned, received left-aligned) with timestamps. Include a text input and Send button. Add a 'Share Shortspot' button that opens a post picker modal listing the user's or recent shortspot posts; selecting one sends it as a special message containing the post reference. Auto-refresh messages every 5 seconds using polling.",
+        "summary": "Wire up the follow/unfollow React Query mutation hooks in useQueries.ts to correctly call the backend actor's follow and unfollow methods, and invalidate the relevant profile and follower count queries on success.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/MessagesPage.tsx",
-          "frontend/src/components/PostPickerModal.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/MessagesPage.tsx",
-          "frontend/src/components/PostPickerModal.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Add a Follow / Shadows feature to user profile pages (UserProfilePage and ProfilePage). On a public user's profile (UserProfilePage), show a Follow/Unfollow button for authenticated users. Display the Shadows count (follower count) prominently on all profile pages with the label 'Shadows'. Also display Following count. The Follow button should call followUser and trigger an optimistic UI update.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/UserProfilePage.tsx",
-          "frontend/src/pages/ProfilePage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/UserProfilePage.tsx",
-          "frontend/src/pages/ProfilePage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add an in-app notifications panel accessible from the TopBar (bell icon with unread badge). The panel lists notifications including 'new_shadow' events (e.g. '@username started shadowing you'). Each notification shows the type, sender avatar, message, and timestamp. Clicking a notification marks it as read and navigates to the relevant profile or content. Poll for new notifications every 15 seconds.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/TopBar.tsx",
-          "frontend/src/components/NotificationsPanel.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/TopBar.tsx",
-          "frontend/src/components/NotificationsPanel.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Add a Messages icon/tab to the BottomNav or TopBar that navigates to the MessagesPage. Ensure the new chat and notifications features are properly wired into the TanStack Router route tree in routeTree.ts with appropriate routes (e.g. /messages, /messages/:principalId).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/routeTree.ts",
-          "frontend/src/components/BottomNav.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/routeTree.ts",
-          "frontend/src/components/BottomNav.tsx"
-        ]
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Add a 'Send Message' button on UserProfilePage so that an authenticated user can initiate or continue a direct message conversation with that user. Clicking it navigates to /messages/:principalId of that user.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
@@ -109,23 +48,8 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/BottomNav.tsx",
-    "frontend/src/components/CommentsSheet.tsx",
-    "frontend/src/components/Layout.tsx",
-    "frontend/src/components/NotificationsPanel.tsx",
-    "frontend/src/components/PostCard.tsx",
-    "frontend/src/components/PostPickerModal.tsx",
-    "frontend/src/components/TopBar.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/MessageThreadPage.tsx",
-    "frontend/src/pages/MessagesPage.tsx",
-    "frontend/src/pages/ProfilePage.tsx",
     "frontend/src/pages/UserProfilePage.tsx",
-    "frontend/src/routeTree.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -13,7 +13,6 @@ import List "mo:core/List";
 import Set "mo:core/Set";
 import Migration "migration";
 
-// Use data migration
 (with migration = Migration.run)
 actor {
   type Post = {
@@ -103,9 +102,8 @@ actor {
   let notifications = Map.empty<Principal, Map.Map<Nat, Notification>>();
   var notificationIdCounter = 0;
 
-  // Follows: follower -> set of following
-  let followingMap = Map.empty<Principal, Principal>(); // follower -> following
-  let followersMap = Map.empty<Principal, Map.Map<Principal, ()>>(); // followee -> Map of followers
+  let followingMap = Map.empty<Principal, Set.Set<Principal>>();
+  let followersMap = Map.empty<Principal, Set.Set<Principal>>();
 
   // Messaging System
 
@@ -253,17 +251,31 @@ actor {
       Runtime.trap("Unauthorized: Only users can follow others");
     };
 
-    followingMap.add(caller, target);
-
-    // Update followers map for the target
-    switch (followersMap.get(target)) {
-      case (?followers) {
-        followers.add(caller, ());
+    // Update following map for caller
+    let callerFollowing = switch (followingMap.get(caller)) {
+      case (?following) {
+        following.add(target);
+        following;
       };
       case (null) {
-        let newFollowers = Map.empty<Principal, ()>();
-        newFollowers.add(caller, ());
+        let newFollowing = Set.empty<Principal>();
+        newFollowing.add(target);
+        followingMap.add(caller, newFollowing);
+        newFollowing;
+      };
+    };
+
+    // Update followers map for the target
+    let targetFollowers = switch (followersMap.get(target)) {
+      case (?followers) {
+        followers.add(caller);
+        followers;
+      };
+      case (null) {
+        let newFollowers = Set.empty<Principal>();
+        newFollowers.add(caller);
         followersMap.add(target, newFollowers);
+        newFollowers;
       };
     };
 
@@ -277,9 +289,18 @@ actor {
       Runtime.trap("Unauthorized: Only users can unfollow others");
     };
 
-    followingMap.remove(caller);
+    // Remove target from caller's following set
+    switch (followingMap.get(caller)) {
+      case (?following) {
+        following.remove(target);
+        if (following.isEmpty()) {
+          followingMap.remove(caller);
+        };
+      };
+      case (null) {};
+    };
 
-    // Remove follower from the target's followers map
+    // Remove caller from target's followers set
     switch (followersMap.get(target)) {
       case (?followers) {
         followers.remove(caller);
@@ -295,7 +316,7 @@ actor {
   public query func getFollowers(user : Principal) : async [Principal] {
     switch (followersMap.get(user)) {
       case (?followers) {
-        followers.keys().toArray();
+        followers.toArray();
       };
       case (null) { [] };
     };
@@ -303,14 +324,12 @@ actor {
 
   // Get users being followed by a user - public, no auth needed
   public query func getFollowing(user : Principal) : async [Principal] {
-    let followingList = List.empty<Principal>();
     switch (followingMap.get(user)) {
-      case (?target) {
-        followingList.add(target);
+      case (?following) {
+        following.toArray();
       };
-      case (null) {};
+      case (null) { [] };
     };
-    followingList.toArray();
   };
 
   // Check if the caller is following another user
@@ -319,7 +338,9 @@ actor {
       Runtime.trap("Unauthorized: Only users can check follow status");
     };
     switch (followingMap.get(caller)) {
-      case (?followed) { followed == target };
+      case (?following) {
+        following.contains(target);
+      };
       case (null) { false };
     };
   };

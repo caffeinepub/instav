@@ -1,128 +1,39 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add Chat, Shortspot Sharing in Chat, and Shadows Follow System",
+  "title": "Fix follow button functionality and follower count display",
   "requirements": [
     {
-      "id": "REQ-4",
-      "summary": "Replace the existing mock-based MessagesPage with a fully functional chat page featuring conversation list, message threads, text input, shortspot sharing, and auto-refresh polling",
+      "id": "REQ-2",
+      "summary": "Fix the follow/unfollow button on UserProfilePage to trigger backend mutations, show loading states, update button labels, and refresh follower counts immediately",
       "acceptanceCriteria": [
-        "Conversation list loads from getConversations() and auto-refreshes every 5 seconds",
-        "Clicking a conversation opens the message thread loaded from getMessages()",
-        "Messages auto-refresh every 5 seconds inside the thread view",
-        "Text messages can be sent and appear immediately (optimistic update) in the thread",
-        "A shortspot share button in the chat input opens a modal to pick a shortspot post",
-        "Shared shortspots appear in the thread as a tappable card that navigates to the full shortspot view",
-        "Unread message count badge is shown on the conversation list items and on the Messages nav icon"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add React Query hooks for messaging: useGetConversations (with 5s polling), useGetMessages (with otherPrincipal parameter and 5s polling), useSendMessage mutation, and useMarkMessagesRead mutation. Follow existing patterns in the file using useActor and useMutation/useQuery from React Query."
-        },
-        {
-          "path": "frontend/src/pages/MessagesPage.tsx",
-          "operation": "modify",
-          "description": "Replace mock data with real backend integration. Display a conversation list using useGetConversations showing avatar (AvatarPlaceholder), display name, last message preview, and unread count badge. When a conversation is clicked, open the thread view using useGetMessages. Render message bubbles with sent messages right-aligned and received left-aligned, including timestamps. Add text input with Send button that calls useSendMessage. Add a 'Share Shortspot' button that opens a modal listing the user's posts (useGetPostsByUser) for selection. When a shortspot is shared, call sendMessage with the postId. Display shared shortspots as tappable cards that navigate to the post. Use interval-based polling (5s) for both conversation list and active thread. Show loading states with skeletons and handle unauthenticated users with a login prompt."
-        },
-        {
-          "path": "frontend/src/components/PostPickerModal.tsx",
-          "operation": "create",
-          "description": "Create a modal component that displays the user's posts in a grid or list using useGetPostsByUser. Each post shows a thumbnail, caption preview, and media type. Clicking a post selects it and passes the post ID back to the parent via a callback. Include a close button and empty state when the user has no posts. Use shadcn/ui Dialog component for the modal structure."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Add Follow / Shadows feature to user profile pages showing Shadows count, Following count, and Follow/Unfollow button with optimistic updates",
-      "acceptanceCriteria": [
-        "UserProfilePage shows a Follow button for authenticated users who are not already following; shows Unfollow if already following",
-        "Clicking Follow calls followUser and updates the Shadows count optimistically",
-        "Both ProfilePage (own profile) and UserProfilePage show 'Shadows: N' and 'Following: N' counts",
-        "Unauthenticated users see the Shadows count but cannot follow without logging in (show login prompt)"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add React Query hooks for the follow system: useGetFollowers (accepts principal parameter), useGetFollowing (accepts principal parameter), useIsFollowing (accepts principal parameter), useFollowUser mutation (with optimistic updates to follower count and isFollowing state), and useUnfollowUser mutation (with optimistic updates). Follow existing patterns using useActor and React Query."
-        },
-        {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
-          "operation": "modify",
-          "description": "Add Shadows and Following counts prominently below the user's avatar and display name. Use useGetFollowers and useGetFollowing to fetch counts for the profile's principal. For authenticated users viewing another user's profile, show a Follow/Unfollow button using useIsFollowing to determine current state. Wire the button to useFollowUser or useUnfollowUser mutations with optimistic UI updates. For unauthenticated users, show the counts but disable the Follow button or show a login prompt on click. Add a 'Message' button below the Follow button (handled in REQ-8)."
-        },
-        {
-          "path": "frontend/src/pages/ProfilePage.tsx",
-          "operation": "modify",
-          "description": "Add Shadows and Following counts prominently on the user's own profile page. Use useGetFollowers and useGetFollowing with the authenticated user's principal (from useInternetIdentity) to fetch counts. Display the counts as 'Shadows: N' and 'Following: N' near the profile header. No Follow button is needed on the user's own profile."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Add in-app notifications panel in the TopBar with a bell icon, unread badge, and notification list that polls every 15 seconds and supports navigation on click",
-      "acceptanceCriteria": [
-        "A bell icon in the TopBar shows a red badge with the unread notification count when > 0",
-        "Clicking the bell opens a dropdown or sheet listing all notifications",
-        "New shadow notifications display the follower's avatar and handle with text 'started shadowing you'",
-        "Clicking a notification marks it read and navigates to the follower's profile",
-        "Notifications poll every 15 seconds and the badge count updates automatically"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add React Query hooks for notifications: useGetNotifications (with 15s polling) and useMarkNotificationRead mutation. The useGetNotifications hook should derive an unread count from the notification array. Follow existing patterns using useActor and React Query."
-        },
-        {
-          "path": "frontend/src/components/TopBar.tsx",
-          "operation": "modify",
-          "description": "Add a bell icon button to the right side of the TopBar (before the sign-in/out button). Use useGetNotifications to fetch notifications and display an unread badge on the bell icon when count > 0. Clicking the bell toggles a NotificationsPanel component (dropdown or sheet). Pass the notifications list and useMarkNotificationRead mutation to the panel. Ensure the TopBar layout accommodates the new bell icon without breaking existing elements."
-        },
-        {
-          "path": "frontend/src/components/NotificationsPanel.tsx",
-          "operation": "create",
-          "description": "Create a dropdown or sheet component that displays a list of notifications. Each notification item shows the sender's avatar (AvatarPlaceholder using fromPrincipal), display name (fetched via useGetProfileByPrincipal), notification type text (e.g. 'started shadowing you' for new_shadow), and relative timestamp (use timeAgo from lib/utils.ts). Clicking a notification calls markNotificationRead and navigates to the relevant profile or post. Use shadcn/ui Sheet or DropdownMenu for the container. Show empty state when there are no notifications."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Add Messages route to TanStack Router and wire a Messages entry point in the BottomNav or TopBar with unread badge",
-      "acceptanceCriteria": [
-        "Messages route is registered in routeTree.ts and renders the MessagesPage",
-        "A direct conversation route (e.g. /messages/:principalId) opens the specific thread",
-        "The BottomNav or TopBar includes a navigable Messages entry point",
-        "Navigating to /messages while unauthenticated shows a login prompt"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/routeTree.ts",
-          "operation": "modify",
-          "description": "Register the /messages route that renders MessagesPage and a /messages/:principalId route for direct conversation threads. Both routes should be children of the Layout route. Ensure unauthenticated users are handled appropriately (login prompt in MessagesPage or route guard)."
-        },
-        {
-          "path": "frontend/src/components/BottomNav.tsx",
-          "operation": "modify",
-          "description": "Add a Messages icon and label to the BottomNav between the existing nav items. Use an envelope or chat icon. The Messages item should navigate to /messages. Add an unread badge on the Messages icon using the unread message count derived from useGetConversations (count of conversations with unread > 0). Highlight the Messages item when the current route starts with /messages."
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Add a 'Send Message' button on UserProfilePage that navigates to the direct message conversation with that user",
-      "acceptanceCriteria": [
-        "A 'Message' button appears on UserProfilePage for authenticated users",
-        "Clicking it navigates to the direct message thread with that user",
-        "Unauthenticated users see a disabled or hidden Message button"
+        "Tapping the Follow button triggers a backend follow call and the button enters a loading/disabled state",
+        "After a successful follow, the button label changes to 'Following' and follower count increments by 1",
+        "Tapping the Following button triggers a backend unfollow call and the button reverts to 'Follow' with follower count decremented by 1",
+        "Follower and following counts on the profile page reflect the updated values without requiring a page reload",
+        "If the backend call fails, an error toast is shown and the button state reverts"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/UserProfilePage.tsx",
           "operation": "modify",
-          "description": "Add a 'Message' button below the Follow/Unfollow button. The button should only be visible to authenticated users (check useInternetIdentity). Clicking the button navigates to /messages/:principalId where principalId is the viewed user's principal. For unauthenticated users, hide the button or show it as disabled. This change complements the Follow button addition from REQ-5."
+          "description": "Wire the follow/unfollow button to call the useFollowUser and useUnfollowUser mutation hooks from useQueries.ts. Add loading state during mutation (disable button, show loading indicator). On success, update the button label between 'Follow' and 'Following', and trigger immediate refetch of follower/following counts and isFollowing status. On error, show a toast notification using the Toaster component and revert button state. Ensure the button state reflects the current isFollowing status from the backend query."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Wire up follow/unfollow React Query mutation hooks in useQueries.ts to call backend actor methods and invalidate relevant queries on success",
+      "acceptanceCriteria": [
+        "useFollowUser and useUnfollowUser mutation hooks exist in useQueries.ts and call the correct backend actor methods",
+        "On mutation success, queries for the target user's profile and follower/following counts are invalidated and refetched",
+        "The isFollowing status is also refetched after follow/unfollow"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add useFollowUser and useUnfollowUser mutation hooks using useMutation from React Query. The useFollowUser hook should call actor.followUser(targetPrincipal) and the useUnfollowUser hook should call actor.unfollowUser(targetPrincipal). On mutation success, invalidate the following query keys using queryClient.invalidateQueries: ['profile', targetPrincipal], ['followers', targetPrincipal], ['following', targetPrincipal], ['isFollowing', targetPrincipal], and ['notifications'] to ensure all related data is refetched. Also add useGetFollowers, useGetFollowing, and useIsFollowing query hooks if they don't already exist, each calling the appropriate backend actor method (getFollowers, getFollowing, isFollowing) with the target principal parameter."
         }
       ]
     }

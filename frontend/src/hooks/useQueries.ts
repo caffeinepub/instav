@@ -126,6 +126,35 @@ export function usePostsByHandle(handle: string | undefined) {
   });
 }
 
+/**
+ * Resolves a handle to a principal string by scanning all posts for a matching author.
+ * Falls back to null if no posts exist for this handle yet.
+ */
+export function usePrincipalByHandle(handle: string | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string | null>({
+    queryKey: ['principalByHandle', handle],
+    queryFn: async () => {
+      if (!actor || !handle) return null;
+      // Fetch all posts and find one authored by this handle's user
+      const [allPosts, profileData] = await Promise.all([
+        actor.getAllPosts(),
+        actor.getProfileByHandle(handle),
+      ]);
+      if (!profileData) return null;
+      const matchingPost = allPosts.find(
+        (p) => p.authorName === profileData.displayName || p.authorName === handle
+      );
+      if (matchingPost) {
+        return matchingPost.authorPrincipal.toString();
+      }
+      return null;
+    },
+    enabled: !!actor && !isFetching && !!handle,
+  });
+}
+
 export function useCreatePost() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -336,6 +365,7 @@ export function useFollowUser() {
       queryClient.invalidateQueries({ queryKey: ['followers', targetPrincipal] });
       queryClient.invalidateQueries({ queryKey: ['isFollowing', targetPrincipal] });
       queryClient.invalidateQueries({ queryKey: ['following'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }

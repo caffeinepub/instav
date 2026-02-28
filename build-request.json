@@ -1,171 +1,81 @@
 {
   "kind": "build_request",
-  "title": "Add Chat, Shortspot Sharing in Chat, and Shadows Follow System",
+  "title": "Fix follow button functionality and follower count display",
   "projectName": "InstaV",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Extend the backend actor to support a direct messaging system: store conversations between two users (identified by principal), store messages with sender, timestamp, text content, and an optional shortspot reference (post ID). Expose functions: sendMessage(recipientPrincipal, text, ?postId), getConversations(), getMessages(otherPrincipal), and markMessagesRead(otherPrincipal).",
+      "text": "Ensure the backend follow/unfollow functions correctly persist the follow relationship between users, storing follower and following associations in stable state, and expose accurate follower/following count queries.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
+          "msg-17",
+          "msg-19"
+        ],
+        "quotes": [
+          "Tap the button nothing response",
+          "the follower not shown"
         ]
       },
       "acceptanceCriteria": [
-        "sendMessage stores a message linked to the sender and recipient principals",
-        "getConversations returns all conversation partners for the authenticated caller, with the last message preview and unread count",
-        "getMessages returns the full message thread between caller and another principal",
-        "Messages with a postId reference store the shortspot ID correctly"
+        "Calling the follow function with a valid principal saves the relationship persistently",
+        "Calling the unfollow function removes the relationship",
+        "getFollowerCount and getFollowingCount return accurate counts after follow/unfollow operations",
+        "isFollowing query returns true after following and false after unfollowing"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Extend the backend actor to support a follow system: users can follow/unfollow other users. Store follow relationships as (follower principal → followed principal). Expose functions: followUser(targetPrincipal), unfollowUser(targetPrincipal), getFollowers(principal), getFollowing(principal), isFollowing(targetPrincipal). The follower count on a user's profile should be called 'Shadows'.",
-      "target": "backend",
+      "text": "Fix the follow/unfollow button on the UserProfilePage so that tapping it triggers the backend follow/unfollow mutation, shows a loading state during the call, updates the button label (Follow ↔ Following) upon success, and refreshes the displayed follower/following counts immediately after the action.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
+          "msg-17",
+          "msg-19"
+        ],
+        "quotes": [
+          "Tap the button nothing response",
+          "the follower not shown"
         ]
       },
       "acceptanceCriteria": [
-        "followUser adds the follow relationship and creates an in-app notification for the followed user",
-        "unfollowUser removes the follow relationship",
-        "getFollowers returns all principals who follow a given user (their Shadows)",
-        "getFollowing returns all principals a given user follows",
-        "isFollowing returns a boolean for whether the caller follows a given principal"
+        "Tapping the Follow button triggers a backend follow call and the button enters a loading/disabled state",
+        "After a successful follow, the button label changes to 'Following' and follower count increments by 1",
+        "Tapping the Following button triggers a backend unfollow call and the button reverts to 'Follow' with follower count decremented by 1",
+        "Follower and following counts on the profile page reflect the updated values without requiring a page reload",
+        "If the backend call fails, an error toast is shown and the button state reverts"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Extend the backend actor to support in-app notifications. Store notifications per user principal with fields: type (e.g. 'new_shadow', 'message'), fromPrincipal, timestamp, read status, and optional postId. Expose functions: getNotifications(), markNotificationRead(notificationId). Automatically create a notification when a user is followed (type = 'new_shadow').",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A 'new_shadow' notification is created for the followed user whenever followUser is called",
-        "getNotifications returns all notifications for the authenticated caller sorted by timestamp descending",
-        "markNotificationRead marks the given notification as read",
-        "Unread notification count is accessible so the frontend can display a badge"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Replace the existing mock-based MessagesPage with a fully functional chat page. Display a conversation list showing all conversations with avatar, display name, last message preview, and unread count badge. Clicking a conversation opens the chat thread. The thread shows message bubbles (sent messages right-aligned, received left-aligned) with timestamps. Include a text input and Send button. Add a 'Share Shortspot' button that opens a post picker modal listing the user's or recent shortspot posts; selecting one sends it as a special message containing the post reference. Auto-refresh messages every 5 seconds using polling.",
+      "text": "Wire up the follow/unfollow React Query mutation hooks in useQueries.ts to correctly call the backend actor's follow and unfollow methods, and invalidate the relevant profile and follower count queries on success.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
+          "msg-17",
+          "msg-19"
+        ],
+        "quotes": [
+          "Tap the button nothing response",
+          "the follower not shown"
         ]
       },
       "acceptanceCriteria": [
-        "Conversation list loads from getConversations() and auto-refreshes every 5 seconds",
-        "Clicking a conversation opens the message thread loaded from getMessages()",
-        "Messages auto-refresh every 5 seconds inside the thread view",
-        "Text messages can be sent and appear immediately (optimistic update) in the thread",
-        "A shortspot share button in the chat input opens a modal to pick a shortspot post",
-        "Shared shortspots appear in the thread as a tappable card that navigates to the full shortspot view",
-        "Unread message count badge is shown on the conversation list items and on the Messages nav icon"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Add a Follow / Shadows feature to user profile pages (UserProfilePage and ProfilePage). On a public user's profile (UserProfilePage), show a Follow/Unfollow button for authenticated users. Display the Shadows count (follower count) prominently on all profile pages with the label 'Shadows'. Also display Following count. The Follow button should call followUser and trigger an optimistic UI update.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
-        ]
-      },
-      "acceptanceCriteria": [
-        "UserProfilePage shows a Follow button for authenticated users who are not already following; shows Unfollow if already following",
-        "Clicking Follow calls followUser and updates the Shadows count optimistically",
-        "Both ProfilePage (own profile) and UserProfilePage show 'Shadows: N' and 'Following: N' counts",
-        "Unauthenticated users see the Shadows count but cannot follow without logging in (show login prompt)"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add an in-app notifications panel accessible from the TopBar (bell icon with unread badge). The panel lists notifications including 'new_shadow' events (e.g. '@username started shadowing you'). Each notification shows the type, sender avatar, message, and timestamp. Clicking a notification marks it as read and navigates to the relevant profile or content. Poll for new notifications every 15 seconds.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A bell icon in the TopBar shows a red badge with the unread notification count when > 0",
-        "Clicking the bell opens a dropdown or sheet listing all notifications",
-        "New shadow notifications display the follower's avatar and handle with text 'started shadowing you'",
-        "Clicking a notification marks it read and navigates to the follower's profile",
-        "Notifications poll every 15 seconds and the badge count updates automatically"
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Add a Messages icon/tab to the BottomNav or TopBar that navigates to the MessagesPage. Ensure the new chat and notifications features are properly wired into the TanStack Router route tree in routeTree.ts with appropriate routes (e.g. /messages, /messages/:principalId).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Messages route is registered in routeTree.ts and renders the MessagesPage",
-        "A direct conversation route (e.g. /messages/:principalId) opens the specific thread",
-        "The BottomNav or TopBar includes a navigable Messages entry point",
-        "Navigating to /messages while unauthenticated shows a login prompt"
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Add a 'Send Message' button on UserProfilePage so that an authenticated user can initiate or continue a direct message conversation with that user. Clicking it navigates to /messages/:principalId of that user.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11",
-          "msg-13"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A 'Message' button appears on UserProfilePage for authenticated users",
-        "Clicking it navigates to the direct message thread with that user",
-        "Unauthenticated users see a disabled or hidden Message button"
+        "useFollowUser and useUnfollowUser mutation hooks exist in useQueries.ts and call the correct backend actor methods",
+        "On mutation success, queries for the target user's profile and follower/following counts are invalidated and refetched",
+        "The isFollowing status is also refetched after follow/unfollow"
       ]
     }
   ],
   "constraints": [
-    "Do not modify any existing backend data structures for Posts, Comments, or UserProfile — only add new stable variables for messages, follows, and notifications",
-    "Do not modify frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or any files under frontend/src/components/ui",
-    "Do not remove or alter any existing pages, components, or features already present in the app",
-    "All new React Query hooks must be added to frontend/src/hooks/useQueries.ts following existing patterns"
+    "Do not change the overall UI layout of UserProfilePage beyond the follow button and count display",
+    "All backend logic must remain in the single main actor file (backend/main.mo)"
   ],
   "nonGoals": [
-    "Real-time WebSocket or push-based messaging — polling every 5 seconds is sufficient",
-    "Group chats or multi-user conversations",
-    "Email or SMS notifications",
-    "Message deletion or editing",
-    "End-to-end encryption of messages",
-    "Blocking or muting users"
+    "Mutual follow approval flows — following should be one-sided and immediate",
+    "Follow notifications are out of scope for this fix",
+    "Changes to any immutable frontend paths (useInternetIdentity, useActor, main.tsx, ui components)"
   ],
   "imageRequirements": {
     "required": [],

@@ -10,6 +10,8 @@ import {
   useFollowUser,
   useUnfollowUser,
   useGetPostsByUser,
+  usePostsByHandle,
+  usePrincipalByHandle,
 } from '../hooks/useQueries';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
 import CommentsSheet from '../components/CommentsSheet';
@@ -26,6 +28,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import type { Post } from '../backend';
+import { toast } from 'sonner';
 
 // ─── Post Grid ────────────────────────────────────────────────────────────────
 
@@ -109,12 +112,18 @@ export default function UserProfilePage() {
   const profile = handle ? profileByHandle : profileByPrincipal;
   const isLoading = handle ? loadingByHandle : loadingByPrincipal;
 
+  // When navigating by handle, resolve the principal from posts
+  const { data: resolvedPrincipalFromHandle, isLoading: resolvingPrincipal } =
+    usePrincipalByHandle(handle);
+
+  // The effective target principal: prefer URL param, fall back to resolved-from-handle
+  const targetPrincipal = principalParam ?? resolvedPrincipalFromHandle ?? undefined;
+
   const myPrincipal = identity?.getPrincipal().toString();
-  const targetPrincipal = principalParam;
   const isOwnProfile =
     !!targetPrincipal && !!myPrincipal && targetPrincipal === myPrincipal;
 
-  // Follow data
+  // Follow data — all keyed on the resolved targetPrincipal
   const { data: followers, isLoading: loadingFollowers } = useGetFollowers(targetPrincipal);
   const { data: following, isLoading: loadingFollowing } = useGetFollowing(targetPrincipal);
   const { data: isFollowingUser } = useIsFollowing(
@@ -123,19 +132,35 @@ export default function UserProfilePage() {
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
 
-  // Posts for this user
-  const { data: posts, isLoading: loadingPosts } = useGetPostsByUser(targetPrincipal);
+  // Posts — use handle-based query when on handle route, principal-based otherwise
+  const { data: postsByHandle, isLoading: loadingPostsByHandle } = usePostsByHandle(handle);
+  const { data: postsByPrincipal, isLoading: loadingPostsByPrincipal } =
+    useGetPostsByUser(principalParam);
 
-  const handleFollow = () => {
+  const posts = handle ? postsByHandle : postsByPrincipal;
+  const loadingPosts = handle ? loadingPostsByHandle : loadingPostsByPrincipal;
+
+  const isMutating = followUser.isPending || unfollowUser.isPending;
+
+  const handleFollow = async () => {
     if (!identity) {
       navigate({ to: '/profile' });
       return;
     }
-    if (!targetPrincipal) return;
-    if (isFollowingUser) {
-      unfollowUser.mutate(targetPrincipal);
-    } else {
-      followUser.mutate(targetPrincipal);
+    if (!targetPrincipal) {
+      toast.error('Could not resolve user profile. Please try again.');
+      return;
+    }
+    try {
+      if (isFollowingUser) {
+        await unfollowUser.mutateAsync(targetPrincipal);
+        toast.success('Unfollowed successfully');
+      } else {
+        await followUser.mutateAsync(targetPrincipal);
+        toast.success('Now following!');
+      }
+    } catch (err) {
+      toast.error('Something went wrong. Please try again.');
     }
   };
 
@@ -147,7 +172,7 @@ export default function UserProfilePage() {
     });
   };
 
-  if (isLoading) {
+  if (isLoading || (handle && resolvingPrincipal && !resolvedPrincipalFromHandle)) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-6">
@@ -224,17 +249,23 @@ export default function UserProfilePage() {
                       size="sm"
                       variant={isFollowingUser ? 'outline' : 'default'}
                       onClick={handleFollow}
-                      disabled={followUser.isPending || unfollowUser.isPending}
+                      disabled={isMutating}
                       className="gap-1.5 rounded-full"
                     >
-                      {followUser.isPending || unfollowUser.isPending ? (
+                      {isMutating ? (
                         <span className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
                       ) : isFollowingUser ? (
                         <UserMinus size={14} />
                       ) : (
                         <UserPlus size={14} />
                       )}
-                      {isFollowingUser ? 'Unfollow' : 'Follow'}
+                      {isMutating
+                        ? isFollowingUser
+                          ? 'Unfollowing…'
+                          : 'Following…'
+                        : isFollowingUser
+                          ? 'Unfollow'
+                          : 'Follow'}
                     </Button>
                     {targetPrincipal && (
                       <Button
@@ -288,7 +319,9 @@ export default function UserProfilePage() {
       <CommentsSheet
         post={selectedPost}
         open={!!selectedPost}
-        onOpenChange={(val) => { if (!val) setSelectedPost(null); }}
+        onOpenChange={(val) => {
+          if (!val) setSelectedPost(null);
+        }}
       />
     </div>
   );

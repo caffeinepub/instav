@@ -1,59 +1,43 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T06:03:56.076Z",
-  "summary": "The diff implements the majority of all 8 requirements. Backend messaging, follow, and notification systems are present in main.mo. Frontend pages (MessagesPage, MessageThreadPage, NotificationsPanel, PostPickerModal) are added. Routes, BottomNav, TopBar, ProfilePage, and UserProfilePage are updated. A few specific acceptance criteria have gaps or partial implementations worth noting.",
+  "generatedAt": "2026-02-28T06:56:03.484Z",
+  "summary": "The diff implements follow/unfollow backend persistence (REQ-1), frontend mutation hooks in useQueries.ts (REQ-3), and UserProfilePage follow button wiring (REQ-2). Most requirements are addressed, but several specific acceptance criteria cannot be fully confirmed due to truncated diff content, and one AC around error toast/state revert is not clearly evidenced.",
   "missing_requirements": [
     {
-      "requirement": "Navigating to /messages while unauthenticated shows a login prompt (REQ-7 AC)",
-      "reason": "The routeTree.ts registers the /messages route without any auth guard, and the truncated MessagesPage does not clearly show a login-prompt for unauthenticated users.",
-      "evidence": [
-        "frontend/src/pages/MessagesPage.tsx",
-        "frontend/src/routeTree.ts"
-      ]
-    },
-    {
-      "requirement": "Unread message count badge shown on the Messages nav icon (REQ-4 / REQ-7 AC)",
-      "reason": "BottomNav.tsx explicitly hard-codes the unread count return as 0 ('return count > 0 ? 0 : 0') and the badge only indicates presence of any conversation rather than a true unread count. The real per-message unread count is not propagated to the nav icon badge.",
-      "evidence": [
-        "frontend/src/components/BottomNav.tsx"
-      ]
-    },
-    {
-      "requirement": "Unauthenticated users see the Shadows count but cannot follow without logging in — show login prompt (REQ-5 AC)",
-      "reason": "UserProfilePage.tsx is truncated and it is unclear whether unauthenticated visitors see the Shadows count and a login prompt instead of the Follow button.",
+      "id": "REQ-2",
+      "requirement": "If the backend call fails, an error toast is shown and the button state reverts",
+      "reason": "The UserProfilePage.tsx diff is truncated and the onError handler with toast and state revert logic cannot be confirmed as implemented.",
       "evidence": [
         "frontend/src/pages/UserProfilePage.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "On mutation success, queries for the target user's profile and follower/following counts are invalidated and refetched; the isFollowing status is also refetched after follow/unfollow",
+      "reason": "The useQueries.ts diff is truncated. The file summary mentions useFollowUser invalidates the notifications query but does not confirm invalidation of follower/following count queries and isFollowing status for both useFollowUser and useUnfollowUser.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend-file-summaries.txt"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "A backend/migration.mo file is added with a no-op migration where NewActor is identical to OldActor and the run function simply returns the old state unchanged.",
-      "reason": "The build request did not ask for a migration module. The new stable variables for messages, follows, and notifications are defined as let bindings in main.mo rather than being represented in the migration types, making this file unrequested extra scaffolding.",
+      "description": "A migration module (backend/migration.mo) was added that converts old followingMap from Map<Principal, Principal> to Map<Principal, Set<Principal>> and old followersMap from Map<Principal, Map<Principal, ()>> to Map<Principal, Set<Principal>>",
+      "reason": "The build request only asked for stable state persistence of follow relationships. A migration module converting old data structures was not requested and represents additional scope beyond the requirements.",
       "evidence": [
         "backend/migration.mo"
       ]
     }
   ],
-  "confidence": 0.72,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/BottomNav.tsx",
-    "frontend/src/components/CommentsSheet.tsx",
-    "frontend/src/components/Layout.tsx",
-    "frontend/src/components/NotificationsPanel.tsx",
-    "frontend/src/components/PostCard.tsx",
-    "frontend/src/components/PostPickerModal.tsx",
-    "frontend/src/components/TopBar.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/MessageThreadPage.tsx",
-    "frontend/src/pages/MessagesPage.tsx",
-    "frontend/src/pages/ProfilePage.tsx",
     "frontend/src/pages/UserProfilePage.tsx",
-    "frontend/src/routeTree.ts",
     "project_state.json"
   ]
 }
