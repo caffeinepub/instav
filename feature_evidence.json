@@ -2,10 +2,51 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-react-query-hooks-in-usequeries-ts-for-all-new-friend-system-backend-functions-usesendfriendrequest-userespondtofriendrequest-usecancelfriendrequest-useunfriend-usegetincomingfriendrequests-usegetoutgoingfriendrequests-usegetfriendslist-usegetfriendshipstatus",
-      "featureTitle": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
+      "featureId": "feature-in-shortsportpage-add-a-click-to-activate-auto-scroll-mode-when-the-user-clicks-a-video-enable-auto-scroll-so-that-once-the-current-video-finishes-playing-it-automatically-scrolls-to-the-next-video-in-the-feed-each-subsequent-video-should-do-the-same-play-fully-then-scroll-to-the-next-one-automatically",
+      "featureTitle": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
       "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/pages/ShortSportPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-comments-section-to-each-shortsport-item-display-a-comment-box-inline-or-as-a-bottom-drawer-sheet-showing-all-existing-comments-from-all-users-and-allow-authenticated-users-to-post-new-comments-reuse-the-existing-comments-backend-addcomment-getcomments-already-used-in-postcard-and-commentssheet",
+      "featureTitle": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "files": [
+        "frontend/src/pages/ShortSportPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-share-button-to-each-shortsport-item-that-allows-the-current-user-to-share-the-video-or-picture-to-their-friends-using-the-existing-friend-system-opening-the-share-ui-should-show-a-list-of-the-user-s-friends-so-they-can-select-recipients-and-send-the-post-as-a-direct-message-reusing-the-existing-messaging-backend",
+      "featureTitle": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
+      "files": [
+        "frontend/src/components/ShareModal.tsx",
+        "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -22,10 +63,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-userprofilepage-to-show-a-dynamic-friend-request-button-based-on-friendship-status-if-not-friends-show-add-friend-button-if-request-pending-outgoing-show-request-sent-cancel-option-if-request-pending-incoming-show-accept-and-decline-buttons-if-already-friends-show-friends-with-an-unfriend-option-in-a-dropdown",
-      "featureTitle": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "featureId": "feature-display-the-poster-s-profile-avatar-and-username-display-name-on-each-shortsport-item-overlay-on-the-video-e-g-bottom-left-tapping-the-avatar-or-name-navigates-directly-to-that-user-s-full-profile-page-userprofilepage-using-their-principal-id",
+      "featureTitle": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
       "files": [
-        "frontend/src/pages/UserProfilePage.tsx"
+        "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",

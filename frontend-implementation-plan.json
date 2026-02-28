@@ -1,36 +1,82 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Step 1: Add Friend System (send/accept/decline requests, friends list)",
+  "title": "ShortSport: Auto-scroll, Comments & Sharing, Profile Navigation",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Add React Query hooks for all friend system backend functions",
+      "id": "REQ-1",
+      "summary": "Add click-to-activate auto-scroll mode in ShortSportPage that automatically advances to the next video after the current video finishes playing",
       "acceptanceCriteria": [
-        "Each mutation hook calls its corresponding backend method via useActor",
-        "Query hooks use appropriate staleTime and invalidate related queries on mutation success"
+        "Clicking a video activates auto-scroll mode for that session",
+        "After the active video finishes playing, the page automatically scrolls to the next video",
+        "The next video begins playing and the same auto-scroll behavior continues",
+        "If there is no next video, auto-scroll stops gracefully",
+        "Auto-scroll does not trigger before the video has finished playing"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Add React Query hooks for friend system: useSendFriendRequest (mutation), useRespondToFriendRequest (mutation with sender and accept parameters), useCancelFriendRequest (mutation), useUnfriend (mutation), useGetIncomingFriendRequests (query with staleTime 30s), useGetOutgoingFriendRequests (query with staleTime 30s), useGetFriendsList (query with staleTime 60s), and useGetFriendshipStatus (query with otherPrincipal parameter). All mutations should invalidate friend-related queries on success."
+          "description": "Add state to track auto-scroll activation (boolean flag). On video click, enable auto-scroll mode. Add an onEnded event handler to the <video> element that checks if auto-scroll is active; if so, programmatically scroll to the next video ref using scrollIntoView with smooth behavior. Ensure auto-scroll gracefully stops when reaching the last video in the feed."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Add a comments section to each ShortSport item, reusing the existing CommentsSheet component and backend methods (addComment, getComments)",
+      "acceptanceCriteria": [
+        "Each ShortSport item has a comment icon/button",
+        "Tapping the comment button opens a comments panel showing all existing comments for that post",
+        "Comments display the commenter's username/avatar and comment text",
+        "Authenticated users can type and submit a new comment",
+        "New comments appear immediately after submission (optimistic or refetch)",
+        "Comment count updates visibly on the ShortSport item"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "operation": "modify",
+          "description": "Add a comment button overlay on each video (positioned bottom-right or near like button) with an icon and comment count badge. Import and render the existing CommentsSheet component (conditionally visible when a post is selected). Add state to track the currently open post for comments. On comment button click, set the selected post and open the CommentsSheet. Reuse the existing getComments and addComment hooks from useQueries.ts."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Add a share button to each ShortSport item that opens a friend selector modal, allowing users to share the video/picture via the existing messaging system",
+      "acceptanceCriteria": [
+        "Each ShortSport item has a share icon/button",
+        "Tapping share opens a modal or bottom sheet listing the current user's friends",
+        "The user can select one or more friends and confirm to share",
+        "The post is sent as a message to the selected friend(s) using the existing messaging system",
+        "A success confirmation is shown after sharing"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/ShareModal.tsx",
+          "operation": "create",
+          "description": "Create a new modal component that displays a list of the current user's friends using the useFriendsList hook. Render each friend with their avatar (using AvatarPlaceholder) and display name. Support multi-select checkboxes. Include a 'Send' button that calls the sendMessage backend method for each selected friend, passing the postId. Show a toast or inline success message after sharing completes. Accept postId as a prop."
+        },
+        {
+          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "operation": "modify",
+          "description": "Add a share button overlay on each video (positioned near like/comment buttons). Import and render the new ShareModal component. Add state to track which post is being shared. On share button click, open the ShareModal with the selected post's ID. After sharing completes, close the modal and show a brief confirmation (e.g., toast or temporary message)."
         }
       ]
     },
     {
       "id": "REQ-4",
-      "summary": "Update UserProfilePage to show dynamic friend request button based on friendship status",
+      "summary": "Display the poster's profile avatar and username as an overlay on each ShortSport item, navigating to their profile page on tap",
       "acceptanceCriteria": [
-        "Friend button states correctly reflect getFriendshipStatus result",
-        "Actions trigger the corresponding mutation hooks",
-        "UI updates optimistically or refetches after each action"
+        "Each ShortSport item displays the poster's avatar and display name as an overlay on the video/image",
+        "The avatar falls back to gradient initials if no profile picture is set (reusing AvatarPlaceholder component)",
+        "Clicking/tapping the avatar or name navigates to the poster's UserProfilePage",
+        "Navigation uses the poster's principal ID in the route (consistent with existing user profile routing)"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
+          "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Add friend action button component that uses useGetFriendshipStatus to determine current state. Display 'Add Friend' button when status is 'notConnected'. Display 'Request Sent' with cancel option when status is 'pendingOutgoing'. Display 'Accept' and 'Decline' buttons when status is 'pendingIncoming'. Display 'Friends' with dropdown containing 'Unfriend' option when status is 'friends'. Wire each action to the appropriate mutation hook (useSendFriendRequest, useCancelFriendRequest, useRespondToFriendRequest, useUnfriend). Position the button near the existing follow/message actions in the profile header."
+          "description": "Add an overlay div positioned at the bottom-left of each video displaying the poster's avatar (using AvatarPlaceholder with the post's authorPrincipal and authorName) and the authorName/display name. Wrap the avatar and name in a clickable element that navigates to /profile/{authorPrincipal} using the router's navigate function. Ensure the overlay is z-indexed above the video but below interactive buttons (like, comment, share)."
         }
       ]
     }

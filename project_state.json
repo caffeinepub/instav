@@ -1,27 +1,40 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Social media app with premium home page, profile pages, and a friend system including friend requests, friend zone page, direct messaging (real-time polling-based chat), and sharing features (posts, content, links via chat).",
+  "summary": "ShortSport feature enhancement project. Building auto-scroll (activates on click, scrolls to next video after current completes), comments & sharing (visible comment box for all users, share to friends via friend system), and profile navigation (click poster's profile logo/name to go to their full profile page). Minimal code changes only.",
   "architectural_notes": [
-    "Platform does not support WebSockets; use fast polling for near-real-time messaging.",
-    "App runs on Internet Computer as a web application (not native Android/iOS); PWA install is possible but no Play Store publishing."
+    "Minimal code changes policy: only modify code that is strictly necessary for new features"
   ],
-  "known_issues": [
-    "Initial attempt to build full friend system + messaging in one pass failed with an AI error; rebuilding step by step."
-  ],
+  "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-react-query-hooks-in-usequeries-ts-for-all-new-friend-system-backend-functions-usesendfriendrequest-userespondtofriendrequest-usecancelfriendrequest-useunfriend-usegetincomingfriendrequests-usegetoutgoingfriendrequests-usegetfriendslist-usegetfriendshipstatus",
-      "title": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
+      "id": "feature-in-shortsportpage-add-a-click-to-activate-auto-scroll-mode-when-the-user-clicks-a-video-enable-auto-scroll-so-that-once-the-current-video-finishes-playing-it-automatically-scrolls-to-the-next-video-in-the-feed-each-subsequent-video-should-do-the-same-play-fully-then-scroll-to-the-next-one-automatically",
+      "title": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-comments-section-to-each-shortsport-item-display-a-comment-box-inline-or-as-a-bottom-drawer-sheet-showing-all-existing-comments-from-all-users-and-allow-authenticated-users-to-post-new-comments-reuse-the-existing-comments-backend-addcomment-getcomments-already-used-in-postcard-and-commentssheet",
+      "title": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-share-button-to-each-shortsport-item-that-allows-the-current-user-to-share-the-video-or-picture-to-their-friends-using-the-existing-friend-system-opening-the-share-ui-should-show-a-list-of-the-user-s-friends-so-they-can-select-recipients-and-send-the-post-as-a-direct-message-reusing-the-existing-messaging-backend",
+      "title": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-the-userprofilepage-to-show-a-dynamic-friend-request-button-based-on-friendship-status-if-not-friends-show-add-friend-button-if-request-pending-outgoing-show-request-sent-cancel-option-if-request-pending-incoming-show-accept-and-decline-buttons-if-already-friends-show-friends-with-an-unfriend-option-in-a-dropdown",
-      "title": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "id": "feature-display-the-poster-s-profile-avatar-and-username-display-name-on-each-shortsport-item-overlay-on-the-video-e-g-bottom-left-tapping-the-avatar-or-name-navigates-directly-to-that-user-s-full-profile-page-userprofilepage-using-their-principal-id",
+      "title": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
       "reqIds": [
         "REQ-4"
       ],
@@ -31,42 +44,20 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Friend system: send/accept/decline friend requests from profile pages or user search, friends list with unfriend option",
+      "summary": "Auto-scroll in ShortSport: activates on click, scrolls to next video after current video finishes playing",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Friend Zone Page: pending requests (incoming & outgoing), people you may know / user search, friends list",
+      "summary": "Comments and share option in ShortSport: visible comment box for all users, share video/picture to friends via existing friend system",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Direct Messaging (friends only): chat inbox, message threads with fast polling for near-instant updates, message history per conversation",
+      "summary": "Profile logo and name display on ShortSport posts; clicking navigates to the poster's full profile page",
       "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Sharing: share posts, content, and links directly to a friend via chat; share profile links",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
-      "reqIds": [
-        "REQ-2"
-      ],
       "status": "pending"
     }
   ],

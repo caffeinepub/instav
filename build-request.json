@@ -1,91 +1,106 @@
 {
   "kind": "build_request",
-  "title": "Step 1: Add Friend System (send/accept/decline requests, friends list)",
+  "title": "ShortSport: Auto-scroll, Comments & Sharing, Profile Navigation",
   "projectName": "Smileup",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
-      "target": "backend",
+      "text": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-18"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "Send/receive friend requests",
-          "Accept/decline requests"
+          "auto scroll works when it is clicked and if clicked it automatically scroll down the next video after completing the previous video"
         ]
       },
       "acceptanceCriteria": [
-        "FriendRequest type exists with fields: sender (Principal), receiver (Principal), status (Pending | Accepted | Declined), createdAt (Int)",
-        "Stable storage for friend requests is initialized in the actor"
+        "Clicking a video activates auto-scroll mode for that session",
+        "After the active video finishes playing, the page automatically scrolls to the next video",
+        "The next video begins playing and the same auto-scroll behavior continues",
+        "If there is no next video, auto-scroll stops gracefully",
+        "Auto-scroll does not trigger before the video has finished playing"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
-      "target": "backend",
+      "text": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-18"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "send/accept/decline requests",
-          "friends list with unfriend option"
+          "their iss a comment box where all coments are visible to all user"
         ]
       },
       "acceptanceCriteria": [
-        "sendFriendRequest creates a Pending request if none exists and caller != receiver",
-        "respondToFriendRequest updates status to Accepted or Declined",
-        "unfriend removes both directions of the friendship",
-        "getFriendsList returns only Accepted connections for the caller",
-        "getFriendshipStatus returns the current status (or null) between caller and target"
+        "Each ShortSport item has a comment icon/button",
+        "Tapping the comment button opens a comments panel showing all existing comments for that post",
+        "Comments display the commenter's username/avatar and comment text",
+        "Authenticated users can type and submit a new comment",
+        "New comments appear immediately after submission (optimistic or refetch)",
+        "Comment count updates visibly on the ShortSport item"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
+      "text": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-18"
+          "msg-6",
+          "msg-8"
+        ],
+        "quotes": [
+          "share option to share the video or picture to their friends"
         ]
       },
       "acceptanceCriteria": [
-        "Each mutation hook calls its corresponding backend method via useActor",
-        "Query hooks use appropriate staleTime and invalidate related queries on mutation success"
+        "Each ShortSport item has a share icon/button",
+        "Tapping share opens a modal or bottom sheet listing the current user's friends",
+        "The user can select one or more friends and confirm to share",
+        "The post is sent as a message to the selected friend(s) using the existing messaging system",
+        "A success confirmation is shown after sharing"
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+      "text": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-18"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "Send/receive friend requests from profile pages"
+          "add profile logo and name of user who post the shortsport",
+          "when some click on it the clicker(who click) directly see the profile page of the user who post the video"
         ]
       },
       "acceptanceCriteria": [
-        "Friend button states correctly reflect getFriendshipStatus result",
-        "Actions trigger the corresponding mutation hooks",
-        "UI updates optimistically or refetches after each action"
+        "Each ShortSport item displays the poster's avatar and display name as an overlay on the video/image",
+        "The avatar falls back to gradient initials if no profile picture is set (reusing AvatarPlaceholder component)",
+        "Clicking/tapping the avatar or name navigates to the poster's UserProfilePage",
+        "Navigation uses the poster's principal ID in the route (consistent with existing user profile routing)"
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "Keep all Motoko logic in backend/main.mo as a single actor",
-    "Do NOT build Friend Zone Page, messaging, or sharing in this step — only the core friend request system"
+    "Only modify files that are strictly necessary — do not refactor or rewrite unrelated components",
+    "Reuse existing backend calls (addComment, getComments, sendMessage, getFriends) — do not add new backend endpoints unless absolutely required",
+    "Do not modify any files listed in frontend.immutablePaths",
+    "Reuse CommentsSheet or its logic where possible rather than duplicating comment functionality"
   ],
   "nonGoals": [
-    "Friend Zone Page (dedicated section) — saved for next step",
-    "Direct messaging — saved for a later step",
-    "Sharing features — saved for a later step",
-    "Real-time notifications for friend requests"
+    "Adding new backend data models or actor state beyond what already exists",
+    "Redesigning or restyling the ShortSport page layout beyond what is needed for the new UI elements",
+    "Implementing real-time comment updates (polling or live refresh not required)",
+    "Changing the friend system or messaging system logic"
   ],
   "imageRequirements": {
     "required": [],

@@ -1,66 +1,70 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T15:57:10.959Z",
+  "generatedAt": "2026-02-28T21:11:00.456Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 4,
-    "implemented": 2,
+    "implemented": 4,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a Friend data model to the backend with friend request states (Pending, Accepted, Declined). Store friend relationships as a list of FriendRequest records with sender, receiver, status, and timestamp fields.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add backend functions: sendFriendRequest(receiver: Principal), respondToFriendRequest(sender: Principal, accept: Bool), cancelFriendRequest(receiver: Principal), unfriend(friendPrincipal: Principal), getIncomingFriendRequests(), getOutgoingFriendRequests(), getFriendsList(), and getFriendshipStatus(otherPrincipal: Principal).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ]
       },
       {
         "id": "REQ-3",
-        "summary": "Add React Query hooks in useQueries.ts for all new friend system backend functions: useSendFriendRequest, useRespondToFriendRequest, useCancelFriendRequest, useUnfriend, useGetIncomingFriendRequests, useGetOutgoingFriendRequests, useGetFriendsList, useGetFriendshipStatus.",
+        "summary": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/ShareModal.tsx",
+          "frontend/src/pages/ShortSportPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/ShareModal.tsx",
+          "frontend/src/pages/ShortSportPage.tsx"
         ]
       },
       {
         "id": "REQ-4",
-        "summary": "Update the UserProfilePage to show a dynamic friend request button based on friendship status. If not friends: show 'Add Friend' button. If request pending (outgoing): show 'Request Sent' (cancel option). If request pending (incoming): show 'Accept' and 'Decline' buttons. If already friends: show 'Friends' with an 'Unfriend' option in a dropdown.",
+        "summary": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx"
+          "frontend/src/pages/ShortSportPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx"
+          "frontend/src/pages/ShortSportPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/UserProfilePage.tsx",
+    "frontend/src/components/ShareModal.tsx",
+    "frontend/src/pages/ShortSportPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

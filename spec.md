@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Add a core friend system to Smileup, allowing users to send, receive, accept, decline, cancel, and remove friend connections.
+**Goal:** Enhance the ShortSport feed with auto-scroll, comments, sharing, and poster profile display/navigation.
 
 **Planned changes:**
-- Add a `FriendRequest` data model to the backend with fields for sender, receiver, status (Pending/Accepted/Declined), and timestamp, with stable storage
-- Add backend functions: `sendFriendRequest`, `respondToFriendRequest`, `cancelFriendRequest`, `unfriend`, `getIncomingFriendRequests`, `getOutgoingFriendRequests`, `getFriendsList`, and `getFriendshipStatus`
-- Add React Query hooks in `useQueries.ts` for all new friend system backend functions (mutations and queries)
-- Update `UserProfilePage` to show a dynamic friend button reflecting the current friendship status: "Add Friend", "Request Sent" (with cancel), "Accept"/"Decline", or "Friends" (with unfriend dropdown)
+- Add click-to-activate auto-scroll mode in ShortSportPage: after the current video finishes, automatically scroll to the next video and continue playing sequentially until no more videos remain
+- Add a comments button/icon to each ShortSport item that opens a comments panel (reusing existing `addComment`/`getComments` backend and `CommentsSheet` logic), showing all comments with username/avatar and allowing authenticated users to post new comments
+- Add a share button to each ShortSport item that opens a modal/bottom sheet listing the current user's friends (reusing existing `getFriends` and `sendMessage` backend), allowing the user to select one or more friends and send the post as a direct message, with a success confirmation
+- Overlay the poster's avatar and display name on each ShortSport item (bottom-left), falling back to gradient initials if no profile picture exists; tapping the avatar or name navigates to that user's `UserProfilePage` using their principal ID
 
-**User-visible outcome:** Users can visit another user's profile and send a friend request, cancel it, accept or decline incoming requests, and unfriend existing friends. The friend button on profile pages dynamically reflects the current relationship state.
+**User-visible outcome:** Users can click a ShortSport video to enable auto-scroll through the feed, view and post comments on each item, share items directly to friends via messages, and tap the poster's avatar/name to visit their profile page.
