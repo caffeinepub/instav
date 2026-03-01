@@ -1,16 +1,16 @@
+import React from 'react';
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
-import { InternetIdentityProvider } from './hooks/useInternetIdentity';
-import { useInternetIdentity } from './hooks/useInternetIdentity';
 import { router } from './routeTree';
+import { InternetIdentityProvider, useInternetIdentity } from './hooks/useInternetIdentity';
 import LandingPage from './pages/LandingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30,
+      staleTime: 1000 * 60 * 2,
       retry: 1,
     },
   },
@@ -18,33 +18,47 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const { identity, isInitializing } = useInternetIdentity();
+  const isAuthenticated = !!identity;
 
+  // While identity is being restored from storage, show nothing to avoid flash
   if (isInitializing) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="text-2xl font-bold font-display bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Smileup
-        </span>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <span
+            className="font-display font-extrabold text-5xl tracking-tight select-none animate-pulse"
+            style={{
+              background: 'linear-gradient(135deg, #C026D3 0%, #7C3AED 50%, #38BDF8 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            Smileup
+          </span>
+        </div>
       </div>
     );
   }
 
-  if (!identity) {
+  // Show landing page for unauthenticated users
+  if (!isAuthenticated) {
     return <LandingPage />;
   }
 
+  // Show the full app for authenticated users
   return <RouterProvider router={router} />;
 }
 
 export default function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <InternetIdentityProvider>
+      <InternetIdentityProvider>
+        <QueryClientProvider client={queryClient}>
           <AppContent />
           <Toaster />
-        </InternetIdentityProvider>
-      </QueryClientProvider>
+        </QueryClientProvider>
+      </InternetIdentityProvider>
     </ThemeProvider>
   );
 }

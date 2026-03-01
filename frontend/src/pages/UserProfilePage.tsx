@@ -1,71 +1,75 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "@tanstack/react-router";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useActor } from "../hooks/useActor";
+import React, { useState } from 'react';
+import { useParams, useNavigate } from '@tanstack/react-router';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import {
   useProfileByPrincipal,
+  useProfileByHandle,
   useGetPostsByUser,
-  useGetFollowers,
-  useGetFollowing,
   useIsFollowing,
   useFollowUser,
   useUnfollowUser,
+  useGetFollowers,
+  useGetFollowing,
   useGetFriendshipStatus,
   useSendFriendRequest,
-  useCancelFriendRequest,
   useRespondToFriendRequest,
+  useCancelFriendRequest,
   useUnfriend,
-} from "../hooks/useQueries";
-import { Principal } from "@dfinity/principal";
-import AvatarPlaceholder from "../components/AvatarPlaceholder";
-import PostCard from "../components/PostCard";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+  usePrincipalByHandle,
+} from '../hooks/useQueries';
+import { toast } from 'sonner';
+import { Post } from '../backend';
+import AvatarPlaceholder from '../components/AvatarPlaceholder';
+import CommentsSheet from '../components/CommentsSheet';
+import { FriendshipStatusEnum } from '../backend';
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MessageCircle, UserPlus, UserCheck, ChevronDown, UserMinus } from "lucide-react";
-import { toast } from "sonner";
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown, UserMinus, MessageCircle, UserPlus, UserCheck, Clock } from 'lucide-react';
 
 // ─── Friend Action Button ─────────────────────────────────────────────────────
 
 interface FriendActionButtonProps {
-  targetPrincipal: string;
+  targetPrincipalStr: string;
 }
 
-function FriendActionButton({ targetPrincipal }: FriendActionButtonProps) {
-  const { data: status, isLoading } = useGetFriendshipStatus(targetPrincipal);
+function FriendActionButton({ targetPrincipalStr }: FriendActionButtonProps) {
+  const { data: status, isLoading } = useGetFriendshipStatus(targetPrincipalStr);
   const sendRequest = useSendFriendRequest();
   const cancelRequest = useCancelFriendRequest();
   const respond = useRespondToFriendRequest();
-  const unfriend = useUnfriend();
+  const unfriendMutation = useUnfriend();
 
-  if (isLoading) return <Skeleton className="h-9 w-28" />;
+  if (isLoading) {
+    return (
+      <div className="h-9 w-28 rounded-lg bg-surface-2 animate-pulse" />
+    );
+  }
 
-  if (status === "friends") {
+  if (status === FriendshipStatusEnum.friends) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1">
-            <UserCheck className="w-4 h-4" />
+          <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors">
+            <UserCheck size={15} />
             Friends
-            <ChevronDown className="w-3 h-3" />
-          </Button>
+            <ChevronDown size={13} />
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent align="end">
           <DropdownMenuItem
-            className="text-destructive"
+            className="text-destructive focus:text-destructive"
             onClick={() => {
-              unfriend.mutate(targetPrincipal, {
-                onSuccess: () => toast.success("Unfriended"),
-                onError: () => toast.error("Failed to unfriend"),
+              unfriendMutation.mutate(targetPrincipalStr, {
+                onSuccess: () => toast.success('Unfriended'),
+                onError: () => toast.error('Failed to unfriend'),
               });
             }}
           >
-            <UserMinus className="w-4 h-4 mr-2" />
+            <UserMinus size={14} className="mr-2" />
             Unfriend
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -73,254 +77,437 @@ function FriendActionButton({ targetPrincipal }: FriendActionButtonProps) {
     );
   }
 
-  if (status === "pendingOutgoing") {
+  if (status === FriendshipStatusEnum.pendingOutgoing) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-muted-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
         onClick={() => {
-          cancelRequest.mutate(targetPrincipal, {
-            onSuccess: () => toast.success("Request cancelled"),
-            onError: () => toast.error("Failed to cancel request"),
+          cancelRequest.mutate(targetPrincipalStr, {
+            onSuccess: () => toast.success('Request cancelled'),
+            onError: () => toast.error('Failed to cancel request'),
           });
         }}
         disabled={cancelRequest.isPending}
       >
+        <Clock size={15} />
         Request Sent
-      </Button>
+      </button>
     );
   }
 
-  if (status === "pendingIncoming") {
+  if (status === FriendshipStatusEnum.pendingIncoming) {
     return (
       <div className="flex gap-2">
-        <Button
-          size="sm"
+        <button
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
           onClick={() => {
             respond.mutate(
-              { senderPrincipal: targetPrincipal, accept: true },
+              { senderStr: targetPrincipalStr, accept: true },
               {
-                onSuccess: () => toast.success("Friend request accepted"),
-                onError: () => toast.error("Failed to accept request"),
+                onSuccess: () => toast.success('Friend request accepted'),
+                onError: () => toast.error('Failed to accept request'),
               }
             );
           }}
           disabled={respond.isPending}
         >
+          <UserCheck size={15} />
           Accept
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
+        </button>
+        <button
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-muted-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
           onClick={() => {
             respond.mutate(
-              { senderPrincipal: targetPrincipal, accept: false },
+              { senderStr: targetPrincipalStr, accept: false },
               {
-                onSuccess: () => toast.success("Request declined"),
-                onError: () => toast.error("Failed to decline request"),
+                onSuccess: () => toast.success('Request declined'),
+                onError: () => toast.error('Failed to decline request'),
               }
             );
           }}
           disabled={respond.isPending}
         >
           Decline
-        </Button>
+        </button>
       </div>
     );
   }
 
-  // notConnected / following
+  // notConnected
   return (
-    <Button
-      size="sm"
-      variant="outline"
+    <button
+      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
       onClick={() => {
-        sendRequest.mutate(targetPrincipal, {
-          onSuccess: () => toast.success("Follow request sent"),
-          onError: () => toast.error("Failed to send request"),
+        sendRequest.mutate(targetPrincipalStr, {
+          onSuccess: () => toast.success('Friend request sent'),
+          onError: () => toast.error('Failed to send friend request'),
         });
       }}
       disabled={sendRequest.isPending}
     >
-      <UserPlus className="w-4 h-4 mr-1" />
+      <UserPlus size={15} />
       Add Friend
-    </Button>
+    </button>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Post Grid Item ───────────────────────────────────────────────────────────
+
+interface PostGridItemProps {
+  post: Post;
+  onClick: () => void;
+}
+
+function PostGridItem({ post, onClick }: PostGridItemProps) {
+  const [imgError, setImgError] = useState(false);
+  const isVideo = post.mediaType?.startsWith('video');
+
+  return (
+    <button
+      onClick={onClick}
+      className="relative aspect-square bg-surface-2 rounded-lg overflow-hidden group hover:opacity-90 transition-opacity"
+    >
+      {post.media && !imgError ? (
+        isVideo ? (
+          <video
+            src={post.media.getDirectURL()}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+          />
+        ) : (
+          <img
+            src={post.media.getDirectURL()}
+            alt={post.caption}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        )
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-surface-3">
+          <span className="text-2xl">📷</span>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <span className="text-white text-xs font-medium px-2 text-center line-clamp-2">
+          {post.caption || 'View post'}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function UserProfilePage() {
-  const { principalId } = useParams({ strict: false }) as {
-    principalId?: string;
+  const params = useParams({ strict: false }) as {
+    principal?: string;
+    handle?: string;
   };
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { actor } = useActor();
 
-  const viewedPrincipal = principalId ?? "";
-  const callerPrincipal = identity?.getPrincipal().toString() ?? "";
-  const isOwnProfile = !!callerPrincipal && callerPrincipal === viewedPrincipal;
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
-  // ── Record visit (fire-and-forget) ──────────────────────────────────────────
-  useEffect(() => {
-    if (!actor || !viewedPrincipal || isOwnProfile) return;
-    // Fire-and-forget: do not block rendering
-    actor
-      .recordVisit(Principal.fromText(viewedPrincipal))
-      .catch(() => {
-        // silently ignore errors
-      });
-  }, [actor, viewedPrincipal, isOwnProfile]);
+  // Determine if we're looking up by principal or handle
+  const principalParam = params.principal;
+  const handleParam = params.handle;
 
-  // ── Data fetching ───────────────────────────────────────────────────────────
-  const { data: profile, isLoading: profileLoading } =
-    useProfileByPrincipal(viewedPrincipal);
-  const { data: posts = [], isLoading: postsLoading } =
-    useGetPostsByUser(viewedPrincipal);
-  const { data: followers = [] } = useGetFollowers(viewedPrincipal);
-  const { data: following = [] } = useGetFollowing(viewedPrincipal);
-  const { data: isFollowing } = useIsFollowing(
-    isOwnProfile ? null : viewedPrincipal
+  // If we have a handle, resolve the principal from it
+  const { data: resolvedPrincipalFromHandle } = usePrincipalByHandle(
+    handleParam && !principalParam ? handleParam : undefined
   );
 
-  const followUser = useFollowUser();
-  const unfollowUser = useUnfollowUser();
+  // The actual principal string to use for queries
+  const targetPrincipal = principalParam ?? resolvedPrincipalFromHandle ?? undefined;
 
-  const [commentsPostId, setCommentsPostId] = useState<bigint | null>(null);
+  // Fetch profile — try by principal first, then by handle
+  const {
+    data: profileByPrincipal,
+    isLoading: loadingByPrincipal,
+  } = useProfileByPrincipal(targetPrincipal);
 
-  if (!viewedPrincipal) {
+  const {
+    data: profileByHandle,
+    isLoading: loadingByHandle,
+  } = useProfileByHandle(
+    !targetPrincipal && handleParam ? handleParam : undefined
+  );
+
+  // Fetch posts for this user
+  const { data: userPosts = [], isLoading: loadingPosts } = useGetPostsByUser(targetPrincipal);
+
+  // Follow state
+  const { data: isFollowing } = useIsFollowing(targetPrincipal);
+  const followMutation = useFollowUser();
+  const unfollowMutation = useUnfollowUser();
+
+  // Follower/following counts
+  const { data: followers = [] } = useGetFollowers(targetPrincipal);
+  const { data: following = [] } = useGetFollowing(targetPrincipal);
+
+  const isOwnProfile =
+    identity && targetPrincipal
+      ? identity.getPrincipal().toString() === targetPrincipal
+      : false;
+
+  const isLoading =
+    loadingByPrincipal ||
+    loadingByHandle ||
+    (!targetPrincipal && !!handleParam);
+
+  // Resolve the profile to display
+  // If no saved profile but we have posts, synthesize a basic profile from post data
+  const profile = profileByPrincipal ?? profileByHandle ?? null;
+
+  // Synthesize a display name from posts if no profile exists
+  const syntheticDisplayName =
+    userPosts.length > 0 ? userPosts[0].authorName : null;
+
+  const displayName =
+    profile?.displayName || syntheticDisplayName || 'Unknown User';
+  const handle = profile?.handle || '';
+  const bio = profile?.bio || '';
+
+  // Determine if we genuinely have no user (no profile AND no posts AND not loading)
+  const hasNoUser =
+    !isLoading &&
+    !loadingPosts &&
+    !profile &&
+    userPosts.length === 0 &&
+    !!targetPrincipal;
+
+  const handleFollowToggle = () => {
+    if (!targetPrincipal) return;
+    if (isFollowing) {
+      unfollowMutation.mutate(targetPrincipal, {
+        onSuccess: () => toast.success(`Unfollowed ${displayName}`),
+        onError: () => toast.error('Failed to unfollow'),
+      });
+    } else {
+      followMutation.mutate(targetPrincipal, {
+        onSuccess: () => toast.success(`Now following ${displayName}`),
+        onError: () => toast.error('Failed to follow'),
+      });
+    }
+  };
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        No profile found.
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm">Loading profile…</p>
+        </div>
       </div>
     );
   }
 
-  if (profileLoading) {
+  // ── No user found ──────────────────────────────────────────────────────────
+  if (hasNoUser) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        <div className="flex items-center gap-4">
-          <Skeleton className="w-20 h-20 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        </div>
-        <Skeleton className="h-4 w-full" />
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square rounded-lg" />
-          ))}
-        </div>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6">
+        <div className="text-5xl">👤</div>
+        <h2 className="text-xl font-semibold text-foreground">User not found</h2>
+        <p className="text-muted-foreground text-sm text-center">
+          This user doesn't exist or may have deleted their account.
+        </p>
+        <button
+          onClick={() => navigate({ to: '/' })}
+          className="mt-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          Go Home
+        </button>
       </div>
     );
   }
 
+  // ── No identifier at all ───────────────────────────────────────────────────
+  if (!targetPrincipal && !handleParam) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6">
+        <div className="text-5xl">🔍</div>
+        <h2 className="text-xl font-semibold text-foreground">No user specified</h2>
+        <button
+          onClick={() => navigate({ to: '/' })}
+          className="mt-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          Go Home
+        </button>
+      </div>
+    );
+  }
+
+  // ── Profile view ───────────────────────────────────────────────────────────
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      {/* Profile Header */}
-      <div className="flex items-start gap-4">
-        <AvatarPlaceholder
-          name={profile?.displayName ?? viewedPrincipal.slice(0, 8)}
-          profilePicture={profile?.profilePicture}
-          size="xl"
-        />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold truncate">
-            {profile?.displayName ?? "Unknown User"}
-          </h1>
-          {profile?.handle && (
-            <p className="text-sm text-muted-foreground">@{profile.handle}</p>
-          )}
-          {profile?.bio && (
-            <p className="text-sm mt-1 text-foreground/80">{profile.bio}</p>
-          )}
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={() => navigate({ to: -1 as never })}
+          className="p-2 rounded-full hover:bg-surface-2 transition-colors"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <h1 className="font-semibold text-foreground truncate">
+          {displayName}
+        </h1>
+      </div>
+
+      {/* Profile Info */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <AvatarPlaceholder
+            name={displayName}
+            profilePicture={profile?.profilePicture}
+            size="xl"
+          />
 
           {/* Stats */}
-          <div className="flex gap-4 mt-2 text-sm">
-            <span>
-              <strong>{posts.length}</strong>{" "}
-              <span className="text-muted-foreground">posts</span>
-            </span>
-            <span>
-              <strong>{followers.length}</strong>{" "}
-              <span className="text-muted-foreground">shadows</span>
-            </span>
-            <span>
-              <strong>{following.length}</strong>{" "}
-              <span className="text-muted-foreground">following</span>
-            </span>
-          </div>
-
-          {/* Action Buttons */}
-          {!isOwnProfile && (
-            <div className="flex gap-2 mt-3 flex-wrap">
-              {/* Follow / Unfollow */}
-              <Button
-                size="sm"
-                variant={isFollowing ? "outline" : "default"}
-                onClick={() => {
-                  if (isFollowing) {
-                    unfollowUser.mutate(viewedPrincipal, {
-                      onSuccess: () => toast.success("Unfollowed"),
-                      onError: () => toast.error("Failed to unfollow"),
-                    });
-                  } else {
-                    followUser.mutate(viewedPrincipal, {
-                      onSuccess: () => toast.success("Following!"),
-                      onError: () => toast.error("Failed to follow"),
-                    });
-                  }
-                }}
-                disabled={followUser.isPending || unfollowUser.isPending}
-              >
-                {isFollowing ? "Unfollow" : "Follow"}
-              </Button>
-
-              {/* Message */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  navigate({ to: `/messages/${viewedPrincipal}` })
-                }
-              >
-                <MessageCircle className="w-4 h-4 mr-1" />
-                Message
-              </Button>
-
-              {/* Friend Action */}
-              <FriendActionButton targetPrincipal={viewedPrincipal} />
+          <div className="flex-1 flex flex-col gap-3">
+            <div className="flex gap-6">
+              <div className="text-center">
+                <p className="font-bold text-foreground text-lg leading-tight">
+                  {userPosts.length}
+                </p>
+                <p className="text-muted-foreground text-xs">Posts</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-foreground text-lg leading-tight">
+                  {followers.length}
+                </p>
+                <p className="text-muted-foreground text-xs">Shadows</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-foreground text-lg leading-tight">
+                  {following.length}
+                </p>
+                <p className="text-muted-foreground text-xs">Following</p>
+              </div>
             </div>
+
+            {/* Action buttons */}
+            {!isOwnProfile && targetPrincipal && (
+              <div className="flex gap-2 flex-wrap">
+                {/* Follow button */}
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={
+                    followMutation.isPending || unfollowMutation.isPending
+                  }
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isFollowing
+                      ? 'bg-surface-2 text-foreground border border-border hover:bg-surface-3'
+                      : 'bg-primary text-primary-foreground hover:opacity-90'
+                  } disabled:opacity-50`}
+                >
+                  {followMutation.isPending || unfollowMutation.isPending ? (
+                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : null}
+                  {isFollowing ? 'Unfollow' : 'Follow'}
+                </button>
+
+                {/* Message button */}
+                <button
+                  onClick={() =>
+                    navigate({
+                      to: '/messages/$principalId',
+                      params: { principalId: targetPrincipal },
+                    })
+                  }
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
+                >
+                  <MessageCircle size={15} />
+                  Message
+                </button>
+
+                {/* Friend action */}
+                <FriendActionButton targetPrincipalStr={targetPrincipal} />
+              </div>
+            )}
+
+            {isOwnProfile && (
+              <button
+                onClick={() => navigate({ to: '/profile' })}
+                className="px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors w-fit"
+              >
+                Edit Profile
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Name & Bio */}
+        <div className="mt-4">
+          <p className="font-semibold text-foreground">{displayName}</p>
+          {handle && (
+            <p className="text-muted-foreground text-sm">@{handle}</p>
+          )}
+          {bio && (
+            <p className="text-foreground text-sm mt-1 whitespace-pre-wrap">
+              {bio}
+            </p>
           )}
         </div>
       </div>
 
       {/* Posts Grid */}
-      <div>
-        <h2 className="text-base font-semibold mb-3">Posts</h2>
-        {postsLoading ? (
-          <div className="grid grid-cols-3 gap-2">
+      <div className="px-1">
+        {loadingPosts ? (
+          <div className="grid grid-cols-3 gap-0.5">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square rounded-lg" />
+              <div
+                key={i}
+                className="aspect-square bg-surface-2 animate-pulse"
+              />
             ))}
           </div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            No posts yet.
+        ) : userPosts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <div className="text-4xl">📸</div>
+            <p className="text-muted-foreground text-sm">No posts yet</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard
+          <div className="grid grid-cols-3 gap-0.5">
+            {userPosts.map((post) => (
+              <PostGridItem
                 key={post.id.toString()}
                 post={post}
+                onClick={() => {
+                  setSelectedPost(post);
+                  setCommentsOpen(true);
+                }}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Comments Sheet */}
+      {selectedPost && (
+        <CommentsSheet
+          post={selectedPost}
+          open={commentsOpen}
+          onOpenChange={(open) => {
+            setCommentsOpen(open);
+            if (!open) setSelectedPost(null);
+          }}
+        />
+      )}
     </div>
   );
 }

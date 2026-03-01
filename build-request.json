@@ -1,180 +1,62 @@
 {
   "kind": "build_request",
-  "title": "Profile row logic: friends/followed/visited profiles with glow and post navigation",
+  "title": "Fix ShortSport auto-scroll toggle placement and video zoom issue",
   "projectName": "Smileup",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Extend the Motoko backend actor to store and manage visit history per user: record the last 2 unique profile principals a user has visited, expose a method to log a profile visit (recordVisit(visited: Principal)), and expose a method to retrieve the current user's visit history (getVisitHistory() : [Principal]).",
-      "target": "backend",
+      "text": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-9",
-          "msg-11"
+          "msg-1",
+          "msg-3"
         ],
         "quotes": [
-          "yes,only 2 profile he visited",
-          "yes if it make it advance"
+          "The auto scroll option that make the shortsport scroll automatically when the shortsport video complete at once it scroll down to the next video is not showing why fix it (and put it in bottom side anywhere where place is empty not overlay it)",
+          "1.Bottom left middle the share and comment option just in shortsport"
         ]
       },
       "acceptanceCriteria": [
-        "recordVisit stores up to the 2 most recent distinct principals visited by the caller, dropping the oldest when a 3rd is added.",
-        "getVisitHistory returns the stored visit history for the authenticated caller in recency order.",
-        "Visit history is persisted across canister upgrades using stable storage."
+        "An auto-scroll toggle button is visible on the ShortSport page at the bottom-left, between the share and comment buttons.",
+        "The toggle does not overlap any video content, captions, username, or other UI elements.",
+        "When the toggle is ON and the current video ends, the feed automatically scrolls to the next video.",
+        "When the toggle is OFF, the feed does not auto-scroll on video completion.",
+        "The toggle state persists while the user remains on the ShortSport page."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a backend query method getProfileRowUsers() that returns the list of principals to display in the right-side profile row for the authenticated caller: mutual follows (friends), users the caller follows (non-mutual), and the last 2 visited profiles — deduplicated and ordered (friends first, then following, then visited).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11"
-        ],
-        "quotes": [
-          "the profiles in the right side of the your story is be the profile of the users friend,the user he follow,and the last user he visited"
-        ]
-      },
-      "acceptanceCriteria": [
-        "getProfileRowUsers returns principals for mutual follows, one-way follows, and last 2 visited profiles, deduplicated.",
-        "The ordering is: mutual follows first, then non-mutual follows, then visited profiles.",
-        "The method is only callable by authenticated users."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Add a backend query method getLatestPostByUser(user: Principal) : ?Post that returns the single most recent post created by the specified user, or null if they have no posts.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11"
-        ],
-        "quotes": [
-          "most recent posts",
-          "clicking a glowing profile navigates directly to that user's most recent post"
-        ]
-      },
-      "acceptanceCriteria": [
-        "getLatestPostByUser returns the post with the highest timestamp for the given user.",
-        "Returns null when the user has no posts.",
-        "Any caller (authenticated or anonymous) can call this query."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Add a backend query method hasNewPostSince(user: Principal, since: Int) : Bool that returns true if the specified user has created at least one post after the given timestamp, enabling the frontend to determine whether a profile avatar should glow.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11"
-        ],
-        "quotes": [
-          "if any friend of user, follow user and the visited profile user if send and post anything the profile should glow"
-        ]
-      },
-      "acceptanceCriteria": [
-        "hasNewPostSince returns true when the user has a post with timestamp > since.",
-        "Returns false when no such post exists.",
-        "The query is callable by any authenticated user."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
+      "text": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-9",
-          "msg-11"
+          "msg-1",
+          "msg-3"
         ],
         "quotes": [
-          "the profiles in the right side of the your story is be the profile of the users friend,the user he follow,and the last user he visited",
-          "if any friend of user, follow user and the visited profile user if send and post anything the profile should glow"
+          "the shortsport bit zoom the title or caption of the video never seen as well as post user profile",
+          "2.dont zoom it like that it hide the post's user name and caption of the video also the video should look original original size"
         ]
       },
       "acceptanceCriteria": [
-        "The right-side profile bubbles in StoriesRow are populated from getProfileRowUsers() for the authenticated user.",
-        "Profiles with a new post since the user's last check display a visible glow effect on their avatar.",
-        "The glow state is re-evaluated every ~30 seconds via polling without a full page reload.",
-        "No changes are made to the visual design or layout of StoriesRow beyond toggling the existing glow indicator."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11"
-        ],
-        "quotes": [
-          "the user click on it he directly go to the post of the friend, following or visited profile",
-          "most recent posts"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Clicking a glowing avatar fetches the user's most recent post and navigates to it.",
-        "Clicking a non-glowing avatar navigates to that user's profile page.",
-        "After clicking a glowing avatar, the glow is cleared for that profile and localStorage is updated with the current timestamp.",
-        "If getLatestPostByUser returns null for a glowing profile, fall back to navigating to the user's profile page."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9",
-          "msg-11"
-        ],
-        "quotes": [
-          "the last user he visited",
-          "yes,only 2 profile he visited"
-        ]
-      },
-      "acceptanceCriteria": [
-        "recordVisit is called with the viewed user's principal each time UserProfilePage mounts for a profile that is not the authenticated user's own.",
-        "The call is fire-and-forget and does not block rendering of the profile page.",
-        "Visiting the same profile twice in a row does not create duplicate entries in visit history."
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Generate a migration file (backend/migration.mo) to safely upgrade existing stable state with the new visitHistory stable data structure, preserving all existing posts, profiles, follows, and messages.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-11"
-        ],
-        "quotes": [
-          "yes if it make it advance"
-        ]
-      },
-      "acceptanceCriteria": [
-        "migration.mo initializes the visitHistory stable map as empty for all existing users.",
-        "All previously stored posts, profiles, follow relationships, and messages are preserved after upgrade.",
-        "The canister can be upgraded without data loss."
+        "ShortSport videos are displayed at their original size/aspect ratio without any zoom or crop applied.",
+        "The post creator's username and profile avatar are fully visible on every ShortSport card.",
+        "The video caption is fully readable and not hidden or clipped by the video element.",
+        "No content (username, caption, avatar) is obscured by the video container at any screen size."
       ]
     }
   ],
   "constraints": [
-    "Do not change the visual design, layout, or styling of the StoriesRow component or any other UI component.",
-    "All Motoko logic must remain in the single main actor (backend/main.mo).",
-    "Do not modify any files under frontend/src/hooks/ or frontend/src/components/ui.",
-    "Internet Identity remains the sole authentication mechanism."
+    "Changes must only affect the ShortSport page (frontend/src/pages/ShortSportPage.tsx) and any directly related components.",
+    "Do not modify files listed in frontend.immutablePaths.",
+    "The auto-scroll toggle must not overlay or obscure any video content."
   ],
   "nonGoals": [
-    "Redesigning or restyling any UI component.",
-    "Adding real-time WebSocket-based glow updates (polling is sufficient).",
-    "Tracking more than the last 2 visited profiles per user.",
-    "Showing stories or story viewer functionality changes.",
-    "Adding push notifications for new posts."
+    "Changes to any page other than ShortSport.",
+    "Backend modifications.",
+    "Redesigning the overall ShortSport UI layout beyond what is required for these two fixes."
   ],
   "imageRequirements": {
     "required": [],

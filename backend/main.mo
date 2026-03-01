@@ -3,19 +3,19 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
 import Storage "blob-storage/Storage";
 import Principal "mo:core/Principal";
-import Time "mo:core/Time";
 import Nat "mo:core/Nat";
-import Int "mo:core/Int";
 import Text "mo:core/Text";
-import List "mo:core/List";
-import Set "mo:core/Set";
-import Map "mo:core/Map";
-import Order "mo:core/Order";
+import Time "mo:core/Time";
 import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
-import Migration "migration";
+import Map "mo:core/Map";
+import List "mo:core/List";
+import Set "mo:core/Set";
+import Int "mo:core/Int";
+import Order "mo:core/Order";
 
-(with migration = Migration.run)
+
+
 actor {
   type Post = {
     id : Nat;
@@ -57,6 +57,17 @@ actor {
     data : UserProfileData;
   };
 
+  // Identifier variant for getUserProfile: either a principal or a handle
+  public type UserIdentifier = {
+    #principal : Principal;
+    #handle : Text;
+  };
+
+  let postsMap = Map.empty<Nat, Post>();
+  let commentsMap = Map.empty<Nat, Comment>();
+  var postCounter = 0;
+  var commentCounter = 0;
+
   type NotificationType = {
     #new_shadow;
     #message;
@@ -86,32 +97,6 @@ actor {
     read : Bool;
   };
 
-  // Friendship Types
-  type FriendRequestStatus = {
-    #pending;
-    #accepted;
-    #declined;
-  };
-
-  type FriendRequest = {
-    sender : Principal;
-    recipient : Principal;
-    status : FriendRequestStatus;
-    timestamp : Int;
-  };
-
-  type FriendshipStatusEnum = {
-    #notConnected;
-    #pendingOutgoing;
-    #pendingIncoming;
-    #friends;
-  };
-
-  let postsMap = Map.empty<Nat, Post>();
-  let commentsMap = Map.empty<Nat, Comment>();
-  var postCounter = 0;
-  var commentCounter = 0;
-
   // Store conversations between two users
   let conversations = Map.empty<Principal, Map.Map<Principal, Conversation>>();
   let conversationMessages = Map.empty<Principal, Map.Map<Principal, List.List<Message>>>();
@@ -139,171 +124,359 @@ actor {
     followingCount : Nat;
   };
 
+  // Friendship Types
+  type FriendRequestStatus = {
+    #pending;
+    #accepted;
+    #declined;
+  };
+
+  type FriendRequest = {
+    sender : Principal;
+    recipient : Principal;
+    status : FriendRequestStatus;
+    timestamp : Int;
+  };
+
+  type FriendshipStatusEnum = {
+    #notConnected;
+    #pendingOutgoing;
+    #pendingIncoming;
+    #friends;
+  };
+
   // friendRequests keyed by recipient principal, storing list of requests sent to that recipient
   let friendRequests = Map.empty<Principal, List.List<FriendRequest>>();
   var friendCount = 0;
 
-  // Store last visited profile timestamps per user (visitor -> visited -> timestamp)
-  let lastVisitedProfiles = Map.empty<Principal, Map.Map<Principal, Int>>();
+  // Friend Request Logic
 
-  // Stable map for persistent visit history
-  let visitHistory = Map.empty<Principal, List.List<Principal>>();
-
-  // Record a profile visit (stores persistent last 2 unique entries)
-  public shared ({ caller }) func recordVisit(visited : Principal) : async () {
+  // Send a friend request to receiver; caller must be an authenticated user
+  public shared ({ caller }) func sendFriendRequest(receiver : Principal) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can record visits");
+      Runtime.trap("Unauthorized: Only users can send friend requests");
     };
 
-    let MAX_HISTORY = 2;
+    if (caller == receiver) {
+      Runtime.trap("Cannot send a friend request to yourself");
+    };
 
-    let currentHistory = switch (visitHistory.get(caller)) {
-      case (?history) { history };
+    let newRequest : FriendRequest = {
+      sender = caller;
+      recipient = receiver;
+      status = #pending;
+      timestamp = Time.now();
+    };
+
+    switch (friendRequests.get(receiver)) {
+      case (?requests) {
+        // Prevent duplicate pending requests
+        var duplicate = false;
+        for (req in requests.values()) {
+          if (req.sender == caller and req.status == #pending) {
+            duplicate := true;
+          };
+        };
+        if (duplicate) {
+          Runtime.trap("Friend request already exists");
+        };
+        requests.add(newRequest);
+      };
       case (null) {
-        let newHistory = List.empty<Principal>();
-        visitHistory.add(caller, newHistory);
-        newHistory;
+        let newList = List.empty<FriendRequest>();
+        newList.add(newRequest);
+        friendRequests.add(receiver, newList);
       };
     };
-
-    // Remove if already exists (ensure uniqueness)
-    let filteredHistory = List.empty<Principal>();
-    for (entry in currentHistory.values()) {
-      if (entry != visited) { filteredHistory.add(entry) };
-    };
-
-    // Add new entry at the front
-    filteredHistory.add(visited);
-
-    // Keep only the last MAX_HISTORY entries
-    let finalHistory = List.empty<Principal>();
-    let entriesArray = filteredHistory.toArray();
-    let size = Nat.min(entriesArray.size(), MAX_HISTORY);
-    var i = 0;
-    while (i < size) {
-      finalHistory.add(entriesArray[i]);
-      i += 1;
-    };
-
-    visitHistory.add(caller, finalHistory);
   };
 
-  // Get visit history for the current user
-  public query ({ caller }) func getVisitHistory() : async [Principal] {
+  // Respond to a friend request; caller is the recipient, sender is the one who sent the request
+  public shared ({ caller }) func respondToFriendRequest(sender : Principal, accept : Bool) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access visit history");
+      Runtime.trap("Unauthorized: Only users can respond to friend requests");
     };
-    switch (visitHistory.get(caller)) {
-      case (?history) { history.toArray() };
+
+    switch (friendRequests.get(caller)) {
+      case (?requests) {
+        var found = false;
+        let updatedList = List.empty<FriendRequest>();
+        for (request in requests.values()) {
+          if (request.sender == sender and request.status == #pending) {
+            found := true;
+            let newStatus : FriendRequestStatus = if (accept) { #accepted } else { #declined };
+            updatedList.add({ request with status = newStatus });
+          } else {
+            updatedList.add(request);
+          };
+        };
+        if (not found) {
+          Runtime.trap("No pending friend request from that sender");
+        };
+        requests.clear();
+        for (req in updatedList.values()) {
+          requests.add(req);
+        };
+      };
+      case (null) {
+        Runtime.trap("No friend requests found");
+      };
+    };
+  };
+
+  // Cancel an outgoing friend request; caller is the original sender, receiver is the intended recipient
+  public shared ({ caller }) func cancelFriendRequest(receiver : Principal) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can cancel friend requests");
+    };
+
+    switch (friendRequests.get(receiver)) {
+      case (?requests) {
+        var found = false;
+        let filteredList = List.empty<FriendRequest>();
+        for (req in requests.values()) {
+          if (req.sender == caller and req.status == #pending) {
+            found := true;
+            // skip this request (cancel it)
+          } else {
+            filteredList.add(req);
+          };
+        };
+        if (not found) {
+          Runtime.trap("No pending friend request to cancel");
+        };
+        requests.clear();
+        for (req in filteredList.values()) {
+          requests.add(req);
+        };
+      };
+      case (null) {
+        Runtime.trap("No friend requests to cancel");
+      };
+    };
+  };
+
+  // Unfriend: remove accepted friendship between caller and friendPrincipal
+  public shared ({ caller }) func unfriend(friendPrincipal : Principal) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can unfriend");
+    };
+
+    // Remove accepted request stored under caller (where caller is recipient)
+    switch (friendRequests.get(caller)) {
+      case (?requests) {
+        let filtered = List.empty<FriendRequest>();
+        for (req in requests.values()) {
+          if (not (req.sender == friendPrincipal and req.status == #accepted)) {
+            filtered.add(req);
+          };
+        };
+        requests.clear();
+        for (req in filtered.values()) {
+          requests.add(req);
+        };
+      };
+      case (null) {};
+    };
+
+    // Remove accepted request stored under friendPrincipal (where friendPrincipal is recipient)
+    switch (friendRequests.get(friendPrincipal)) {
+      case (?requests) {
+        let filtered = List.empty<FriendRequest>();
+        for (req in requests.values()) {
+          if (not (req.sender == caller and req.status == #accepted)) {
+            filtered.add(req);
+          };
+        };
+        requests.clear();
+        for (req in filtered.values()) {
+          requests.add(req);
+        };
+      };
+      case (null) {};
+    };
+  };
+
+  // Get all incoming (pending) friend requests for the caller
+  public query ({ caller }) func getIncomingFriendRequests() : async [FriendRequest] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view incoming friend requests");
+    };
+
+    switch (friendRequests.get(caller)) {
+      case (?requests) {
+        let result = List.empty<FriendRequest>();
+        for (req in requests.values()) {
+          if (req.status == #pending) {
+            result.add(req);
+          };
+        };
+        result.toArray();
+      };
       case (null) { [] };
     };
   };
 
-  // Get dynamic list for right-side profile row (deduplicated, ordered: friends, following, visited)
-  public query ({ caller }) func getProfileRowUsers() : async [Principal] {
+  // Get all outgoing (pending) friend requests sent by the caller
+  public query ({ caller }) func getOutgoingFriendRequests() : async [FriendRequest] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can access profile row data");
+      Runtime.trap("Unauthorized: Only users can view outgoing friend requests");
     };
 
-    let MAX_VISITS = 2;
-
-    // Get mutual follows (friends) and non-mutual following
-    let mutualFollows = List.empty<Principal>();
-    let nonMutualFollowing = List.empty<Principal>();
-
-    switch (followingMap.get(caller)) {
-      case (?callerFollowing) {
-        for (user in callerFollowing.values()) {
-          let isMutual = switch (followersMap.get(user)) {
-            case (?followers) { followers.contains(caller) };
-            case (null) { false };
-          };
-          if (isMutual) {
-            mutualFollows.add(user);
-          } else {
-            nonMutualFollowing.add(user);
-          };
+    let result = List.empty<FriendRequest>();
+    for ((_, requests) in friendRequests.entries()) {
+      for (req in requests.values()) {
+        if (req.sender == caller and req.status == #pending) {
+          result.add(req);
         };
       };
-      case (null) {};
     };
-
-    // Get last 2 visited unique profiles (not already in mutual or following)
-    let visits = List.empty<Principal>();
-    switch (visitHistory.get(caller)) {
-      case (?history) {
-        var count = 0;
-        for (visit in history.values()) {
-          if (count < MAX_VISITS) {
-            var isDuplicate = false;
-            for (entry in mutualFollows.values()) {
-              if (entry == visit) { isDuplicate := true };
-            };
-            for (entry in nonMutualFollowing.values()) {
-              if (entry == visit) { isDuplicate := true };
-            };
-            if (not isDuplicate) {
-              visits.add(visit);
-              count += 1;
-            };
-          };
-        };
-      };
-      case (null) {};
-    };
-
-    let result = List.empty<Principal>();
-    for (entry in mutualFollows.values()) { result.add(entry) };
-    for (entry in nonMutualFollowing.values()) { result.add(entry) };
-    for (entry in visits.values()) { result.add(entry) };
-
     result.toArray();
   };
 
-  // Get the latest post by a specific user (public - no auth needed)
-  public query func getLatestPostByUser(user : Principal) : async ?Post {
-    let userPosts = List.empty<Post>();
-    for ((_, post) in postsMap.entries()) {
-      if (post.authorPrincipal == user) {
-        userPosts.add(post);
+  // Get the list of accepted friends for the caller
+  public query ({ caller }) func getFriendsList() : async [Principal] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view their friends list");
+    };
+
+    let friends = List.empty<Principal>();
+    for ((_, requests) in friendRequests.entries()) {
+      for (req in requests.values()) {
+        if (req.status == #accepted) {
+          if (req.sender == caller) {
+            friends.add(req.recipient);
+          } else if (req.recipient == caller) {
+            friends.add(req.sender);
+          };
+        };
+      };
+    };
+    friends.toArray();
+  };
+
+  // Get the friendship status between the caller and another principal
+  public query ({ caller }) func getFriendshipStatus(otherPrincipal : Principal) : async FriendshipStatusEnum {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can check friendship status");
+    };
+
+    // Check requests stored under caller (caller is recipient)
+    switch (friendRequests.get(caller)) {
+      case (?requests) {
+        for (req in requests.values()) {
+          if (req.sender == otherPrincipal) {
+            switch (req.status) {
+              case (#pending) { return #pendingIncoming };
+              case (#accepted) { return #friends };
+              case (#declined) {};
+            };
+          };
+        };
+      };
+      case (null) {};
+    };
+
+    // Check requests stored under otherPrincipal (caller is sender)
+    switch (friendRequests.get(otherPrincipal)) {
+      case (?requests) {
+        for (req in requests.values()) {
+          if (req.sender == caller) {
+            switch (req.status) {
+              case (#pending) { return #pendingOutgoing };
+              case (#accepted) { return #friends };
+              case (#declined) {};
+            };
+          };
+        };
+      };
+      case (null) {};
+    };
+
+    #notConnected;
+  };
+
+  // New searchUsers endpoint
+  public shared ({ caller }) func searchUsers(searchStr : Text) : async [UserProfileSummary] {
+    let entries = userProfiles.entries();
+    let results = List.empty<UserProfileSummary>();
+
+    for ((principal, user) in entries) {
+      let handleMatches = user.data.handle.contains(#text searchStr);
+      let displayNameMatches = user.data.displayName.contains(#text searchStr);
+
+      if (handleMatches or displayNameMatches) {
+        let postCount = postsMap.values().toArray().filter(
+          func(post) { post.authorPrincipal == principal }
+        ).size();
+
+        let followersCount = switch (followersMap.get(principal)) {
+          case (?followers) { followers.size() };
+          case (null) { 0 };
+        };
+
+        let followingCount = switch (followingMap.get(principal)) {
+          case (?following) { following.size() };
+          case (null) { 0 };
+        };
+
+        let summary : UserProfileSummary = {
+          principal;
+          handle = user.data.handle;
+          displayName = user.data.displayName;
+          bio = user.data.bio;
+          avatarUrl = user.data.profilePicture;
+          postCount;
+          followerCount = followersCount;
+          followingCount;
+        };
+        results.add(summary);
       };
     };
 
-    if (userPosts.isEmpty()) { return null };
+    results.toArray();
+  };
 
-    let sortedPosts = userPosts.toArray().sort(
-      func(a : Post, b : Post) : Order.Order {
-        Int.compare(b.timestamp, a.timestamp);
-      }
+  // Messaging System
+
+  // Send a message to another user, optionally referencing a post
+  public shared ({ caller }) func sendMessage(recipient : Principal, content : Text, postId : ?Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can send messages");
+    };
+
+    let newMessage = {
+      sender = caller;
+      recipient;
+      content;
+      timestamp = Time.now();
+      postId;
+      read = false;
+    };
+
+    addMessageToConversationInternal(caller, recipient, newMessage);
+    addMessageToConversationInternal(recipient, caller, newMessage);
+
+    // Update conversations for both participants
+    updateConversationInternal(caller, recipient);
+    updateConversationInternal(recipient, caller);
+
+    // Create a notification for the recipient
+    createNotification(
+      recipient,
+      #message,
+      caller,
+      postId,
     );
-
-    if (sortedPosts.size() > 0) { ?sortedPosts[0] } else { null };
   };
 
-  // Check if a user has posted since a given timestamp (public - no auth needed)
-  public query func hasNewPostSince(
-    user : Principal,
-    since : Int,
-  ) : async Bool {
-    for ((_, post) in postsMap.entries()) {
-      if (post.authorPrincipal == user and post.timestamp > since) {
-        return true;
-      };
-    };
-    false;
-  };
-
-  // Internal helper: add a message to the conversation store
-  func addMessageToConversationInternal(
-    sender : Principal,
-    recipient : Principal,
-    message : Message,
-  ) {
+  func addMessageToConversationInternal(sender : Principal, recipient : Principal, message : Message) {
     let existingConvo = conversationMessages.get(sender);
 
     switch (existingConvo) {
       case (?recipientConvoMap) {
+        // Check if conversation with recipient exists
         let recipientMessagesMap = recipientConvoMap.get(recipient);
+
         switch (recipientMessagesMap) {
           case (?messages) {
             messages.add(message);
@@ -316,8 +489,10 @@ actor {
         };
       };
       case (null) {
+        // Create new conversations map for sender
         let newConvoList = List.empty<Message>();
         newConvoList.add(message);
+
         let newRecipients = Map.empty<Principal, List.List<Message>>();
         newRecipients.add(recipient, newConvoList);
         conversationMessages.add(sender, newRecipients);
@@ -325,7 +500,7 @@ actor {
     };
   };
 
-  // Internal helper: update conversation metadata
+  // Update the conversation metadata
   func updateConversationInternal(participant1 : Principal, participant2 : Principal) {
     let participants = (participant1, participant2);
     let conversation = {
@@ -334,6 +509,7 @@ actor {
     };
 
     let existingConvos = conversations.get(participant1);
+
     switch (existingConvos) {
       case (?allConversations) {
         allConversations.add(participant2, conversation);
@@ -346,34 +522,7 @@ actor {
     };
   };
 
-  // Send a message (authenticated users only)
-  public shared ({ caller }) func sendMessage(
-    recipient : Principal,
-    content : Text,
-    postId : ?Nat,
-  ) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can send messages");
-    };
-
-    let message : Message = {
-      sender = caller;
-      recipient;
-      content;
-      timestamp = Time.now();
-      postId;
-      read = false;
-    };
-
-    addMessageToConversationInternal(caller, recipient, message);
-    addMessageToConversationInternal(recipient, caller, message);
-    updateConversationInternal(caller, recipient);
-    updateConversationInternal(recipient, caller);
-
-    createNotification(recipient, #message, caller, postId);
-  };
-
-  // Get a list of all conversations for the caller
+  // Get a list of all conversations for a user
   public query ({ caller }) func getConversations() : async [Conversation] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view their conversations");
@@ -386,7 +535,7 @@ actor {
     };
   };
 
-  // Get messages for a specific conversation (caller must be a participant)
+  // Get messages for a specific conversation
   public query ({ caller }) func getMessages(otherParticipant : Principal) : async [Message] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view their messages");
@@ -425,43 +574,53 @@ actor {
     };
   };
 
-  // Follow a user (authenticated users only)
+  // Focusing/Unfollowing (Shadows)
+
+  // Follow a user
   public shared ({ caller }) func followUser(target : Principal) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can follow others");
     };
 
-    switch (followingMap.get(caller)) {
+    // Update following map for caller
+    let callerFollowing = switch (followingMap.get(caller)) {
       case (?following) {
         following.add(target);
+        following;
       };
       case (null) {
         let newFollowing = Set.empty<Principal>();
         newFollowing.add(target);
         followingMap.add(caller, newFollowing);
+        newFollowing;
       };
     };
 
-    switch (followersMap.get(target)) {
+    // Update followers map for the target
+    let targetFollowers = switch (followersMap.get(target)) {
       case (?followers) {
         followers.add(caller);
+        followers;
       };
       case (null) {
         let newFollowers = Set.empty<Principal>();
         newFollowers.add(caller);
         followersMap.add(target, newFollowers);
+        newFollowers;
       };
     };
 
+    // Create a notification for the target
     createNotification(target, #new_shadow, caller, null);
   };
 
-  // Unfollow a user (authenticated users only)
+  // Unfollow a user
   public shared ({ caller }) func unfollowUser(target : Principal) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can unfollow others");
     };
 
+    // Remove target from caller's following set
     switch (followingMap.get(caller)) {
       case (?following) {
         following.remove(target);
@@ -472,6 +631,7 @@ actor {
       case (null) {};
     };
 
+    // Remove caller from target's followers set
     switch (followersMap.get(target)) {
       case (?followers) {
         followers.remove(caller);
@@ -483,7 +643,7 @@ actor {
     };
   };
 
-  // Get followers for a user (public)
+  // Get followers (shadows) for a user - public, no auth needed
   public query func getFollowers(user : Principal) : async [Principal] {
     switch (followersMap.get(user)) {
       case (?followers) {
@@ -493,7 +653,7 @@ actor {
     };
   };
 
-  // Get users being followed by a user (public)
+  // Get users being followed by a user - public, no auth needed
   public query func getFollowing(user : Principal) : async [Principal] {
     switch (followingMap.get(user)) {
       case (?following) {
@@ -553,13 +713,9 @@ actor {
     );
   };
 
-  // Internal: create a notification for a user
-  func createNotification(
-    user : Principal,
-    notificationType : NotificationType,
-    from : Principal,
-    postId : ?Nat,
-  ) {
+  // Notification System
+
+  func createNotification(user : Principal, notificationType : NotificationType, from : Principal, postId : ?Nat) {
     let newNotification = {
       id = notificationIdCounter;
       notificationType;
@@ -584,7 +740,7 @@ actor {
     notificationIdCounter += 1;
   };
 
-  // Get all notifications for the caller
+  // Get all notifications for a user
   public query ({ caller }) func getNotifications() : async [Notification] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view their notifications");
@@ -616,18 +772,14 @@ actor {
     };
   };
 
-  // Get caller's own profile (authenticated users only)
+  // Required by instructions: get caller's own profile (authenticated users only)
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfileData {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can get their profile");
     };
-    switch (userProfiles.get(caller)) {
-      case (?profile) { ?profile.data };
-      case (null) { null };
-    };
+    userProfiles.get(caller).map<UserProfile, UserProfileData>(func(profile) { profile.data });
   };
 
-  // Save caller's own profile (authenticated users only)
   public shared ({ caller }) func saveCallerUserProfile(profileData : UserProfileData) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can save their profile");
@@ -655,11 +807,28 @@ actor {
     userProfiles.add(caller, { caller; data = profileData });
   };
 
-  // Get another user's profile by principal (public)
-  public query func getUserProfile(principal : Principal) : async ?UserProfileData {
-    switch (userProfiles.get(principal)) {
-      case (?profile) { ?profile.data };
-      case (null) { null };
+  // Get another user's profile by either principal or handle (public - no auth required).
+  // Accepts a UserIdentifier variant: #principal p or #handle h.
+  // Returns null if the user does not exist.
+  public query func getUserProfile(identifier : UserIdentifier) : async ?UserProfileData {
+    switch (identifier) {
+      case (#principal(p)) {
+        switch (userProfiles.get(p)) {
+          case (?userProfile) { ?userProfile.data };
+          case (null) { null };
+        };
+      };
+      case (#handle(h)) {
+        switch (handleToPrincipalMap.get(h)) {
+          case (?principal) {
+            switch (userProfiles.get(principal)) {
+              case (?userProfile) { ?userProfile.data };
+              case (null) { null };
+            };
+          };
+          case (null) { null };
+        };
+      };
     };
   };
 
@@ -693,20 +862,14 @@ actor {
 
   // Get profile by principal (public)
   public query func getProfileByPrincipal(principal : Principal) : async ?UserProfileData {
-    switch (userProfiles.get(principal)) {
-      case (?profile) { ?profile.data };
-      case (null) { null };
-    };
+    userProfiles.get(principal).map<UserProfile, UserProfileData>(func(profile) { profile.data });
   };
 
   // Get profile by handle (public)
   public query func getProfileByHandle(handle : Text) : async ?UserProfileData {
     switch (handleToPrincipalMap.get(handle)) {
       case (?principal) {
-        switch (userProfiles.get(principal)) {
-          case (?profile) { ?profile.data };
-          case (null) { null };
-        };
+        userProfiles.get(principal).map<UserProfile, UserProfileData>(func(profile) { profile.data });
       };
       case (null) { null };
     };
@@ -744,14 +907,14 @@ actor {
     newPost.id;
   };
 
-  // Custom comparator for sorting posts by timestamp DESC (newest first)
+  // Custom comparator function for sorting by timestamp DESC (newest first)
   func compareByTimestampDesc(a : Post, b : Post) : Order.Order {
     Int.compare(b.timestamp, a.timestamp);
   };
 
-  // Get all posts sorted by timestamp descending (public)
+  // Get the most recent posts sorted by timestamp (descending order)
   public query func getAllPosts() : async [Post] {
-    postsMap.values().toArray().sort(compareByTimestampDesc);
+    postsMap.values().toArray().sort(compareByTimestampDesc)
   };
 
   // Get posts by user (public)
@@ -789,11 +952,7 @@ actor {
   };
 
   // Add a comment (authenticated users only)
-  public shared ({ caller }) func addComment(
-    postId : Nat,
-    authorName : Text,
-    text : Text,
-  ) : async Nat {
+  public shared ({ caller }) func addComment(postId : Nat, authorName : Text, text : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can add comments");
     };

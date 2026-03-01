@@ -64,13 +64,13 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
   const sendMessage = useSendMessage();
   const [selectedFriends, setSelectedFriends] = useState<Set<string>>(new Set());
 
-  const toggleFriend = (principal: string) => {
+  const toggleFriend = (principalStr: string) => {
     setSelectedFriends((prev) => {
       const next = new Set(prev);
-      if (next.has(principal)) {
-        next.delete(principal);
+      if (next.has(principalStr)) {
+        next.delete(principalStr);
       } else {
-        next.add(principal);
+        next.add(principalStr);
       }
       return next;
     });
@@ -87,7 +87,7 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
       await Promise.all(
         Array.from(selectedFriends).map((friendPrincipal) =>
           sendMessage.mutateAsync({
-            recipient: friendPrincipal,
+            recipientStr: friendPrincipal,
             content: shareText,
             postId,
           })
@@ -105,6 +105,9 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
     setSelectedFriends(new Set());
     onOpenChange(false);
   };
+
+  // friends is Principal[] — convert to string[] for rendering
+  const friendStrings: string[] = friends?.map((p) => p.toString()) ?? [];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -134,7 +137,7 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
                 </div>
               ))}
             </div>
-          ) : !friends || friends.length === 0 ? (
+          ) : friendStrings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <Users className="w-8 h-8 opacity-30" />
               <p className="text-sm">No friends yet</p>
@@ -142,7 +145,7 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
             </div>
           ) : (
             <div className="space-y-1">
-              {friends.map((principalStr) => (
+              {friendStrings.map((principalStr) => (
                 <FriendItem
                   key={principalStr}
                   principalStr={principalStr}
@@ -154,7 +157,7 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
           )}
         </div>
 
-        {identity && friends && friends.length > 0 && (
+        {identity && friendStrings.length > 0 && (
           <div className="px-4 py-3 border-t border-border">
             <Button
               onClick={handleSend}

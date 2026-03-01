@@ -31,17 +31,8 @@ import {
   Loader2,
   Play,
 } from 'lucide-react';
-import type { Conversation, Message } from '../backend';
-import { Principal } from '@dfinity/principal';
+import type { Conversation, Message, FriendRequest } from '../backend';
 import { toast } from 'sonner';
-
-// Local FriendRequest type (not exported from backend interface)
-interface FriendRequest {
-  sender: Principal;
-  recipient: Principal;
-  timestamp: bigint;
-  status: string;
-}
 
 function timeAgo(timestamp: bigint): string {
   const now = Date.now();
@@ -152,7 +143,6 @@ function MessageBubble({
                 : 'border-border bg-background/50'
             }`}
           >
-            {/* Preview card */}
             <div className="flex items-center gap-2 px-3 py-2 w-full">
               <div
                 className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
@@ -232,7 +222,7 @@ function ThreadView({
     if (messagesLength > 0) {
       markRead.mutate(otherPrincipal);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messagesLength, otherPrincipal]);
 
   useEffect(() => {
@@ -241,13 +231,13 @@ function ThreadView({
 
   const handleSend = () => {
     if (!text.trim()) return;
-    sendMessage.mutate({ recipient: otherPrincipal, content: text.trim() });
+    sendMessage.mutate({ recipientStr: otherPrincipal, content: text.trim() });
     setText('');
   };
 
   const handleSharePost = (postId: bigint) => {
     sendMessage.mutate({
-      recipient: otherPrincipal,
+      recipientStr: otherPrincipal,
       content: 'Shared a shortspot with you',
       postId,
     });
@@ -440,7 +430,7 @@ function SocialTab() {
   const handleAccept = async (senderPrincipal: string) => {
     setRespondingTo(senderPrincipal);
     try {
-      await respondMutation.mutateAsync({ senderPrincipal, accept: true });
+      await respondMutation.mutateAsync({ senderStr: senderPrincipal, accept: true });
       toast.success('Friend request accepted! 🎉');
     } catch {
       toast.error('Failed to accept friend request.');
@@ -452,7 +442,7 @@ function SocialTab() {
   const handleDecline = async (senderPrincipal: string) => {
     setRespondingTo(senderPrincipal);
     try {
-      await respondMutation.mutateAsync({ senderPrincipal, accept: false });
+      await respondMutation.mutateAsync({ senderStr: senderPrincipal, accept: false });
       toast.success('Friend request declined.');
     } catch {
       toast.error('Failed to decline friend request.');
@@ -559,6 +549,9 @@ function FriendZoneTab({
 }) {
   const { data: friends, isLoading } = useGetFriendsList();
 
+  // friends is Principal[] — convert to string[] for rendering
+  const friendStrings: string[] = friends?.map((p) => p.toString()) ?? [];
+
   if (isLoading) {
     return (
       <div className="space-y-1 p-2">
@@ -576,13 +569,13 @@ function FriendZoneTab({
     );
   }
 
-  if (!friends || friends.length === 0) {
+  if (friendStrings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-muted-foreground px-4 text-center">
         <Users size={32} className="mb-2 opacity-40" />
         <p className="text-sm font-medium">No friends yet</p>
         <p className="text-xs mt-1 opacity-70">
-          Follow people and they'll appear here when they follow back.
+          Send friend requests to connect with people.
         </p>
       </div>
     );
@@ -591,9 +584,9 @@ function FriendZoneTab({
   return (
     <div>
       <p className="px-4 py-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-        Friends · {friends.length}
+        Friends · {friendStrings.length}
       </p>
-      {friends.map((principalStr) => (
+      {friendStrings.map((principalStr) => (
         <FriendZoneItem
           key={principalStr}
           principalStr={principalStr}
@@ -604,7 +597,7 @@ function FriendZoneTab({
   );
 }
 
-// ─── Main MessagesPage ────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 interface MessagesPageProps {
   initialPrincipal?: string;
@@ -612,61 +605,59 @@ interface MessagesPageProps {
 
 export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
   const { identity } = useInternetIdentity();
-  const navigate = useNavigate();
-  const [activeThread, setActiveThread] = useState<string | null>(
+  const myPrincipal = identity?.getPrincipal().toString() ?? '';
+
+  const [activeConversation, setActiveConversation] = useState<string | null>(
     initialPrincipal ?? null
   );
 
-  const myPrincipal = identity?.getPrincipal().toString() ?? '';
-  const { data: conversations, isLoading: convsLoading } = useGetConversations();
+  const { data: conversations, isLoading: loadingConversations } =
+    useGetConversations();
 
-  useEffect(() => {
-    if (initialPrincipal) {
-      setActiveThread(initialPrincipal);
-    }
-  }, [initialPrincipal]);
+  const handleStartConversation = (principal: string) => {
+    setActiveConversation(principal);
+  };
 
   if (!identity) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-muted-foreground">
-        <MessageCircle size={48} className="opacity-30" />
-        <p className="text-lg font-semibold">Sign in to view messages</p>
-        <Button
-          onClick={() => navigate({ to: '/profile' })}
-          className="gap-2 rounded-full"
-        >
-          <LogIn size={16} />
-          Sign In
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-muted-foreground px-6 text-center">
+        <LogIn size={40} className="opacity-40" />
+        <p className="text-lg font-semibold text-foreground">Sign in to message</p>
+        <p className="text-sm">
+          You need to be signed in to send and receive messages.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] max-w-4xl mx-auto">
-      {/* Sidebar */}
+    <div className="flex h-[calc(100dvh-4rem)] overflow-hidden">
+      {/* Sidebar — conversation list */}
       <div
-        className={`${
-          activeThread ? 'hidden md:flex' : 'flex'
-        } flex-col w-full md:w-80 border-r border-border`}
+        className={`flex flex-col border-r border-border bg-background ${
+          activeConversation ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'
+        }`}
       >
-        <Tabs defaultValue="inbox" className="flex flex-col h-full">
-          <div className="px-4 pt-4 pb-0">
-            <TabsList className="w-full">
-              <TabsTrigger value="inbox" className="flex-1 text-xs">
-                Inbox
-              </TabsTrigger>
-              <TabsTrigger value="social" className="flex-1 text-xs">
-                Social
-              </TabsTrigger>
-              <TabsTrigger value="friends" className="flex-1 text-xs">
-                Friend Zone
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <div className="px-4 py-3 border-b border-border">
+          <h1 className="font-bold text-lg">Messages</h1>
+        </div>
 
+        <Tabs defaultValue="inbox" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="mx-4 mt-2 mb-1 grid grid-cols-3 h-9">
+            <TabsTrigger value="inbox" className="text-xs">
+              Inbox
+            </TabsTrigger>
+            <TabsTrigger value="social" className="text-xs">
+              Social
+            </TabsTrigger>
+            <TabsTrigger value="friends" className="text-xs">
+              Friends
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Inbox Tab */}
           <TabsContent value="inbox" className="flex-1 overflow-y-auto mt-0">
-            {convsLoading ? (
+            {loadingConversations ? (
               <div className="space-y-1 p-2">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3">
@@ -678,28 +669,7 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
                   </div>
                 ))}
               </div>
-            ) : conversations && conversations.length > 0 ? (
-              conversations.map((conv, idx) => (
-                <ConversationItem
-                  key={idx}
-                  conversation={conv}
-                  myPrincipal={myPrincipal}
-                  isActive={
-                    activeThread ===
-                    (conv.participants[0].toString() === myPrincipal
-                      ? conv.participants[1].toString()
-                      : conv.participants[0].toString())
-                  }
-                  onClick={() => {
-                    const other =
-                      conv.participants[0].toString() === myPrincipal
-                        ? conv.participants[1].toString()
-                        : conv.participants[0].toString();
-                    setActiveThread(other);
-                  }}
-                />
-              ))
-            ) : (
+            ) : !conversations || conversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-muted-foreground px-4 text-center">
                 <MessageCircle size={32} className="mb-2 opacity-40" />
                 <p className="text-sm font-medium">No conversations yet</p>
@@ -707,36 +677,61 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
                   Start a conversation from someone's profile.
                 </p>
               </div>
+            ) : (
+              <div>
+                {conversations.map((conv, idx) => (
+                  <ConversationItem
+                    key={idx}
+                    conversation={conv}
+                    myPrincipal={myPrincipal}
+                    isActive={
+                      activeConversation ===
+                      (conv.participants[0].toString() === myPrincipal
+                        ? conv.participants[1].toString()
+                        : conv.participants[0].toString())
+                    }
+                    onClick={() => {
+                      const other =
+                        conv.participants[0].toString() === myPrincipal
+                          ? conv.participants[1].toString()
+                          : conv.participants[0].toString();
+                      setActiveConversation(other);
+                    }}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
 
+          {/* Social Tab */}
           <TabsContent value="social" className="flex-1 overflow-y-auto mt-0">
             <SocialTab />
           </TabsContent>
 
+          {/* Friends Tab */}
           <TabsContent value="friends" className="flex-1 overflow-y-auto mt-0">
-            <FriendZoneTab onStartConversation={setActiveThread} />
+            <FriendZoneTab onStartConversation={handleStartConversation} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Thread View */}
+      {/* Thread view */}
       <div
-        className={`${
-          activeThread ? 'flex' : 'hidden md:flex'
-        } flex-col flex-1`}
+        className={`flex-1 overflow-hidden ${
+          activeConversation ? 'flex flex-col' : 'hidden md:flex md:flex-col'
+        }`}
       >
-        {activeThread ? (
+        {activeConversation ? (
           <ThreadView
-            otherPrincipal={activeThread}
+            otherPrincipal={activeConversation}
             myPrincipal={myPrincipal}
-            onBack={() => setActiveThread(null)}
+            onBack={() => setActiveConversation(null)}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle size={48} className="mb-3 opacity-30" />
-            <p className="text-base font-medium">Select a conversation</p>
-            <p className="text-sm opacity-70 mt-1">
+            <MessageCircle size={48} className="mb-3 opacity-20" />
+            <p className="text-sm font-medium">Select a conversation</p>
+            <p className="text-xs mt-1 opacity-60">
               Choose from your inbox or start a new one.
             </p>
           </div>

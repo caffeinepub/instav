@@ -2,19 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye, UserCheck } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useGetAllPosts, useSearchUsers } from '../hooks/useQueries';
-import type { Post } from '../backend';
+import type { Post, UserProfileSummary } from '../backend';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
-
-// Local type for user search results (UserProfileSummary is not in the backend interface)
-interface UserSearchResult {
-  handle: string;
-  profile: {
-    displayName: string;
-    handle: string;
-    bio: string;
-    profilePicture?: import('../backend').ExternalBlob;
-  };
-}
 
 export default function ExplorePage() {
   const navigate = useNavigate();
@@ -29,7 +18,7 @@ export default function ExplorePage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Use the searchUsers hook for fuzzy + exact search
+  // Use the new searchUsers hook for fuzzy + exact search
   const { data: userResults, isLoading: usersLoading } = useSearchUsers(
     activeTab === 'users' ? debouncedQuery : ''
   );
@@ -148,7 +137,7 @@ function UserSearchResults({
   onNavigate,
 }: {
   query: string;
-  users: UserSearchResult[];
+  users: UserProfileSummary[];
   isLoading: boolean;
   onNavigate: (handle: string) => void;
 }) {
@@ -189,7 +178,7 @@ function UserSearchResults({
       </p>
       {users.map((user) => (
         <UserResultCard
-          key={user.handle}
+          key={user.principal.toString()}
           user={user}
           onNavigate={onNavigate}
         />
@@ -202,7 +191,7 @@ function UserResultCard({
   user,
   onNavigate,
 }: {
-  user: UserSearchResult;
+  user: UserProfileSummary;
   onNavigate: (handle: string) => void;
 }) {
   return (
@@ -211,22 +200,27 @@ function UserResultCard({
       className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors text-left"
     >
       <AvatarPlaceholder
-        name={user.profile.displayName || user.handle}
-        profilePicture={user.profile.profilePicture}
+        name={user.displayName || user.handle}
+        profilePicture={user.avatarUrl ?? null}
         size="md"
       />
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground truncate">
-          {user.profile.displayName || user.handle}
+          {user.displayName || user.handle}
         </p>
         <p className="text-xs text-primary truncate">@{user.handle}</p>
-        {user.profile.bio && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.profile.bio}</p>
+        {user.bio && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
         )}
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <UserCheck className="w-3 h-3" />
+          {Number(user.followerCount)}
+        </span>
+        <span className="flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" />
+          {Number(user.postCount)}
         </span>
       </div>
     </button>

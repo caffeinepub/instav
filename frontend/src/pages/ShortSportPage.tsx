@@ -1,178 +1,242 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Heart,
-  Volume2,
-  VolumeX,
-  Play,
-  Loader2,
-  MessageCircle,
-  Share2,
-  PlayCircle,
-  PauseCircle,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import type { Post } from '../backend';
-import { useGetAllPosts, useLikePost, useGetComments } from '../hooks/useQueries';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import {
+  useGetAllPosts,
+  useLikePost,
+  useRecordView,
+  useGetCallerUserProfile,
+} from '../hooks/useQueries';
+import { Post } from '../backend';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
 import CommentsSheet from '../components/CommentsSheet';
 import ShareModal from '../components/ShareModal';
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  Volume2,
+  VolumeX,
+  Play,
+  RefreshCw,
+} from 'lucide-react';
 
-// ─── Reel Item ────────────────────────────────────────────────────────────────
+// ─── Video Item ───────────────────────────────────────────────────────────────
 
-interface ReelItemProps {
+interface VideoItemProps {
   post: Post;
-  muted: boolean;
   isActive: boolean;
-  optimisticLike?: number;
-  autoScrollEnabled: boolean;
-  onLike: (id: bigint) => void;
-  onComment: (post: Post) => void;
-  onShare: (post: Post) => void;
-  onProfileClick: (authorPrincipal: string) => void;
+  isMuted: boolean;
+  autoScroll: boolean;
+  onToggleMute: () => void;
+  onLike: () => void;
+  onComment: () => void;
+  onShare: () => void;
+  onProfileClick: () => void;
+  onToggleAutoScroll: () => void;
   onVideoEnded: () => void;
-  onVideoClick: () => void;
 }
 
-function CommentCount({ postId }: { postId: bigint }) {
-  const { data: comments } = useGetComments(postId);
-  return <span className="text-white text-xs">{comments?.length ?? 0}</span>;
-}
-
-function ReelItem({
+function VideoItem({
   post,
-  muted,
   isActive,
-  optimisticLike,
-  autoScrollEnabled,
+  isMuted,
+  autoScroll,
+  onToggleMute,
   onLike,
   onComment,
   onShare,
   onProfileClick,
+  onToggleAutoScroll,
   onVideoEnded,
-  onVideoClick,
-}: ReelItemProps) {
+}: VideoItemProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const likeCount = optimisticLike ?? Number(post.likeCount);
-  const videoSrc = post.media?.getDirectURL();
-  const isVideo = post.mediaType === 'video';
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const recordView = useRecordView();
 
-  // Play/pause based on whether this reel is in view
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
+    const video = videoRef.current;
+    if (!video) return;
     if (isActive) {
-      el.play().catch(() => {});
+      video.play().catch(() => {});
+      setIsPlaying(true);
+      recordView.mutate(post.id);
     } else {
-      el.pause();
-      el.currentTime = 0;
+      video.pause();
+      video.currentTime = 0;
+      setIsPlaying(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  // Sync muted state
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.muted = muted;
-  }, [muted]);
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
 
-  const authorPrincipal = post.authorPrincipal.toString();
+  const handleVideoClick = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleLike = () => {
+    setLiked((prev) => !prev);
+    onLike();
+  };
+
+  const isVideo = post.mediaType?.startsWith('video');
+  const mediaUrl = post.media?.getDirectURL();
 
   return (
-    <div className="reel-item relative w-full flex-shrink-0" style={{ height: '100dvh' }}>
-      {/* Media */}
-      {isVideo && videoSrc ? (
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          className="w-full h-full object-contain bg-black"
-          loop={!autoScrollEnabled}
-          muted={muted}
-          playsInline
-          onClick={onVideoClick}
-          onEnded={autoScrollEnabled ? onVideoEnded : undefined}
-        />
-      ) : videoSrc ? (
-        <img
-          src={videoSrc}
-          alt={post.caption}
-          className="w-full h-full object-contain bg-black"
-          onClick={onVideoClick}
-        />
-      ) : (
-        <div
-          className="w-full h-full bg-black flex items-center justify-center cursor-pointer"
-          onClick={onVideoClick}
-        >
-          <Play className="w-12 h-12 text-white/30" />
-        </div>
-      )}
+    <div className="relative w-full h-full bg-black flex flex-col overflow-hidden">
+      {/* ── Media area ── */}
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              ref={videoRef}
+              src={mediaUrl}
+              className="max-w-full max-h-full w-auto h-auto object-contain"
+              loop={!autoScroll}
+              playsInline
+              muted={isMuted}
+              onClick={handleVideoClick}
+              onEnded={autoScroll ? onVideoEnded : undefined}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt={post.caption}
+              className="max-w-full max-h-full w-auto h-auto object-contain"
+              onClick={handleVideoClick}
+            />
+          )
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center bg-surface-2 cursor-pointer"
+            onClick={handleVideoClick}
+          >
+            <div className="text-center px-8">
+              <p className="text-foreground text-lg font-medium">{post.caption}</p>
+            </div>
+          </div>
+        )}
 
-      {/* Overlay */}
-      <div className="absolute inset-0 flex flex-col justify-end pointer-events-none">
-        {/* Bottom row: author info + side actions */}
-        <div className="flex items-end justify-between px-4 pb-6 pointer-events-auto">
-          {/* Left: Author info + caption */}
-          <div className="flex-1 mr-4">
-            {/* Author row — clickable */}
-            <button
-              onClick={() => onProfileClick(authorPrincipal)}
-              className="flex items-center gap-2 mb-2 group"
-            >
-              <AvatarPlaceholder
-                userId={authorPrincipal}
-                name={post.authorName}
-                size="sm"
-                className="ring-2 ring-white/60 group-hover:ring-white transition-all"
+        {/* Play/Pause overlay */}
+        {!isPlaying && isVideo && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center">
+              <Play size={28} className="text-white ml-1" />
+            </div>
+          </div>
+        )}
+
+        {/* Right-side action buttons (mute, like, bookmark) */}
+        <div className="absolute right-3 bottom-4 flex flex-col items-center gap-4">
+          {/* Mute */}
+          <button
+            onClick={onToggleMute}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+              {isMuted ? (
+                <VolumeX size={18} className="text-white" />
+              ) : (
+                <Volume2 size={18} className="text-white" />
+              )}
+            </div>
+          </button>
+
+          {/* Like */}
+          <button
+            onClick={handleLike}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+              <Heart
+                size={20}
+                className={liked ? 'text-red-500 fill-red-500' : 'text-white'}
               />
-              <span className="font-bold text-white text-sm drop-shadow group-hover:underline">
-                {post.authorName}
-              </span>
-            </button>
+            </div>
+            <span className="text-white text-xs drop-shadow">
+              {Number(post.likeCount) + (liked ? 1 : 0)}
+            </span>
+          </button>
 
-            {post.caption && (
-              <p className="text-white/80 text-sm line-clamp-2 drop-shadow leading-snug">
-                {post.caption}
-              </p>
-            )}
-          </div>
+          {/* Bookmark */}
+          <button className="flex flex-col items-center gap-1">
+            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+              <Bookmark size={20} className="text-white" />
+            </div>
+          </button>
+        </div>
+      </div>
 
-          {/* Right: Side action buttons */}
-          <div className="flex flex-col items-center gap-5 pb-1">
-            {/* Like */}
-            <button
-              onClick={() => onLike(post.id)}
-              className="flex flex-col items-center gap-1"
-            >
-              <div className="w-11 h-11 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                <Heart className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-white text-xs">{likeCount}</span>
-            </button>
+      {/* ── Bottom info bar ── */}
+      <div className="flex-shrink-0 bg-black/80 px-4 pt-3 pb-4">
+        {/* Author row */}
+        <button
+          onClick={onProfileClick}
+          className="flex items-center gap-2 mb-1.5 group"
+        >
+          <AvatarPlaceholder name={post.authorName} size="sm" />
+          <span className="text-white font-semibold text-sm group-hover:underline">
+            {post.authorName}
+          </span>
+        </button>
 
-            {/* Comment */}
-            <button
-              onClick={() => onComment(post)}
-              className="flex flex-col items-center gap-1"
-            >
-              <div className="w-11 h-11 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                <MessageCircle className="w-5 h-5 text-white" />
-              </div>
-              <CommentCount postId={post.id} />
-            </button>
+        {/* Caption */}
+        {post.caption && (
+          <p className="text-white/85 text-sm mb-3 line-clamp-2 leading-snug">
+            {post.caption}
+          </p>
+        )}
 
-            {/* Share */}
-            <button
-              onClick={() => onShare(post)}
-              className="flex flex-col items-center gap-1"
-            >
-              <div className="w-11 h-11 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                <Share2 className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-white text-xs">Share</span>
-            </button>
-          </div>
+        {/* Action row: Comment | Auto-scroll | Share */}
+        <div className="flex items-center gap-3">
+          {/* Comment */}
+          <button
+            onClick={onComment}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <MessageCircle size={16} className="text-white" />
+            <span className="text-white text-xs font-medium">Comment</span>
+          </button>
+
+          {/* Auto-scroll toggle */}
+          <button
+            onClick={onToggleAutoScroll}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${
+              autoScroll
+                ? 'bg-gold/80 hover:bg-gold text-black'
+                : 'bg-white/10 hover:bg-white/20 text-white'
+            }`}
+            title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+          >
+            <RefreshCw size={16} className={autoScroll ? 'text-black' : 'text-white'} />
+            <span className={`text-xs font-medium ${autoScroll ? 'text-black' : 'text-white'}`}>
+              Auto
+            </span>
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={onShare}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <Share2 size={16} className="text-white" />
+            <span className="text-white text-xs font-medium">Share</span>
+          </button>
         </div>
       </div>
     </div>
@@ -182,295 +246,181 @@ function ReelItem({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ShortSportPage() {
-  const { data: posts, isLoading } = useGetAllPosts();
-  const { identity } = useInternetIdentity();
-  const likePost = useLikePost();
   const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
+  const { data: posts = [], isLoading } = useGetAllPosts();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { data: _callerProfile } = useGetCallerUserProfile();
+  const likeMutation = useLikePost();
 
-  // Read the optional postId search param (set when navigating from a shared message)
-  const search = useSearch({ from: '/shortsport' });
-  const targetPostIdStr = (search as { postId?: string }).postId;
+  const search = useSearch({ from: '/shortsport' }) as { postId?: string };
+  const targetPostId = search?.postId;
 
-  const [muted, setMuted] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [optimisticLikes, setOptimisticLikes] = useState<Record<string, number>>({});
-  // Auto-scroll is ON by default so newest → oldest plays automatically
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
-  // Track whether we've already scrolled to the target post on initial load
-  const hasScrolledToTarget = useRef(false);
-
-  // Comments sheet state
-  const [commentPost, setCommentPost] = useState<Post | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const [autoScroll, setAutoScroll] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
-
-  // Share modal state
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Sort posts newest-first (descending by timestamp) so the feed always
-  // starts with the most recently created post regardless of backend order.
-  // If a targetPostId is present, move that post to the front of the list.
-  const feedPosts: Post[] = React.useMemo(() => {
-    if (!posts) return [];
-    const sorted = [...posts].sort((a, b) => {
-      if (b.timestamp > a.timestamp) return 1;
-      if (b.timestamp < a.timestamp) return -1;
-      return 0;
-    });
+  // Sort newest first; move target post to front if specified
+  const feedPosts = React.useMemo(() => {
+    const sorted = [...posts].sort(
+      (a, b) => Number(b.timestamp) - Number(a.timestamp)
+    );
+    if (!targetPostId) return sorted;
+    const idx = sorted.findIndex((p) => p.id.toString() === targetPostId);
+    if (idx <= 0) return sorted;
+    const target = sorted.splice(idx, 1)[0];
+    return [target, ...sorted];
+  }, [posts, targetPostId]);
 
-    if (!targetPostIdStr) return sorted;
-
-    // Find the target post and move it to index 0
-    const targetId = BigInt(targetPostIdStr);
-    const targetIdx = sorted.findIndex((p) => p.id === targetId);
-    if (targetIdx <= 0) return sorted; // already first or not found
-
-    const reordered = [...sorted];
-    const [targetPost] = reordered.splice(targetIdx, 1);
-    reordered.unshift(targetPost);
-    return reordered;
-  }, [posts, targetPostIdStr]);
-
-  // Track which reel is visible via IntersectionObserver
+  // Scroll to top when target post is set
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+    if (targetPostId && feedPosts.length > 0) {
+      setActiveIndex(0);
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
+    }
+  }, [targetPostId, feedPosts.length]);
 
-    const items = container.querySelectorAll('.reel-item');
-    if (items.length === 0) return;
+  // Intersection observer to track active video
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const idx = Array.from(items).indexOf(entry.target as Element);
-            if (idx !== -1) setCurrentIndex(idx);
+            const index = itemRefs.current.findIndex(
+              (ref) => ref === entry.target
+            );
+            if (index !== -1) setActiveIndex(index);
           }
         });
       },
       { root: container, threshold: 0.6 }
     );
 
-    items.forEach((item) => observer.observe(item));
+    itemRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
     return () => observer.disconnect();
   }, [feedPosts.length]);
 
-  // Scroll to a specific reel index
-  const scrollToIndex = useCallback((index: number) => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const items = container.querySelectorAll('.reel-item');
-    if (items[index]) {
-      (items[index] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, []);
-
-  // When a targetPostId is present and posts have loaded, scroll to index 0
-  // (the target post is already moved to the front in feedPosts).
-  useEffect(() => {
-    if (
-      targetPostIdStr &&
-      feedPosts.length > 0 &&
-      !hasScrolledToTarget.current
-    ) {
-      hasScrolledToTarget.current = true;
-      // Ensure the container is rendered before scrolling
-      requestAnimationFrame(() => {
-        scrollToIndex(0);
-        setCurrentIndex(0);
-      });
-    }
-  }, [targetPostIdStr, feedPosts.length, scrollToIndex]);
-
-  // When a video ends and auto-scroll is enabled, advance to next.
-  // After the last (oldest) short finishes, loop back to the newest (index 0).
+  // Auto-scroll to next video when current video ends
   const handleVideoEnded = useCallback(() => {
-    if (!autoScrollEnabled) return;
-    const next = currentIndex + 1;
-    if (next >= feedPosts.length) {
-      // All shorts played — loop back to the newest post
-      scrollToIndex(0);
-      toast('Starting over', { description: 'Playing from the newest short again.' });
-      return;
-    }
-    scrollToIndex(next);
-  }, [autoScrollEnabled, currentIndex, feedPosts.length, scrollToIndex]);
-
-  // Clicking the video toggles auto-scroll mode
-  const handleVideoClick = useCallback(() => {
-    setAutoScrollEnabled((prev) => {
-      const next = !prev;
-      if (next) {
-        toast.success('Auto-play activated', {
-          description: 'Videos will advance automatically.',
-          duration: 1800,
-        });
+    if (!autoScroll) return;
+    const nextIndex = activeIndex + 1;
+    if (nextIndex < feedPosts.length) {
+      const nextEl = itemRefs.current[nextIndex];
+      if (nextEl) {
+        nextEl.scrollIntoView({ behavior: 'smooth' });
       }
-      return next;
-    });
-  }, []);
-
-  const handleLike = (postId: bigint) => {
-    if (!identity) {
-      toast.error('Sign in to like posts');
-      return;
     }
-    const key = postId.toString();
-    const current =
-      optimisticLikes[key] ??
-      Number(feedPosts.find((p) => p.id === postId)?.likeCount ?? 0);
-    setOptimisticLikes((prev) => ({ ...prev, [key]: current + 1 }));
-    likePost.mutate(postId, {
-      onError: () => {
-        setOptimisticLikes((prev) => ({ ...prev, [key]: current }));
-        toast.error('Failed to like');
-      },
-    });
-  };
+  }, [autoScroll, activeIndex, feedPosts.length]);
 
-  const handleComment = (post: Post) => {
-    setCommentPost(post);
-    setCommentsOpen(true);
-  };
-
-  const handleShare = (post: Post) => {
-    if (!identity) {
-      toast.error('Sign in to share posts');
-      return;
-    }
-    setSharePost(post);
-    setShareOpen(true);
-  };
-
-  const handleProfileClick = (authorPrincipal: string) => {
-    navigate({ to: '/user/$principal', params: { principal: authorPrincipal } });
-  };
-
-  const toggleAutoScroll = () => {
-    setAutoScrollEnabled((prev) => {
-      const next = !prev;
-      if (next) {
-        toast.success('Auto-play activated', { duration: 1500 });
-      } else {
-        toast('Auto-play paused', { duration: 1500 });
-      }
-      return next;
-    });
-  };
+  const handleProfileClick = useCallback(
+    (post: Post) => {
+      const principalStr = post.authorPrincipal?.toString();
+      if (!principalStr) return;
+      navigate({
+        to: '/user/$principal',
+        params: { principal: principalStr },
+      });
+    },
+    [navigate]
+  );
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-white" />
+      <div className="h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (feedPosts.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4 text-white">
-        <Play className="w-12 h-12 opacity-30" />
-        <p className="text-lg font-semibold opacity-60">No posts yet</p>
-        <p className="text-sm opacity-40">Share a video or photo to get started</p>
+      <div className="h-screen bg-black flex flex-col items-center justify-center gap-4 text-white">
+        <div className="text-5xl">🎬</div>
+        <p className="text-lg font-medium">No posts yet</p>
+        <p className="text-white/60 text-sm">Be the first to share something!</p>
+        <button
+          onClick={() => navigate({ to: '/create' })}
+          className="mt-2 px-6 py-2.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors"
+        >
+          Create Post
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* Scroll-snap container */}
+    <div className="relative h-screen bg-black overflow-hidden">
+      {/* Scrollable feed */}
       <div
-        ref={scrollContainerRef}
-        className="w-full h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
-        style={{ scrollSnapType: 'y mandatory' }}
+        ref={containerRef}
+        className="h-full overflow-y-scroll snap-y snap-mandatory"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {feedPosts.map((post, i) => (
+        {feedPosts.map((post, index) => (
           <div
             key={post.id.toString()}
-            style={{ scrollSnapAlign: 'start', height: '100dvh' }}
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
+            className="h-screen w-full snap-start snap-always flex-shrink-0"
           >
-            <ReelItem
+            <VideoItem
               post={post}
-              muted={muted}
-              isActive={i === currentIndex}
-              optimisticLike={optimisticLikes[post.id.toString()]}
-              autoScrollEnabled={autoScrollEnabled}
-              onLike={handleLike}
-              onComment={handleComment}
-              onShare={handleShare}
-              onProfileClick={handleProfileClick}
+              isActive={index === activeIndex}
+              isMuted={isMuted}
+              autoScroll={autoScroll}
+              onToggleMute={() => setIsMuted((m) => !m)}
+              onLike={() => likeMutation.mutate(post.id)}
+              onComment={() => {
+                setSelectedPost(post);
+                setCommentsOpen(true);
+              }}
+              onShare={() => {
+                setSharePost(post);
+                setShareOpen(true);
+              }}
+              onProfileClick={() => handleProfileClick(post)}
+              onToggleAutoScroll={() => setAutoScroll((a) => !a)}
               onVideoEnded={handleVideoEnded}
-              onVideoClick={handleVideoClick}
             />
           </div>
         ))}
       </div>
 
-      {/* Mute toggle — top right */}
-      <button
-        onClick={() => setMuted(!muted)}
-        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-white"
-      >
-        {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-      </button>
-
-      {/* Navigation dots — left side */}
-      {feedPosts.length > 1 && (
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-50">
-          {feedPosts.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => scrollToIndex(i)}
-              className={`w-1.5 rounded-full transition-all ${
-                i === currentIndex ? 'h-6 bg-white' : 'h-1.5 bg-white/40'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Auto-scroll FAB — bottom-right corner */}
-      <button
-        onClick={toggleAutoScroll}
-        title={autoScrollEnabled ? 'Pause auto-play' : 'Start auto-play'}
-        className={`
-          absolute bottom-20 right-4 z-50
-          w-12 h-12 rounded-full shadow-lg
-          flex items-center justify-center
-          transition-colors duration-200
-          ${autoScrollEnabled
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-black/50 text-white/80 border border-white/20'
-          }
-        `}
-      >
-        {autoScrollEnabled ? (
-          <PauseCircle className="w-6 h-6" />
-        ) : (
-          <PlayCircle className="w-6 h-6" />
-        )}
-      </button>
-
-      {/* Auto-scroll indicator badge */}
-      {autoScrollEnabled && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-sm">
-          Auto-play ON · Newest first
-        </div>
-      )}
-
       {/* Comments Sheet */}
-      <CommentsSheet
-        post={commentPost}
-        open={commentsOpen}
-        onOpenChange={setCommentsOpen}
-      />
+      {selectedPost && (
+        <CommentsSheet
+          post={selectedPost}
+          open={commentsOpen}
+          onOpenChange={(open) => {
+            setCommentsOpen(open);
+            if (!open) setSelectedPost(null);
+          }}
+        />
+      )}
 
       {/* Share Modal */}
       <ShareModal
         open={shareOpen}
-        onOpenChange={setShareOpen}
+        onOpenChange={(open) => {
+          setShareOpen(open);
+          if (!open) setSharePost(null);
+        }}
         postId={sharePost?.id ?? null}
         postCaption={sharePost?.caption}
       />

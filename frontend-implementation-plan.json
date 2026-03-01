@@ -1,65 +1,40 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Profile row logic: friends/followed/visited profiles with glow and post navigation",
+  "title": "Fix ShortSport auto-scroll toggle placement and video zoom issue",
   "requirements": [
     {
-      "id": "REQ-5",
-      "summary": "Populate StoriesRow profile bubbles from getProfileRowUsers backend query with glow indicators for users who have new posts",
+      "id": "REQ-1",
+      "summary": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons, with automatic scrolling to the next video when the current video finishes playing.",
       "acceptanceCriteria": [
-        "The right-side profile bubbles in StoriesRow are populated from getProfileRowUsers() for the authenticated user.",
-        "Profiles with a new post since the user's last check display a visible glow effect on their avatar.",
-        "The glow state is re-evaluated every ~30 seconds via polling without a full page reload.",
-        "No changes are made to the visual design or layout of StoriesRow beyond toggling the existing glow indicator."
+        "An auto-scroll toggle button is visible on the ShortSport page at the bottom-left, between the share and comment buttons.",
+        "The toggle does not overlap any video content, captions, username, or other UI elements.",
+        "When the toggle is ON and the current video ends, the feed automatically scrolls to the next video.",
+        "When the toggle is OFF, the feed does not auto-scroll on video completion.",
+        "The toggle state persists while the user remains on the ShortSport page."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/StoriesRow.tsx",
+          "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Refactor the component to fetch profile row users via getProfileRowUsers() backend query on mount and every ~30 seconds. For each returned principal, call hasNewPostSince with a timestamp stored in localStorage (key: 'lastSeen_<principal>') to determine glow state. Store glow state in component state and apply the existing glow CSS class to avatars with new posts. Use the authorization component's useInternetIdentity hook to ensure the user is authenticated before making backend calls. Preserve all existing StoriesRow layout and styling."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a new React Query hook useGetProfileRowUsers() that calls actor.getProfileRowUsers() and returns an array of Principal objects. Add another hook useHasNewPostSince(user: Principal, since: bigint) that calls actor.hasNewPostSince(user, since) and returns a boolean. Both hooks should be enabled only when the actor is available and the user is authenticated. Follow the existing query hook patterns in this file."
+          "description": "Add state management for the auto-scroll toggle feature. Introduce a new state variable to track whether auto-scroll is enabled. Add an event listener to detect when the currently playing video ends and trigger automatic scrolling to the next video in the feed when auto-scroll is enabled. Render an auto-scroll toggle button in the action buttons area at the bottom-left, positioned between the share and comment buttons. Ensure the button does not overlap video content or other UI elements by adjusting the existing layout spacing. The toggle state should persist for the session duration (does not need to persist across page reloads)."
         }
       ]
     },
     {
-      "id": "REQ-6",
-      "summary": "Navigate to the latest post when clicking a glowing profile bubble, otherwise navigate to the user's profile page",
+      "id": "REQ-2",
+      "summary": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size, ensuring the post creator's username, profile avatar, and caption are fully visible.",
       "acceptanceCriteria": [
-        "Clicking a glowing avatar fetches the user's most recent post and navigates to it.",
-        "Clicking a non-glowing avatar navigates to that user's profile page.",
-        "After clicking a glowing avatar, the glow is cleared for that profile and localStorage is updated with the current timestamp.",
-        "If getLatestPostByUser returns null for a glowing profile, fall back to navigating to the user's profile page."
+        "ShortSport videos are displayed at their original size/aspect ratio without any zoom or crop applied.",
+        "The post creator's username and profile avatar are fully visible on every ShortSport card.",
+        "The video caption is fully readable and not hidden or clipped by the video element.",
+        "No content (username, caption, avatar) is obscured by the video container at any screen size."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/StoriesRow.tsx",
+          "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Update the click handler for profile bubbles to check if the clicked profile is glowing. If glowing, call getLatestPostByUser for that principal and navigate to the post (route: /shortsport with query param ?postId=<postId>). If the backend returns null, fall back to navigating to /user/<principalString>. If not glowing, navigate directly to /user/<principalString>. After clicking a glowing profile, update localStorage key 'lastSeen_<principal>' with the current timestamp (Date.now()) and remove the glow from local state. Use TanStack Router's useNavigate hook for navigation."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a new React Query hook useGetLatestPostByUser(user: Principal) that calls actor.getLatestPostByUser(user) and returns a Post or null. Enable the query only when the actor is available. Follow the existing query hook patterns in this file."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Automatically record profile visits when navigating to UserProfilePage",
-      "acceptanceCriteria": [
-        "recordVisit is called with the viewed user's principal each time UserProfilePage mounts for a profile that is not the authenticated user's own.",
-        "The call is fire-and-forget and does not block rendering of the profile page.",
-        "Visiting the same profile twice in a row does not create duplicate entries in visit history."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
-          "operation": "modify",
-          "description": "Add a useEffect hook that runs when the component mounts and whenever the viewed user's principal changes. Inside the effect, check if the viewed principal differs from the authenticated user's principal (using useInternetIdentity().identity?.getPrincipal()). If different, call actor.recordVisit(viewedPrincipal) asynchronously without awaiting the result. Wrap the call in a try-catch to silently handle any errors. Ensure the effect does not block page rendering or data fetching."
+          "description": "Remove any CSS classes or inline styles that apply zoom, scale, or object-cover properties to the video elements. Adjust the video container styling to preserve the original aspect ratio of each video using object-contain or similar approaches. Ensure the video does not crop or hide any surrounding content. Review the layout structure to confirm that the post creator's username, profile avatar, and caption are positioned outside the video element's bounding box and remain fully visible at all times. Adjust z-index, positioning, or layout flow as necessary to prevent any overlay or clipping of text and avatar content by the video."
         }
       ]
     }

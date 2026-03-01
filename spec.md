@@ -1,17 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Add profile row logic to the StoriesRow component, populating right-side profile bubbles with friends, followed users, and recently visited profiles — with glow indicators for new posts and direct post navigation.
+**Goal:** Fix two UI issues on the ShortSport page: add a visible auto-scroll toggle and remove the zoom/crop effect from videos.
 
 **Planned changes:**
-- Add stable visit history storage to the backend (up to 2 most recent unique visited profiles per user), with `recordVisit` and `getVisitHistory` methods
-- Add `getProfileRowUsers()` backend query returning deduplicated, ordered principals (mutual follows first, then following, then last 2 visited)
-- Add `getLatestPostByUser(user: Principal)` backend query returning the most recent post for a user or null
-- Add `hasNewPostSince(user: Principal, since: Int)` backend query returning true if the user posted after the given timestamp
-- Update StoriesRow frontend component to populate right-side profile bubbles from `getProfileRowUsers()`, polling every ~30 seconds
-- Show a glow effect on avatars where `hasNewPostSince` returns true (using last-seen timestamp from localStorage)
-- Clicking a glowing avatar fetches the latest post via `getLatestPostByUser` and navigates to it; clicking a non-glowing avatar navigates to the user's profile page; after clicking, clear glow and update localStorage timestamp
-- Automatically call `recordVisit` when the authenticated user visits another user's `UserProfilePage` (fire-and-forget, skip own profile)
-- Add `backend/migration.mo` to safely initialize the new `visitHistory` stable structure while preserving all existing data
+- Add an auto-scroll toggle button at the bottom-left of the ShortSport page, positioned between the share and comment buttons, without overlapping any video content or other UI elements
+- When the toggle is ON and a video finishes playing, the feed automatically scrolls to the next video; when OFF, it does not
+- Remove the zoom/crop effect from ShortSport videos so they display at their original aspect ratio and size
+- Ensure the post creator's username, profile avatar, and video caption are fully visible and not obscured by the video container
 
-**User-visible outcome:** The right-side profile row in StoriesRow shows friends, followed users, and recently visited profiles. Avatars glow when those users have posted something new, and clicking a glowing avatar takes the user directly to that person's latest post.
+**User-visible outcome:** Users can see and use an auto-scroll toggle on the ShortSport page, and videos no longer zoom or crop, keeping usernames, avatars, and captions fully readable.

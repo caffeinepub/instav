@@ -2,11 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-storiesrow-component-to-populate-the-right-side-profile-bubbles-using-the-new-getprofilerowusers-backend-query-when-the-component-mounts-and-on-a-polling-interval-of-30-seconds-fetch-the-profile-row-principals-and-for-each-user-call-hasnewpostsince-with-the-last-seen-timestamp-stored-in-localstorage-to-determine-if-their-avatar-should-glow",
-      "featureTitle": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
+      "featureId": "feature-add-an-auto-scroll-toggle-button-in-the-shortsport-page-at-the-bottom-left-area-positioned-between-the-share-and-comment-buttons-the-toggle-must-not-overlap-any-video-content-or-other-ui-elements-when-enabled-the-feed-should-automatically-scroll-to-the-next-video-once-the-current-video-finishes-playing",
+      "featureTitle": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
       "files": [
-        "frontend/src/components/StoriesRow.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -18,16 +17,15 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-5"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-when-the-user-clicks-a-glowing-profile-bubble-in-storiesrow-call-getlatestpostbyuser-for-that-principal-and-navigate-directly-to-that-post-if-the-profile-is-not-glowing-clicking-it-navigates-to-the-user-s-profile-page-as-before-after-clicking-clear-the-glow-state-for-that-profile-and-update-the-last-seen-timestamp-in-localstorage-for-that-user",
-      "featureTitle": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
+      "featureId": "feature-remove-the-zoom-crop-effect-from-shortsport-videos-so-each-video-renders-at-its-original-aspect-ratio-and-size-without-being-cropped-or-scaled-up-ensure-the-post-creator-s-username-profile-avatar-and-the-video-caption-are-fully-visible-and-not-hidden-behind-or-beneath-the-video",
+      "featureTitle": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
       "files": [
-        "frontend/src/components/StoriesRow.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -39,27 +37,7 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-automatically-call-recordvisit-principalid-on-the-backend-whenever-the-authenticated-user-navigates-to-a-userprofilepage-so-the-visit-history-is-kept-up-to-date-do-not-record-a-visit-to-the-user-s-own-profile",
-      "featureTitle": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
-      "files": [
-        "frontend/src/pages/UserProfilePage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
+        "REQ-2"
       ],
       "confidence": "high"
     }
