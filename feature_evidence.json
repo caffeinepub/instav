@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-an-auto-scroll-toggle-button-in-the-shortsport-page-at-the-bottom-left-area-positioned-between-the-share-and-comment-buttons-the-toggle-must-not-overlap-any-video-content-or-other-ui-elements-when-enabled-the-feed-should-automatically-scroll-to-the-next-video-once-the-current-video-finishes-playing",
-      "featureTitle": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
+      "featureId": "feature-fix-the-profilepage-so-it-correctly-fetches-and-displays-the-authenticated-user-s-real-data-avatar-display-name-bio-follower-following-counts-and-posts-grid-instead-of-remaining-stuck-in-the-skeleton-loading-placeholder-state-indefinitely",
+      "featureTitle": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -22,10 +23,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-remove-the-zoom-crop-effect-from-shortsport-videos-so-each-video-renders-at-its-original-aspect-ratio-and-size-without-being-cropped-or-scaled-up-ensure-the-post-creator-s-username-profile-avatar-and-the-video-caption-are-fully-visible-and-not-hidden-behind-or-beneath-the-video",
-      "featureTitle": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
+      "featureId": "feature-fix-the-backend-query-mutation-wiring-in-profilepage-so-the-usegetmyprofile-or-equivalent-hook-properly-resolves-ensure-the-actor-is-initialized-before-the-query-runs-error-states-are-handled-gracefully-and-the-profile-data-is-correctly-mapped-from-the-backend-response-variant-to-the-ui-state",
+      "featureTitle": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -38,6 +40,27 @@
       ],
       "testIds": [
         "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-createpostpage-so-that-submitting-a-post-text-image-or-video-succeeds-instead-of-showing-failed-to-create-post-please-try-again-diagnose-and-repair-the-usecreatepost-mutation-ensure-media-blobs-are-correctly-encoded-and-passed-to-the-backend-the-actor-call-parameters-match-the-backend-s-expected-argument-types-and-success-error-states-are-handled-properly",
+      "featureTitle": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/CreatePostPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }

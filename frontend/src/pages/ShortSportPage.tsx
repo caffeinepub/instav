@@ -141,9 +141,9 @@ function VideoItem({
           </div>
         )}
 
-        {/* Right-side action buttons (mute, like, bookmark) */}
-        <div className="absolute right-3 bottom-4 flex flex-col items-center gap-4">
-          {/* Mute */}
+        {/* Left-side action buttons — all six controls */}
+        <div className="absolute left-3 bottom-4 flex flex-col items-center gap-4">
+          {/* Volume */}
           <button
             onClick={onToggleMute}
             className="flex flex-col items-center gap-1"
@@ -179,6 +179,46 @@ function VideoItem({
               <Bookmark size={20} className="text-white" />
             </div>
           </button>
+
+          {/* Comment */}
+          <button
+            onClick={onComment}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+              <MessageCircle size={20} className="text-white" />
+            </div>
+            <span className="text-white text-xs drop-shadow">Comment</span>
+          </button>
+
+          {/* Auto-scroll toggle */}
+          <button
+            onClick={onToggleAutoScroll}
+            className="flex flex-col items-center gap-1"
+            title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+          >
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                autoScroll ? 'bg-gold/80' : 'bg-black/50'
+              }`}
+            >
+              <RefreshCw size={18} className={autoScroll ? 'text-black' : 'text-white'} />
+            </div>
+            <span className={`text-xs drop-shadow ${autoScroll ? 'text-gold' : 'text-white'}`}>
+              Auto
+            </span>
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={onShare}
+            className="flex flex-col items-center gap-1"
+          >
+            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+              <Share2 size={20} className="text-white" />
+            </div>
+            <span className="text-white text-xs drop-shadow">Share</span>
+          </button>
         </div>
       </div>
 
@@ -197,47 +237,10 @@ function VideoItem({
 
         {/* Caption */}
         {post.caption && (
-          <p className="text-white/85 text-sm mb-3 line-clamp-2 leading-snug">
+          <p className="text-white/85 text-sm line-clamp-2 leading-snug">
             {post.caption}
           </p>
         )}
-
-        {/* Action row: Comment | Auto-scroll | Share */}
-        <div className="flex items-center gap-3">
-          {/* Comment */}
-          <button
-            onClick={onComment}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            <MessageCircle size={16} className="text-white" />
-            <span className="text-white text-xs font-medium">Comment</span>
-          </button>
-
-          {/* Auto-scroll toggle */}
-          <button
-            onClick={onToggleAutoScroll}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${
-              autoScroll
-                ? 'bg-gold/80 hover:bg-gold text-black'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-            title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
-          >
-            <RefreshCw size={16} className={autoScroll ? 'text-black' : 'text-white'} />
-            <span className={`text-xs font-medium ${autoScroll ? 'text-black' : 'text-white'}`}>
-              Auto
-            </span>
-          </button>
-
-          {/* Share */}
-          <button
-            onClick={onShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            <Share2 size={16} className="text-white" />
-            <span className="text-white text-xs font-medium">Share</span>
-          </button>
-        </div>
       </div>
     </div>
   );

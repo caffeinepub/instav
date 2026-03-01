@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix two UI issues on the ShortSport page: add a visible auto-scroll toggle and remove the zoom/crop effect from videos.
+**Goal:** Fix two critical bugs in the Smileup app: the profile page being permanently stuck in a skeleton/loading state, and post creation always failing with an error message.
 
 **Planned changes:**
-- Add an auto-scroll toggle button at the bottom-left of the ShortSport page, positioned between the share and comment buttons, without overlapping any video content or other UI elements
-- When the toggle is ON and a video finishes playing, the feed automatically scrolls to the next video; when OFF, it does not
-- Remove the zoom/crop effect from ShortSport videos so they display at their original aspect ratio and size
-- Ensure the post creator's username, profile avatar, and video caption are fully visible and not obscured by the video container
+- Fix ProfilePage to correctly fetch and display the authenticated user's real data (avatar, display name, bio, follower/following counts, posts grid) instead of remaining stuck in skeleton placeholders indefinitely
+- Ensure the profile query does not fire before the actor is initialized, and correctly unwrap `#ok`/`#err` backend response variants
+- Show a "create profile" prompt if the user has no profile yet, rather than an endless skeleton
+- Fix the `useCreatePost` mutation so that text-only, image, and video posts submit successfully without showing "Failed to create post. Please try again."
+- Ensure media blobs are correctly encoded and the actor call parameters match the backend's expected argument types
+- Navigate the user away from CreatePostPage on success, and show a descriptive error message on genuine backend errors
 
-**User-visible outcome:** Users can see and use an auto-scroll toggle on the ShortSport page, and videos no longer zoom or crop, keeping usernames, avatars, and captions fully readable.
+**User-visible outcome:** Users can view their real profile data on the profile page, and can successfully create and share text, image, and video posts without encountering errors.

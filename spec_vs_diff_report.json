@@ -1,14 +1,41 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T13:03:58.310Z",
-  "summary": "Both REQ-1 (auto-scroll toggle button at bottom-left between share and comment buttons) and REQ-2 (remove zoom/crop, ensure username/avatar/caption visibility) appear to be implemented in the ShortSportPage.tsx diff. The diff shows: object-contain CSS for videos (addressing REQ-2), onVideoEnded/autoScroll props and toggle wiring (addressing REQ-1), loop disabled when autoScroll is on, and a dedicated bottom info bar for username/avatar/caption. The file summary confirms these changes. No obvious missing requirements or hallucinated features are detected based on the available evidence.",
-  "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.82,
+  "generatedAt": "2026-03-01T13:54:38.206Z",
+  "summary": "The diff addresses all three requirements. REQ-1 and REQ-2 are handled via changes to ProfilePage.tsx (loose null equality, error state with retry, no-profile prompt) and useQueries.ts (useGetCallerUserProfile catches Unauthorized and returns null, query gated on actor readiness). REQ-3 is addressed in CreatePostPage.tsx (media blob encoding, text post support, navigation on success) and useQueries.ts (useCreatePost surfaces backend errors). However, no changes to backend/main.mo are present, and REQ-3 explicitly requires ensuring actor call parameters match backend expected argument types. Additionally, ExternalBlob usage in CreatePostPage uses methods like fromBytes, withUploadProgress, and fromURL that appear to be invented API surface.",
+  "missing_requirements": [
+    {
+      "id": "REQ-3",
+      "requirement": "Ensure media blobs are correctly encoded and passed to the backend with actor call parameters matching the backend's expected argument types",
+      "reason": "No backend/main.mo changes are present to confirm parameter alignment. The diff only shows frontend-side changes with no verification that the actor call parameters now match backend expected types.",
+      "evidence": [
+        "frontend/src/pages/CreatePostPage.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "ExternalBlob.fromBytes(...).withUploadProgress(callback) chained fluent builder API",
+      "reason": "CreatePostPage uses ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {...}) — a chained builder API with upload progress callback. No such API is described in the BuildRequest, backend schema, or any other file summary. This appears to be an invented interface.",
+      "evidence": [
+        "frontend/src/pages/CreatePostPage.tsx"
+      ]
+    },
+    {
+      "description": "Upload progress state (uploadProgress, isUploading) with simulated progress UI in CreatePostPage",
+      "reason": "The BuildRequest only asks to fix post creation failure. An upload progress indicator and uploading state UI were not requested.",
+      "evidence": [
+        "frontend/src/pages/CreatePostPage.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/pages/ShortSportPage.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/CreatePostPage.tsx",
+    "frontend/src/pages/ProfilePage.tsx",
     "project_state.json"
   ]
 }

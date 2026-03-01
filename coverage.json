@@ -1,35 +1,52 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T13:03:58.313Z",
+  "generatedAt": "2026-03-01T13:54:38.209Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
+        "summary": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
+        "summary": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/CreatePostPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/CreatePostPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
@@ -39,7 +56,9 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/pages/ShortSportPage.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/CreatePostPage.tsx",
+    "frontend/src/pages/ProfilePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

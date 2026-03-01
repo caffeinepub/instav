@@ -1,40 +1,74 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix ShortSport auto-scroll toggle placement and video zoom issue",
+  "title": "Fix profile page skeleton state and post creation failure",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons, with automatic scrolling to the next video when the current video finishes playing.",
+      "summary": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data instead of remaining stuck in the skeleton/loading placeholder state indefinitely",
       "acceptanceCriteria": [
-        "An auto-scroll toggle button is visible on the ShortSport page at the bottom-left, between the share and comment buttons.",
-        "The toggle does not overlap any video content, captions, username, or other UI elements.",
-        "When the toggle is ON and the current video ends, the feed automatically scrolls to the next video.",
-        "When the toggle is OFF, the feed does not auto-scroll on video completion.",
-        "The toggle state persists while the user remains on the ShortSport page."
+        "Navigating to /profile displays the logged-in user's avatar, display name, and bio after data loads",
+        "Follower and following counts are shown with real values",
+        "The user's posts appear in the grid below the profile header",
+        "Skeleton placeholders are only shown during the initial data fetch, not indefinitely",
+        "If the user has no profile yet, a prompt to create one is displayed instead of an endless skeleton"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/pages/ProfilePage.tsx",
           "operation": "modify",
-          "description": "Add state management for the auto-scroll toggle feature. Introduce a new state variable to track whether auto-scroll is enabled. Add an event listener to detect when the currently playing video ends and trigger automatic scrolling to the next video in the feed when auto-scroll is enabled. Render an auto-scroll toggle button in the action buttons area at the bottom-left, positioned between the share and comment buttons. Ensure the button does not overlap video content or other UI elements by adjusting the existing layout spacing. The toggle state should persist for the session duration (does not need to persist across page reloads)."
+          "description": "Fix the profile data fetching logic so the page correctly waits for both the actor and useGetMyProfile query to resolve before showing skeleton state. Ensure the skeleton only displays while loading (not indefinitely), and that profile data (avatar, displayName, bio, follower/following counts, posts) is correctly mapped from the backend response to the UI. Add proper error handling for failed profile queries and display an appropriate error message or profile creation prompt when the user has no profile yet."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Review and fix the useGetMyProfile hook to ensure it properly waits for the actor to be initialized before firing the query (enabled: !!actor && !actorFetching). Verify that the hook correctly unwraps the backend response variant (#ok vs #err) and returns the profile data or null. Ensure the isLoading state reflects both actor fetching and query loading, and that isFetched is only true when the actor is ready and the query has completed."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size, ensuring the post creator's username, profile avatar, and caption are fully visible.",
+      "summary": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile hook properly resolves, ensuring the actor is initialized before the query runs and error states are handled gracefully",
       "acceptanceCriteria": [
-        "ShortSport videos are displayed at their original size/aspect ratio without any zoom or crop applied.",
-        "The post creator's username and profile avatar are fully visible on every ShortSport card.",
-        "The video caption is fully readable and not hidden or clipped by the video element.",
-        "No content (username, caption, avatar) is obscured by the video container at any screen size."
+        "The profile query does not fire before the actor is ready",
+        "A backend #ok variant response is correctly unwrapped and applied to the UI",
+        "A backend #err variant response shows an appropriate error message rather than a permanent skeleton",
+        "Refreshing the profile page re-fetches and renders data correctly"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/pages/ProfilePage.tsx",
           "operation": "modify",
-          "description": "Remove any CSS classes or inline styles that apply zoom, scale, or object-cover properties to the video elements. Adjust the video container styling to preserve the original aspect ratio of each video using object-contain or similar approaches. Ensure the video does not crop or hide any surrounding content. Review the layout structure to confirm that the post creator's username, profile avatar, and caption are positioned outside the video element's bounding box and remain fully visible at all times. Adjust z-index, positioning, or layout flow as necessary to prevent any overlay or clipping of text and avatar content by the video."
+          "description": "Ensure the ProfilePage component correctly checks the actor state from useActor before rendering skeleton or profile data. Update the conditional rendering logic to handle the case where the actor is not yet ready, and to properly display error messages when the profile query fails. Verify that the profile data state variables (displayName, bio, avatarUrl, etc.) are correctly populated from the useGetMyProfile result, and that the page re-fetches data on refresh."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Fix the useGetMyProfile hook to ensure the query's enabled flag correctly waits for both actor initialization and the absence of actor fetching. Verify that the queryFn properly calls actor.getCallerUserProfile() and handles the response variant correctly. Ensure the hook returns a custom isLoading state that combines actorFetching and query.isLoading, and that isFetched reflects the true completion state. Add retry: false to prevent infinite retries on auth errors."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.'",
+      "acceptanceCriteria": [
+        "Submitting a text-only post succeeds and the new post appears in the feed",
+        "Submitting a post with an image file succeeds and the image is displayed on the post card",
+        "Submitting a post with a video file succeeds and the video is playable on the post card",
+        "On success, the user is navigated away from CreatePostPage (e.g., back to feed or profile)",
+        "On a genuine backend error, a descriptive error message is shown and the user can retry",
+        "The 'Failed to create post' error no longer appears for valid submissions"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/CreatePostPage.tsx",
+          "operation": "modify",
+          "description": "Review and fix the post submission logic in CreatePostPage. Ensure that when the user submits a post, the file (if any) is correctly converted to an ExternalBlob using ExternalBlob.fromBytes() and that the media field is properly passed to useCreatePost. Verify that the mediaType field is correctly set based on the file MIME type. Ensure the mutation's onSuccess callback navigates the user back to the feed or profile page after successful post creation. Update error handling to display descriptive error messages from the backend response instead of the generic 'Failed to create post' message."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Fix the useCreatePost mutation hook to ensure it correctly constructs the PostInput object with the media ExternalBlob, authorName, caption, and mediaType fields. Verify that the mutation's mutationFn calls actor.createPost() with the correct argument structure. Ensure the mutation properly handles both success and error responses from the backend, and that error messages are propagated to the UI. Add proper error handling for cases where the actor is not initialized or the user is not authenticated."
         }
       ]
     }

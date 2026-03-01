@@ -1,62 +1,80 @@
 {
   "kind": "build_request",
-  "title": "Fix ShortSport auto-scroll toggle placement and video zoom issue",
+  "title": "Fix profile page skeleton state and post creation failure",
   "projectName": "Smileup",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
+      "text": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-3"
+          "msg-user-profile-bug"
         ],
         "quotes": [
-          "The auto scroll option that make the shortsport scroll automatically when the shortsport video complete at once it scroll down to the next video is not showing why fix it (and put it in bottom side anywhere where place is empty not overlay it)",
-          "1.Bottom left middle the share and comment option just in shortsport"
+          "Profile page is stuck in a skeleton/loading (blueprint) state — showing dark placeholder shapes instead of actual user data like avatar, name, and posts"
         ]
       },
       "acceptanceCriteria": [
-        "An auto-scroll toggle button is visible on the ShortSport page at the bottom-left, between the share and comment buttons.",
-        "The toggle does not overlap any video content, captions, username, or other UI elements.",
-        "When the toggle is ON and the current video ends, the feed automatically scrolls to the next video.",
-        "When the toggle is OFF, the feed does not auto-scroll on video completion.",
-        "The toggle state persists while the user remains on the ShortSport page."
+        "Navigating to /profile displays the logged-in user's avatar, display name, and bio after data loads",
+        "Follower and following counts are shown with real values",
+        "The user's posts appear in the grid below the profile header",
+        "Skeleton placeholders are only shown during the initial data fetch, not indefinitely",
+        "If the user has no profile yet, a prompt to create one is displayed instead of an endless skeleton"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
-      "target": "frontend",
+      "text": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-3"
+          "msg-user-profile-bug"
         ],
         "quotes": [
-          "the shortsport bit zoom the title or caption of the video never seen as well as post user profile",
-          "2.dont zoom it like that it hide the post's user name and caption of the video also the video should look original original size"
+          "it just shown blueprint not the profile"
         ]
       },
       "acceptanceCriteria": [
-        "ShortSport videos are displayed at their original size/aspect ratio without any zoom or crop applied.",
-        "The post creator's username and profile avatar are fully visible on every ShortSport card.",
-        "The video caption is fully readable and not hidden or clipped by the video element.",
-        "No content (username, caption, avatar) is obscured by the video container at any screen size."
+        "The profile query does not fire before the actor is ready",
+        "A backend #ok variant response is correctly unwrapped and applied to the UI",
+        "A backend #err variant response shows an appropriate error message rather than a permanent skeleton",
+        "Refreshing the profile page re-fetches and renders data correctly"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-create-post-bug"
+        ],
+        "quotes": [
+          "Failed to create post. Please try again",
+          "when click share it show that failed to post"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Submitting a text-only post succeeds and the new post appears in the feed",
+        "Submitting a post with an image file succeeds and the image is displayed on the post card",
+        "Submitting a post with a video file succeeds and the video is playable on the post card",
+        "On success, the user is navigated away from CreatePostPage (e.g., back to feed or profile)",
+        "On a genuine backend error, a descriptive error message is shown and the user can retry",
+        "The 'Failed to create post' error no longer appears for valid submissions"
       ]
     }
   ],
   "constraints": [
-    "Changes must only affect the ShortSport page (frontend/src/pages/ShortSportPage.tsx) and any directly related components.",
-    "Do not modify files listed in frontend.immutablePaths.",
-    "The auto-scroll toggle must not overlay or obscure any video content."
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "All Motoko logic must remain in a single actor in backend/main.mo"
   ],
   "nonGoals": [
-    "Changes to any page other than ShortSport.",
-    "Backend modifications.",
-    "Redesigning the overall ShortSport UI layout beyond what is required for these two fixes."
+    "Adding new post types or media formats beyond what already exists",
+    "Redesigning the profile page UI/layout",
+    "Adding new profile fields not already in the backend schema",
+    "Real-time post feed updates"
   ],
   "imageRequirements": {
     "required": [],

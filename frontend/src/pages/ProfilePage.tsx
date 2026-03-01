@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Edit2, LogOut, Camera, Film, ImageIcon, Eye, Users } from 'lucide-react';
+import { Edit2, LogOut, Camera, Film, ImageIcon, Eye, Users, RefreshCw } from 'lucide-react';
 import { ExternalBlob } from '../backend';
 import type { Post } from '../backend';
 
@@ -51,8 +51,13 @@ function PostGrid({
                 <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
               )
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                 {isVideo ? <Film size={20} /> : <ImageIcon size={20} />}
+                {post.caption && (
+                  <p className="absolute bottom-1 left-1 right-1 text-xs text-center line-clamp-2 text-foreground/70 px-1">
+                    {post.caption}
+                  </p>
+                )}
               </div>
             )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -82,7 +87,14 @@ export default function ProfilePage() {
   const isAuthenticated = !!identity;
   const myPrincipal = identity?.getPrincipal().toString();
 
-  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+  const {
+    data: userProfile,
+    isLoading: profileLoading,
+    isFetched,
+    isError: profileError,
+    refetch: refetchProfile,
+  } = useGetCallerUserProfile();
+
   const createOrUpdateProfile = useCreateOrUpdateProfile();
   const { data: posts, isLoading: postsLoading } = useGetPostsByUser(myPrincipal);
   const { data: followers } = useGetFollowers(myPrincipal);
@@ -96,7 +108,9 @@ export default function ProfilePage() {
   });
   const [uploadingPic, setUploadingPic] = useState(false);
 
-  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
+  // Show profile setup when: authenticated, not loading, query has resolved, and no profile exists
+  // Use loose equality (== null) to catch both null and undefined
+  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile == null;
 
   useEffect(() => {
     if (userProfile) {
@@ -128,7 +142,7 @@ export default function ProfilePage() {
       if (msg.includes('Handle already in use')) {
         toast.error('That handle is already taken. Please choose another.');
       } else {
-        toast.error('Failed to save profile');
+        toast.error('Failed to save profile. Please try again.');
       }
     }
   };
@@ -192,6 +206,30 @@ export default function ProfilePage() {
             <Skeleton className="h-4 w-24" />
           </div>
         </div>
+        <div className="grid grid-cols-3 gap-0.5">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="aspect-square" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Error state (non-auth errors) ──
+  if (profileError && !showProfileSetup) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <RefreshCw size={24} className="text-destructive" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-1">Couldn't load profile</h2>
+          <p className="text-muted-foreground text-sm">Something went wrong. Please try again.</p>
+        </div>
+        <Button onClick={() => refetchProfile()} variant="outline" className="rounded-full gap-2">
+          <RefreshCw size={14} />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -200,9 +238,14 @@ export default function ProfilePage() {
   if (showProfileSetup || isEditing) {
     return (
       <div className="max-w-md mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6">
+        <h2 className="text-2xl font-bold mb-2">
           {showProfileSetup ? 'Set Up Your Profile' : 'Edit Profile'}
         </h2>
+        {showProfileSetup && (
+          <p className="text-muted-foreground text-sm mb-6">
+            Welcome to Smileup! Create your profile to start sharing and connecting.
+          </p>
+        )}
 
         {/* Profile Picture */}
         <div className="flex flex-col items-center mb-6">
@@ -235,11 +278,12 @@ export default function ProfilePage() {
               id="handle"
               value={formData.handle}
               onChange={(e) =>
-                setFormData((p) => ({ ...p, handle: e.target.value.toLowerCase() }))
+                setFormData((p) => ({ ...p, handle: e.target.value.toLowerCase().replace(/\s/g, '') }))
               }
               placeholder="yourhandle"
               className="mt-1"
             />
+            <p className="text-xs text-muted-foreground mt-1">No spaces, lowercase only</p>
           </div>
           <div>
             <Label htmlFor="displayName">Display Name</Label>
@@ -285,6 +329,18 @@ export default function ProfilePage() {
             </Button>
           )}
         </div>
+
+        {/* Sign out option on setup screen */}
+        {showProfileSetup && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleLogout}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Sign out instead
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -301,8 +357,10 @@ export default function ProfilePage() {
             size="xl"
           />
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold truncate">{userProfile?.displayName}</h1>
-            <p className="text-muted-foreground text-sm">@{userProfile?.handle}</p>
+            <h1 className="text-xl font-bold truncate">{userProfile?.displayName ?? 'Your Profile'}</h1>
+            {userProfile?.handle && (
+              <p className="text-muted-foreground text-sm">@{userProfile.handle}</p>
+            )}
             {userProfile?.bio && (
               <p className="text-sm mt-2 text-foreground/80 leading-relaxed">
                 {userProfile.bio}
@@ -376,7 +434,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Comments Sheet — uses open/onOpenChange convention */}
+      {/* Comments Sheet */}
       <CommentsSheet
         post={selectedPost}
         open={!!selectedPost}

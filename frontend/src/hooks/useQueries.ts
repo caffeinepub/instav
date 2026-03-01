@@ -52,8 +52,14 @@ export function useCreatePost() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (post: PostInput) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.createPost(post);
+      if (!actor) throw new Error('Actor not available. Please refresh and try again.');
+      try {
+        return await actor.createPost(post);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // Surface the backend error message clearly
+        throw new Error(msg);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -131,7 +137,18 @@ export function useGetCallerUserProfile() {
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
+      try {
+        const result = await actor.getCallerUserProfile();
+        // Returns null if no profile exists, or the profile data
+        return result ?? null;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // If unauthorized (user role not yet assigned), treat as no profile
+        if (msg.includes('Unauthorized') || msg.includes('unauthorized')) {
+          return null;
+        }
+        throw err;
+      }
     },
     enabled: !!actor && !actorFetching,
     retry: false,
@@ -388,7 +405,11 @@ export function useGetNotifications() {
     queryKey: ['notifications'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getNotifications();
+      try {
+        return await actor.getNotifications();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -416,7 +437,11 @@ export function useGetConversations() {
     queryKey: ['conversations'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getConversations();
+      try {
+        return await actor.getConversations();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 5000,
@@ -584,7 +609,11 @@ export function useGetIncomingFriendRequests() {
     queryKey: ['incomingFriendRequests'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getIncomingFriendRequests();
+      try {
+        return await actor.getIncomingFriendRequests();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -596,7 +625,11 @@ export function useGetOutgoingFriendRequests() {
     queryKey: ['outgoingFriendRequests'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getOutgoingFriendRequests();
+      try {
+        return await actor.getOutgoingFriendRequests();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -608,7 +641,11 @@ export function useGetFriendsList() {
     queryKey: ['friendsList'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getFriendsList();
+      try {
+        return await actor.getFriendsList();
+      } catch {
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });

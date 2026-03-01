@@ -1,46 +1,40 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Sports social media app with a ShortSport (short video) feature. Fixing auto-scroll toggle placement and video zoom issues in the ShortSport section.",
-  "architectural_notes": [
-    "ShortSport section UI: action buttons (share, comment, auto-scroll) placed at bottom-left/middle, no overlay on video content"
-  ],
+  "summary": "Smileup — a social media app. Fixing two critical bugs: profile page stuck in skeleton/loading state never showing real user data, and post creation failing with 'Failed to create post' error for all content types.",
+  "architectural_notes": [],
   "known_issues": [
-    "ShortSport videos were zoomed/cropped, hiding post creator username and caption"
+    "Profile page stuck in skeleton/loading state — never loads real user data (avatar, name, posts)",
+    "Post creation fails with 'Failed to create post. Please try again' error for all content types (text, images, videos)"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-add-an-auto-scroll-toggle-button-in-the-shortsport-page-at-the-bottom-left-area-positioned-between-the-share-and-comment-buttons-the-toggle-must-not-overlap-any-video-content-or-other-ui-elements-when-enabled-the-feed-should-automatically-scroll-to-the-next-video-once-the-current-video-finishes-playing",
-      "title": "Add an auto-scroll toggle button in the ShortSport page at the bottom-left area, positioned between the share and comment buttons. The toggle must not overlap any video content or other UI elements. When enabled, the feed should automatically scroll to the next video once the current video finishes playing.",
+      "id": "feature-fix-the-profilepage-so-it-correctly-fetches-and-displays-the-authenticated-user-s-real-data-avatar-display-name-bio-follower-following-counts-and-posts-grid-instead-of-remaining-stuck-in-the-skeleton-loading-placeholder-state-indefinitely",
+      "title": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-remove-the-zoom-crop-effect-from-shortsport-videos-so-each-video-renders-at-its-original-aspect-ratio-and-size-without-being-cropped-or-scaled-up-ensure-the-post-creator-s-username-profile-avatar-and-the-video-caption-are-fully-visible-and-not-hidden-behind-or-beneath-the-video",
-      "title": "Remove the zoom/crop effect from ShortSport videos so each video renders at its original aspect ratio and size without being cropped or scaled up. Ensure the post creator's username, profile avatar, and the video caption are fully visible and not hidden behind or beneath the video.",
+      "id": "feature-fix-the-backend-query-mutation-wiring-in-profilepage-so-the-usegetmyprofile-or-equivalent-hook-properly-resolves-ensure-the-actor-is-initialized-before-the-query-runs-error-states-are-handled-gracefully-and-the-profile-data-is-correctly-mapped-from-the-backend-response-variant-to-the-ui-state",
+      "title": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
-    }
-  ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Auto-scroll toggle for ShortSport placed at bottom-left between share and comment buttons, not overlapping content",
-      "reqIds": [],
-      "status": "pending"
     },
     {
-      "id": "AR-2",
-      "summary": "Fix ShortSport video zoom/crop so videos display at original size with post creator username/profile and caption fully visible",
-      "reqIds": [],
-      "status": "pending"
+      "id": "feature-fix-the-createpostpage-so-that-submitting-a-post-text-image-or-video-succeeds-instead-of-showing-failed-to-create-post-please-try-again-diagnose-and-repair-the-usecreatepost-mutation-ensure-media-blobs-are-correctly-encoded-and-passed-to-the-backend-the-actor-call-parameters-match-the-backend-s-expected-argument-types-and-success-error-states-are-handled-properly",
+      "title": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
     }
   ],
+  "new_feature_requests": [],
   "gameProjectType": "none",
   "projectName": "Smileup",
   "clarification_mode": "instant",
