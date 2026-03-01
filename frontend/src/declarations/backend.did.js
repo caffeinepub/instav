@@ -60,23 +60,6 @@ export const Conversation = IDL.Record({
   'participants' : IDL.Tuple(IDL.Principal, IDL.Principal),
   'lastUpdated' : IDL.Int,
 });
-export const FriendshipStatusEnum = IDL.Variant({
-  'notConnected' : IDL.Null,
-  'pendingOutgoing' : IDL.Null,
-  'friends' : IDL.Null,
-  'pendingIncoming' : IDL.Null,
-});
-export const FriendRequestStatus = IDL.Variant({
-  'pending' : IDL.Null,
-  'accepted' : IDL.Null,
-  'declined' : IDL.Null,
-});
-export const FriendRequest = IDL.Record({
-  'status' : FriendRequestStatus,
-  'recipient' : IDL.Principal,
-  'sender' : IDL.Principal,
-  'timestamp' : IDL.Int,
-});
 export const Message = IDL.Record({
   'content' : IDL.Text,
   'read' : IDL.Bool,
@@ -98,15 +81,11 @@ export const Notification = IDL.Record({
   'timestamp' : IDL.Int,
   'postId' : IDL.Opt(IDL.Nat),
 });
-export const UserProfileSummary = IDL.Record({
-  'bio' : IDL.Text,
-  'postCount' : IDL.Nat,
+export const CreatorRanking = IDL.Record({
   'principal' : IDL.Principal,
-  'displayName' : IDL.Text,
-  'avatarUrl' : IDL.Opt(ExternalBlob),
+  'username' : IDL.Text,
+  'profilePicBlob' : IDL.Opt(ExternalBlob),
   'followerCount' : IDL.Nat,
-  'handle' : IDL.Text,
-  'followingCount' : IDL.Nat,
 });
 
 export const idlService = IDL.Service({
@@ -139,7 +118,6 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addComment' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'cancelFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'createOrUpdateProfile' : IDL.Func([UserProfileData], [], []),
   'createPost' : IDL.Func([PostInput], [IDL.Nat], []),
   'followUser' : IDL.Func([IDL.Principal], [], []),
@@ -158,24 +136,9 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Principal)],
       ['query'],
     ),
-  'getFriendsList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
-  'getFriendshipStatus' : IDL.Func(
-      [IDL.Principal],
-      [FriendshipStatusEnum],
-      ['query'],
-    ),
-  'getIncomingFriendRequests' : IDL.Func(
-      [],
-      [IDL.Vec(FriendRequest)],
-      ['query'],
-    ),
+  'getLatestPostByUser' : IDL.Func([IDL.Principal], [IDL.Opt(Post)], ['query']),
   'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
   'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
-  'getOutgoingFriendRequests' : IDL.Func(
-      [],
-      [IDL.Vec(FriendRequest)],
-      ['query'],
-    ),
   'getPostsByUser' : IDL.Func([IDL.Principal], [IDL.Vec(Post)], ['query']),
   'getProfileByHandle' : IDL.Func(
       [IDL.Text],
@@ -187,25 +150,30 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfileData)],
       ['query'],
     ),
+  'getProfileRowUsers' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getTopCreatorsByShadows' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(CreatorRanking)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfileData)],
       ['query'],
     ),
+  'getVisitHistory' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'hasNewPostSince' : IDL.Func([IDL.Principal, IDL.Int], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isFollowing' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
   'likePost' : IDL.Func([IDL.Nat], [], []),
   'markMessagesRead' : IDL.Func([IDL.Principal], [], []),
   'markNotificationRead' : IDL.Func([IDL.Nat], [], []),
   'recordView' : IDL.Func([IDL.Nat], [], []),
-  'respondToFriendRequest' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
+  'recordVisit' : IDL.Func([IDL.Principal], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfileData], [], []),
   'searchHandles' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Text)], ['query']),
-  'searchUsers' : IDL.Func([IDL.Text], [IDL.Vec(UserProfileSummary)], []),
-  'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'sendMessage' : IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Nat)], [], []),
   'unfollowUser' : IDL.Func([IDL.Principal], [], []),
-  'unfriend' : IDL.Func([IDL.Principal], [], []),
 });
 
 export const idlInitArgs = [];
@@ -263,23 +231,6 @@ export const idlFactory = ({ IDL }) => {
     'participants' : IDL.Tuple(IDL.Principal, IDL.Principal),
     'lastUpdated' : IDL.Int,
   });
-  const FriendshipStatusEnum = IDL.Variant({
-    'notConnected' : IDL.Null,
-    'pendingOutgoing' : IDL.Null,
-    'friends' : IDL.Null,
-    'pendingIncoming' : IDL.Null,
-  });
-  const FriendRequestStatus = IDL.Variant({
-    'pending' : IDL.Null,
-    'accepted' : IDL.Null,
-    'declined' : IDL.Null,
-  });
-  const FriendRequest = IDL.Record({
-    'status' : FriendRequestStatus,
-    'recipient' : IDL.Principal,
-    'sender' : IDL.Principal,
-    'timestamp' : IDL.Int,
-  });
   const Message = IDL.Record({
     'content' : IDL.Text,
     'read' : IDL.Bool,
@@ -301,15 +252,11 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Int,
     'postId' : IDL.Opt(IDL.Nat),
   });
-  const UserProfileSummary = IDL.Record({
-    'bio' : IDL.Text,
-    'postCount' : IDL.Nat,
+  const CreatorRanking = IDL.Record({
     'principal' : IDL.Principal,
-    'displayName' : IDL.Text,
-    'avatarUrl' : IDL.Opt(ExternalBlob),
+    'username' : IDL.Text,
+    'profilePicBlob' : IDL.Opt(ExternalBlob),
     'followerCount' : IDL.Nat,
-    'handle' : IDL.Text,
-    'followingCount' : IDL.Nat,
   });
   
   return IDL.Service({
@@ -342,7 +289,6 @@ export const idlFactory = ({ IDL }) => {
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addComment' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'cancelFriendRequest' : IDL.Func([IDL.Principal], [], []),
     'createOrUpdateProfile' : IDL.Func([UserProfileData], [], []),
     'createPost' : IDL.Func([PostInput], [IDL.Nat], []),
     'followUser' : IDL.Func([IDL.Principal], [], []),
@@ -365,24 +311,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Principal)],
         ['query'],
       ),
-    'getFriendsList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
-    'getFriendshipStatus' : IDL.Func(
+    'getLatestPostByUser' : IDL.Func(
         [IDL.Principal],
-        [FriendshipStatusEnum],
-        ['query'],
-      ),
-    'getIncomingFriendRequests' : IDL.Func(
-        [],
-        [IDL.Vec(FriendRequest)],
+        [IDL.Opt(Post)],
         ['query'],
       ),
     'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
     'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
-    'getOutgoingFriendRequests' : IDL.Func(
-        [],
-        [IDL.Vec(FriendRequest)],
-        ['query'],
-      ),
     'getPostsByUser' : IDL.Func([IDL.Principal], [IDL.Vec(Post)], ['query']),
     'getProfileByHandle' : IDL.Func(
         [IDL.Text],
@@ -394,9 +329,21 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfileData)],
         ['query'],
       ),
+    'getProfileRowUsers' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getTopCreatorsByShadows' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(CreatorRanking)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfileData)],
+        ['query'],
+      ),
+    'getVisitHistory' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'hasNewPostSince' : IDL.Func(
+        [IDL.Principal, IDL.Int],
+        [IDL.Bool],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
@@ -405,18 +352,15 @@ export const idlFactory = ({ IDL }) => {
     'markMessagesRead' : IDL.Func([IDL.Principal], [], []),
     'markNotificationRead' : IDL.Func([IDL.Nat], [], []),
     'recordView' : IDL.Func([IDL.Nat], [], []),
-    'respondToFriendRequest' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
+    'recordVisit' : IDL.Func([IDL.Principal], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfileData], [], []),
     'searchHandles' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Text)], ['query']),
-    'searchUsers' : IDL.Func([IDL.Text], [IDL.Vec(UserProfileSummary)], []),
-    'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
     'sendMessage' : IDL.Func(
         [IDL.Principal, IDL.Text, IDL.Opt(IDL.Nat)],
         [],
         [],
       ),
     'unfollowUser' : IDL.Func([IDL.Principal], [], []),
-    'unfriend' : IDL.Func([IDL.Principal], [], []),
   });
 };
 

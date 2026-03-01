@@ -1,16 +1,30 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T08:52:22.707Z",
-  "summary": "The diff implements the three requirements: ShortSportPage now reads the optional postId URL parameter and moves the matching post to the front of the feed (REQ-3); MessagesPage renders a tappable ShortSport preview card for messages with a postId and navigates to /shortsport?postId=<id> (REQ-2); the route tree adds validateSearch for the postId parameter. All core requirements appear addressed. Minor uncertainty exists due to file truncation, but evidence is strong across all three requirements.",
-  "missing_requirements": [],
+  "generatedAt": "2026-03-01T11:05:31.311Z",
+  "summary": "The diff implements most requirements across backend and frontend. Backend methods (recordVisit, getVisitHistory, getProfileRowUsers, getLatestPostByUser, hasNewPostSince) appear to be added in main.mo. The migration.mo file is created with visitHistory initialization. StoriesRow is updated with polling and glow logic. UserProfilePage appears to have recordVisit calls. However, several acceptance criteria details cannot be fully verified due to truncation, and the ~30-second polling interval in StoriesRow is not explicitly confirmed in the visible diff.",
+  "missing_requirements": [
+    {
+      "id": "REQ-5",
+      "requirement": "Polling interval of ~30 seconds to re-evaluate glow state without full page reload",
+      "reason": "The StoriesRow diff shows the component fetches profile row users and glow state via hooks (useGetProfileRowUsers, useProfilesWithNewPosts), but the visible diff does not show a polling interval (e.g., refetchInterval: 30000) configured. The hooks are in useQueries.ts which is truncated, so the polling configuration cannot be confirmed.",
+      "evidence": [
+        "frontend/src/components/StoriesRow.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
   "hallucinated_features": [],
-  "confidence": 0.88,
+  "confidence": 0.72,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/components/StoriesRow.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/ExplorePage.tsx",
     "frontend/src/pages/MessagesPage.tsx",
-    "frontend/src/pages/ShortSportPage.tsx",
-    "frontend/src/routeTree.ts",
+    "frontend/src/pages/UserProfilePage.tsx",
     "project_state.json"
   ]
 }

@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-when-a-user-receives-a-message-containing-a-shared-shortsport-post-tapping-clicking-that-message-must-open-and-play-the-exact-shortsport-video-that-was-sent-the-shortsport-should-be-displayed-in-the-full-screen-vertical-reel-view-shortsportpage-scrolled-focused-to-the-specific-post-or-in-a-modal-overlay-that-plays-that-specific-video",
-      "featureTitle": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
+      "featureId": "feature-update-the-storiesrow-component-to-populate-the-right-side-profile-bubbles-using-the-new-getprofilerowusers-backend-query-when-the-component-mounts-and-on-a-polling-interval-of-30-seconds-fetch-the-profile-row-principals-and-for-each-user-call-hasnewpostsince-with-the-last-seen-timestamp-stored-in-localstorage-to-determine-if-their-avatar-should-glow",
+      "featureTitle": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
       "files": [
-        "frontend/src/pages/MessagesPage.tsx",
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/components/StoriesRow.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -18,15 +18,16 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-in-messagespage-and-any-message-thread-component-detect-when-a-message-contains-a-shared-post-of-type-video-shortsport-and-render-a-tappable-shortsport-preview-card-on-tap-navigate-to-shortsportpage-with-the-specific-post-id-as-a-url-parameter-e-g-shortsport-postid-id-so-the-correct-short-is-loaded-and-displayed",
-      "featureTitle": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
+      "featureId": "feature-when-the-user-clicks-a-glowing-profile-bubble-in-storiesrow-call-getlatestpostbyuser-for-that-principal-and-navigate-directly-to-that-post-if-the-profile-is-not-glowing-clicking-it-navigates-to-the-user-s-profile-page-as-before-after-clicking-clear-the-glow-state-for-that-profile-and-update-the-last-seen-timestamp-in-localstorage-for-that-user",
+      "featureTitle": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
       "files": [
-        "frontend/src/pages/MessagesPage.tsx"
+        "frontend/src/components/StoriesRow.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -38,15 +39,15 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-2"
+        "REQ-6"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-shortsportpage-to-accept-an-optional-postid-url-query-parameter-when-present-the-page-must-load-and-display-the-shortsport-with-that-specific-id-first-scrolled-into-view-and-auto-playing-before-or-alongside-the-rest-of-the-feed",
-      "featureTitle": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
+      "featureId": "feature-automatically-call-recordvisit-principalid-on-the-backend-whenever-the-authenticated-user-navigates-to-a-userprofilepage-so-the-visit-history-is-kept-up-to-date-do-not-record-a-visit-to-the-user-s-own-profile",
+      "featureTitle": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/pages/UserProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -58,7 +59,7 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-7"
       ],
       "confidence": "high"
     }

@@ -31,8 +31,17 @@ import {
   Loader2,
   Play,
 } from 'lucide-react';
-import type { Conversation, Message, FriendRequest } from '../backend';
+import type { Conversation, Message } from '../backend';
+import { Principal } from '@dfinity/principal';
 import { toast } from 'sonner';
+
+// Local FriendRequest type (not exported from backend interface)
+interface FriendRequest {
+  sender: Principal;
+  recipient: Principal;
+  timestamp: bigint;
+  status: string;
+}
 
 function timeAgo(timestamp: bigint): string {
   const now = Date.now();
@@ -245,8 +254,6 @@ function ThreadView({
     setShowPostPicker(false);
   };
 
-  // Navigate to ShortSport page with the specific postId so the receiver
-  // sees exactly the shared post first.
   const handleViewPost = (postId: bigint) => {
     navigate({
       to: '/shortsport',
@@ -575,7 +582,7 @@ function FriendZoneTab({
         <Users size={32} className="mb-2 opacity-40" />
         <p className="text-sm font-medium">No friends yet</p>
         <p className="text-xs mt-1 opacity-70">
-          Send friend requests from user profiles to add people to your Friend Zone.
+          Follow people and they'll appear here when they follow back.
         </p>
       </div>
     );
@@ -584,7 +591,7 @@ function FriendZoneTab({
   return (
     <div>
       <p className="px-4 py-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-        Friend Zone · {friends.length}
+        Friends · {friends.length}
       </p>
       {friends.map((principalStr) => (
         <FriendZoneItem
@@ -606,58 +613,60 @@ interface MessagesPageProps {
 export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
   const { identity } = useInternetIdentity();
   const navigate = useNavigate();
-  const [activePrincipal, setActivePrincipal] = useState<string | undefined>(
-    initialPrincipal
+  const [activeThread, setActiveThread] = useState<string | null>(
+    initialPrincipal ?? null
   );
 
-  const myPrincipal = identity?.getPrincipal().toString();
-  const { data: conversations, isLoading } = useGetConversations();
-  const { data: incomingRequests } = useGetIncomingFriendRequests();
+  const myPrincipal = identity?.getPrincipal().toString() ?? '';
+  const { data: conversations, isLoading: convsLoading } = useGetConversations();
 
-  const pendingCount = incomingRequests?.length ?? 0;
+  useEffect(() => {
+    if (initialPrincipal) {
+      setActiveThread(initialPrincipal);
+    }
+  }, [initialPrincipal]);
 
   if (!identity) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-8">
-        <LogIn size={40} className="opacity-40" />
-        <p className="text-base font-medium">Sign in to view messages</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-muted-foreground">
+        <MessageCircle size={48} className="opacity-30" />
+        <p className="text-lg font-semibold">Sign in to view messages</p>
+        <Button
+          onClick={() => navigate({ to: '/profile' })}
+          className="gap-2 rounded-full"
+        >
+          <LogIn size={16} />
+          Sign In
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] overflow-hidden">
-      {/* Left panel — conversation list */}
+    <div className="flex h-[calc(100vh-7rem)] max-w-4xl mx-auto">
+      {/* Sidebar */}
       <div
-        className={`flex flex-col border-r border-border bg-background ${
-          activePrincipal ? 'hidden md:flex md:w-80 lg:w-96' : 'flex w-full md:w-80 lg:w-96'
-        }`}
+        className={`${
+          activeThread ? 'hidden md:flex' : 'flex'
+        } flex-col w-full md:w-80 border-r border-border`}
       >
-        <div className="px-4 py-3 border-b border-border">
-          <h1 className="text-lg font-bold">Messages</h1>
-        </div>
+        <Tabs defaultValue="inbox" className="flex flex-col h-full">
+          <div className="px-4 pt-4 pb-0">
+            <TabsList className="w-full">
+              <TabsTrigger value="inbox" className="flex-1 text-xs">
+                Inbox
+              </TabsTrigger>
+              <TabsTrigger value="social" className="flex-1 text-xs">
+                Social
+              </TabsTrigger>
+              <TabsTrigger value="friends" className="flex-1 text-xs">
+                Friend Zone
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-        <Tabs defaultValue="inbox" className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="mx-4 mt-3 mb-1 grid grid-cols-3 h-9">
-            <TabsTrigger value="inbox" className="text-xs">
-              Inbox
-            </TabsTrigger>
-            <TabsTrigger value="social" className="text-xs relative">
-              Social
-              {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                  {pendingCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="friendzone" className="text-xs">
-              Friend Zone
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Inbox Tab */}
           <TabsContent value="inbox" className="flex-1 overflow-y-auto mt-0">
-            {isLoading ? (
+            {convsLoading ? (
               <div className="space-y-1 p-2">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3">
@@ -670,23 +679,23 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
                 ))}
               </div>
             ) : conversations && conversations.length > 0 ? (
-              conversations.map((convo, idx) => (
+              conversations.map((conv, idx) => (
                 <ConversationItem
                   key={idx}
-                  conversation={convo}
-                  myPrincipal={myPrincipal!}
+                  conversation={conv}
+                  myPrincipal={myPrincipal}
                   isActive={
-                    activePrincipal ===
-                    (convo.participants[0].toString() === myPrincipal
-                      ? convo.participants[1].toString()
-                      : convo.participants[0].toString())
+                    activeThread ===
+                    (conv.participants[0].toString() === myPrincipal
+                      ? conv.participants[1].toString()
+                      : conv.participants[0].toString())
                   }
                   onClick={() => {
                     const other =
-                      convo.participants[0].toString() === myPrincipal
-                        ? convo.participants[1].toString()
-                        : convo.participants[0].toString();
-                    setActivePrincipal(other);
+                      conv.participants[0].toString() === myPrincipal
+                        ? conv.participants[1].toString()
+                        : conv.participants[0].toString();
+                    setActiveThread(other);
                   }}
                 />
               ))
@@ -695,46 +704,40 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
                 <MessageCircle size={32} className="mb-2 opacity-40" />
                 <p className="text-sm font-medium">No conversations yet</p>
                 <p className="text-xs mt-1 opacity-70">
-                  Start a conversation from someone's profile or Friend Zone.
+                  Start a conversation from someone's profile.
                 </p>
               </div>
             )}
           </TabsContent>
 
-          {/* Social Tab */}
           <TabsContent value="social" className="flex-1 overflow-y-auto mt-0">
             <SocialTab />
           </TabsContent>
 
-          {/* Friend Zone Tab */}
-          <TabsContent value="friendzone" className="flex-1 overflow-y-auto mt-0">
-            <FriendZoneTab
-              onStartConversation={(principal) => {
-                setActivePrincipal(principal);
-              }}
-            />
+          <TabsContent value="friends" className="flex-1 overflow-y-auto mt-0">
+            <FriendZoneTab onStartConversation={setActiveThread} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Right panel — thread view */}
+      {/* Thread View */}
       <div
-        className={`flex-1 flex flex-col ${
-          activePrincipal ? 'flex' : 'hidden md:flex'
-        }`}
+        className={`${
+          activeThread ? 'flex' : 'hidden md:flex'
+        } flex-col flex-1`}
       >
-        {activePrincipal && myPrincipal ? (
+        {activeThread ? (
           <ThreadView
-            otherPrincipal={activePrincipal}
+            otherPrincipal={activeThread}
             myPrincipal={myPrincipal}
-            onBack={() => setActivePrincipal(undefined)}
+            onBack={() => setActiveThread(null)}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
-            <MessageCircle size={48} className="opacity-20" />
-            <p className="text-base font-medium opacity-60">Select a conversation</p>
-            <p className="text-sm opacity-40">
-              Choose from your inbox or start a new chat
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageCircle size={48} className="mb-3 opacity-30" />
+            <p className="text-base font-medium">Select a conversation</p>
+            <p className="text-sm opacity-70 mt-1">
+              Choose from your inbox or start a new one.
             </p>
           </div>
         )}

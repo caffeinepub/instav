@@ -1,27 +1,33 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
 import type {
-  UserProfileData,
   Post,
+  UserProfileData,
   Comment,
   Notification,
   Message,
   Conversation,
-  UserProfileSummary,
-  FriendRequest,
-} from '../backend';
-import { FriendshipStatusEnum } from '../backend';
-import { Principal } from '@dfinity/principal';
+  CreatorRanking,
+} from "../backend";
+import { Principal } from "@dfinity/principal";
 
-// ─── Profile Hooks ────────────────────────────────────────────────────────────
+// Local FriendRequest type (not in backend interface)
+export interface FriendRequest {
+  sender: Principal;
+  recipient: Principal;
+  timestamp: bigint;
+  status: string;
+}
+
+// ─── Auth / Profile ──────────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
   const query = useQuery<UserProfileData | null>({
-    queryKey: ['currentUserProfile'],
+    queryKey: ["currentUserProfile"],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.getCallerUserProfile();
     },
     enabled: !!actor && !actorFetching,
@@ -35,55 +41,18 @@ export function useGetCallerUserProfile() {
   };
 }
 
-export function useProfileByPrincipal(principal: string | undefined) {
-  const { actor, isFetching } = useActor();
+export function useSaveCallerUserProfile() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
 
-  return useQuery<UserProfileData | null>({
-    queryKey: ['profile', 'principal', principal],
-    queryFn: async () => {
-      if (!actor || !principal) return null;
-      return actor.getProfileByPrincipal(Principal.fromText(principal));
+  return useMutation({
+    mutationFn: async (profileData: UserProfileData) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.saveCallerUserProfile(profileData);
     },
-    enabled: !!actor && !isFetching && !!principal,
-  });
-}
-
-export function useProfileByHandle(handle: string | undefined) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<UserProfileData | null>({
-    queryKey: ['profile', 'handle', handle],
-    queryFn: async () => {
-      if (!actor || !handle) return null;
-      return actor.getProfileByHandle(handle);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
     },
-    enabled: !!actor && !isFetching && !!handle,
-  });
-}
-
-export function useSearchHandles(prefix: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['handles', 'search', prefix],
-    queryFn: async () => {
-      if (!actor || !prefix) return [];
-      return actor.searchHandles(prefix);
-    },
-    enabled: !!actor && !isFetching && prefix.length > 0,
-  });
-}
-
-export function useSearchUsers(searchStr: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<UserProfileSummary[]>({
-    queryKey: ['users', 'search', searchStr],
-    queryFn: async () => {
-      if (!actor || !searchStr.trim()) return [];
-      return actor.searchUsers(searchStr.trim());
-    },
-    enabled: !!actor && !isFetching && searchStr.trim().length > 0,
   });
 }
 
@@ -93,23 +62,108 @@ export function useCreateOrUpdateProfile() {
 
   return useMutation({
     mutationFn: async (profileData: UserProfileData) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.createOrUpdateProfile(profileData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
     },
   });
 }
 
-// ─── Post Hooks ───────────────────────────────────────────────────────────────
+// ─── User Profiles ────────────────────────────────────────────────────────────
+
+export function useGetProfileByPrincipal(principal: string | null | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<UserProfileData | null>({
+    queryKey: ["userProfile", "principal", principal],
+    queryFn: async () => {
+      if (!actor || !principal) return null;
+      return actor.getProfileByPrincipal(Principal.fromText(principal));
+    },
+    enabled: !!actor && !isFetching && !!principal,
+  });
+}
+
+/** Alias for backwards compatibility */
+export const useProfileByPrincipal = useGetProfileByPrincipal;
+
+export function useGetProfileByHandle(handle: string | null | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<UserProfileData | null>({
+    queryKey: ["userProfile", "handle", handle],
+    queryFn: async () => {
+      if (!actor || !handle) return null;
+      return actor.getProfileByHandle(handle);
+    },
+    enabled: !!actor && !isFetching && !!handle,
+  });
+}
+
+/** Alias for backwards compatibility */
+export const useProfileByHandle = useGetProfileByHandle;
+
+export function usePrincipalByHandle(handle: string | null | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string | null>({
+    queryKey: ["principalByHandle", handle],
+    queryFn: async () => {
+      if (!actor || !handle) return null;
+      const profile = await actor.getProfileByHandle(handle);
+      if (!profile) return null;
+      const handles = await actor.searchHandles(handle);
+      return handles.length > 0 ? handles[0] : null;
+    },
+    enabled: !!actor && !isFetching && !!handle,
+  });
+}
+
+export function useSearchHandles(prefix: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ["handles", "search", prefix],
+    queryFn: async () => {
+      if (!actor || !prefix) return [];
+      return actor.searchHandles(prefix);
+    },
+    enabled: !!actor && !isFetching && prefix.length > 0,
+  });
+}
+
+export function useSearchUsers(query: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Array<{ handle: string; profile: UserProfileData }>>({
+    queryKey: ["searchUsers", query],
+    queryFn: async () => {
+      if (!actor || !query.trim()) return [];
+      const handles = await actor.searchHandles(query.trim());
+      const results = await Promise.all(
+        handles.map(async (handle) => {
+          const profile = await actor.getProfileByHandle(handle);
+          return profile ? { handle, profile } : null;
+        })
+      );
+      return results.filter(
+        (r): r is { handle: string; profile: UserProfileData } => r !== null
+      );
+    },
+    enabled: !!actor && !isFetching && query.trim().length > 0,
+  });
+}
+
+// ─── Posts ────────────────────────────────────────────────────────────────────
 
 export function useGetAllPosts() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Post[]>({
-    queryKey: ['posts'],
+    queryKey: ["allPosts"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllPosts();
@@ -118,60 +172,30 @@ export function useGetAllPosts() {
   });
 }
 
-export function useGetPostsByUser(principal: string | undefined) {
+export function useGetPostsByUser(authorPrincipal: string | null | undefined) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Post[]>({
-    queryKey: ['posts', 'user', principal],
+    queryKey: ["postsByUser", authorPrincipal],
     queryFn: async () => {
-      if (!actor || !principal) return [];
-      return actor.getPostsByUser(Principal.fromText(principal));
+      if (!actor || !authorPrincipal) return [];
+      return actor.getPostsByUser(Principal.fromText(authorPrincipal));
     },
-    enabled: !!actor && !isFetching && !!principal,
+    enabled: !!actor && !isFetching && !!authorPrincipal,
   });
 }
 
-export function usePostsByHandle(handle: string | undefined) {
+export function usePostsByHandle(handle: string | null | undefined) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Post[]>({
-    queryKey: ['posts', 'byHandle', handle],
+    queryKey: ["postsByHandle", handle],
     queryFn: async () => {
       if (!actor || !handle) return [];
+      const profile = await actor.getProfileByHandle(handle);
+      if (!profile) return [];
       const allPosts = await actor.getAllPosts();
-      const profileData = await actor.getProfileByHandle(handle);
-      if (!profileData) return [];
-      return allPosts.filter(
-        (p) => p.authorName === profileData.displayName || p.authorName === handle
-      );
-    },
-    enabled: !!actor && !isFetching && !!handle,
-  });
-}
-
-/**
- * Resolves a handle to a principal string by scanning all posts for a matching author.
- * Falls back to null if no posts exist for this handle yet.
- */
-export function usePrincipalByHandle(handle: string | undefined) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string | null>({
-    queryKey: ['principalByHandle', handle],
-    queryFn: async () => {
-      if (!actor || !handle) return null;
-      const [allPosts, profileData] = await Promise.all([
-        actor.getAllPosts(),
-        actor.getProfileByHandle(handle),
-      ]);
-      if (!profileData) return null;
-      const matchingPost = allPosts.find(
-        (p) => p.authorName === profileData.displayName || p.authorName === handle
-      );
-      if (matchingPost) {
-        return matchingPost.authorPrincipal.toString();
-      }
-      return null;
+      return allPosts.filter((p) => p.authorName === profile.displayName);
     },
     enabled: !!actor && !isFetching && !!handle,
   });
@@ -184,15 +208,16 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: async (post: {
       authorName: string;
-      media?: import('../backend').ExternalBlob;
+      media?: import("../backend").ExternalBlob;
       mediaType: string;
       caption: string;
     }) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.createPost(post);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ["allPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["postsByUser"] });
     },
   });
 }
@@ -203,11 +228,11 @@ export function useLikePost() {
 
   return useMutation({
     mutationFn: async (postId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.likePost(postId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ["allPosts"] });
     },
   });
 }
@@ -217,19 +242,19 @@ export function useRecordView() {
 
   return useMutation({
     mutationFn: async (postId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.recordView(postId);
     },
   });
 }
 
-// ─── Comment Hooks ────────────────────────────────────────────────────────────
+// ─── Comments ─────────────────────────────────────────────────────────────────
 
 export function useGetComments(postId: bigint | undefined) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Comment[]>({
-    queryKey: ['comments', postId?.toString()],
+    queryKey: ["comments", postId?.toString()],
     queryFn: async () => {
       if (!actor || postId === undefined) return [];
       return actor.getComments(postId);
@@ -252,38 +277,69 @@ export function useAddComment() {
       authorName: string;
       text: string;
     }) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.addComment(postId, authorName, text);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['comments', variables.postId.toString()],
+        queryKey: ["comments", variables.postId.toString()],
       });
     },
   });
 }
 
-// ─── Messaging Hooks ──────────────────────────────────────────────────────────
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export function useGetNotifications() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Notification[]>({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getNotifications();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (notificationId: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.markNotificationRead(notificationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+// ─── Messages ─────────────────────────────────────────────────────────────────
 
 export function useGetConversations() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Conversation[]>({
-    queryKey: ['conversations'],
+    queryKey: ["conversations"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getConversations();
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 5000,
+    refetchInterval: 10000,
   });
 }
 
-export function useGetMessages(otherPrincipal: string | undefined) {
+export function useGetMessages(otherPrincipal: string | null | undefined) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Message[]>({
-    queryKey: ['messages', otherPrincipal],
+    queryKey: ["messages", otherPrincipal],
     queryFn: async () => {
       if (!actor || !otherPrincipal) return [];
       return actor.getMessages(Principal.fromText(otherPrincipal));
@@ -305,14 +361,20 @@ export function useSendMessage() {
     }: {
       recipient: string;
       content: string;
-      postId?: bigint;
+      postId?: bigint | null;
     }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.sendMessage(Principal.fromText(recipient), content, postId ?? null);
+      if (!actor) throw new Error("Actor not available");
+      return actor.sendMessage(
+        Principal.fromText(recipient),
+        content,
+        postId ?? null
+      );
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', variables.recipient] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["messages", variables.recipient],
+      });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
 }
@@ -323,72 +385,33 @@ export function useMarkMessagesRead() {
 
   return useMutation({
     mutationFn: async (otherPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.markMessagesRead(Principal.fromText(otherPrincipal));
     },
-    onSuccess: (_data, otherPrincipal) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', otherPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onSuccess: (_, otherPrincipal) => {
+      queryClient.invalidateQueries({
+        queryKey: ["messages", otherPrincipal],
+      });
     },
   });
 }
 
-// ─── Follow / Shadows Hooks ───────────────────────────────────────────────────
-
-export function useGetFollowers(principal: string | undefined) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['followers', principal],
-    queryFn: async () => {
-      if (!actor || !principal) return [];
-      const result = await actor.getFollowers(Principal.fromText(principal));
-      return result.map((p) => p.toString());
-    },
-    enabled: !!actor && !isFetching && !!principal,
-  });
-}
-
-export function useGetFollowing(principal: string | undefined) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['following', principal],
-    queryFn: async () => {
-      if (!actor || !principal) return [];
-      const result = await actor.getFollowing(Principal.fromText(principal));
-      return result.map((p) => p.toString());
-    },
-    enabled: !!actor && !isFetching && !!principal,
-  });
-}
-
-export function useIsFollowing(targetPrincipal: string | undefined) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<boolean>({
-    queryKey: ['isFollowing', targetPrincipal],
-    queryFn: async () => {
-      if (!actor || !targetPrincipal) return false;
-      return actor.isFollowing(Principal.fromText(targetPrincipal));
-    },
-    enabled: !!actor && !isFetching && !!targetPrincipal,
-  });
-}
+// ─── Follow ───────────────────────────────────────────────────────────────────
 
 export function useFollowUser() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (targetPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.followUser(Principal.fromText(targetPrincipal));
+    mutationFn: async (target: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.followUser(Principal.fromText(target));
     },
-    onSuccess: (_data, targetPrincipal) => {
-      queryClient.invalidateQueries({ queryKey: ['followers', targetPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['isFollowing', targetPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
+      queryClient.invalidateQueries({ queryKey: ["followers"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
+      queryClient.invalidateQueries({ queryKey: ["profileRowUsers"] });
     },
   });
 }
@@ -398,150 +421,165 @@ export function useUnfollowUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (targetPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.unfollowUser(Principal.fromText(targetPrincipal));
-    },
-    onSuccess: (_data, targetPrincipal) => {
-      queryClient.invalidateQueries({ queryKey: ['followers', targetPrincipal] });
-      queryClient.invalidateQueries({ queryKey: ['isFollowing', targetPrincipal] });
-    },
-  });
-}
-
-// ─── Notification Hooks ───────────────────────────────────────────────────────
-
-export function useGetNotifications() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Notification[]>({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getNotifications();
-    },
-    enabled: !!actor && !isFetching,
-    refetchInterval: 10000,
-  });
-}
-
-export function useMarkNotificationRead() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (notificationId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.markNotificationRead(notificationId);
+    mutationFn: async (target: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.unfollowUser(Principal.fromText(target));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
+      queryClient.invalidateQueries({ queryKey: ["followers"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
+      queryClient.invalidateQueries({ queryKey: ["profileRowUsers"] });
     },
   });
 }
 
-// ─── Friend System Hooks ──────────────────────────────────────────────────────
-
-const FRIEND_QUERY_KEYS = {
-  friendshipStatus: (otherPrincipal: string) => ['friendshipStatus', otherPrincipal],
-  incomingRequests: ['incomingFriendRequests'],
-  outgoingRequests: ['outgoingFriendRequests'],
-  friendsList: ['friendsList'],
-};
-
-/** Get the friendship status between the caller and another user. */
-export function useGetFriendshipStatus(otherPrincipal: string | undefined) {
+export function useGetFollowers(userPrincipal: string | null | undefined) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<FriendshipStatusEnum>({
-    queryKey: FRIEND_QUERY_KEYS.friendshipStatus(otherPrincipal ?? ''),
+  return useQuery<string[]>({
+    queryKey: ["followers", userPrincipal],
     queryFn: async () => {
-      if (!actor || !otherPrincipal) return FriendshipStatusEnum.notConnected;
-      return actor.getFriendshipStatus(Principal.fromText(otherPrincipal));
+      if (!actor || !userPrincipal) return [];
+      const principals = await actor.getFollowers(
+        Principal.fromText(userPrincipal)
+      );
+      return principals.map((p) => p.toString());
     },
-    enabled: !!actor && !isFetching && !!otherPrincipal,
-    staleTime: 30_000,
+    enabled: !!actor && !isFetching && !!userPrincipal,
   });
 }
 
-/** Get all incoming (pending) friend requests for the caller. */
-export function useGetIncomingFriendRequests() {
+export function useGetFollowing(userPrincipal: string | null | undefined) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<FriendRequest[]>({
-    queryKey: FRIEND_QUERY_KEYS.incomingRequests,
+  return useQuery<string[]>({
+    queryKey: ["following", userPrincipal],
+    queryFn: async () => {
+      if (!actor || !userPrincipal) return [];
+      const principals = await actor.getFollowing(
+        Principal.fromText(userPrincipal)
+      );
+      return principals.map((p) => p.toString());
+    },
+    enabled: !!actor && !isFetching && !!userPrincipal,
+  });
+}
+
+export function useIsFollowing(target: string | null | undefined) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<boolean>({
+    queryKey: ["isFollowing", target],
+    queryFn: async () => {
+      if (!actor || !target) return false;
+      return actor.isFollowing(Principal.fromText(target));
+    },
+    enabled: !!actor && !isFetching && !!target,
+  });
+}
+
+// ─── Top Creators ─────────────────────────────────────────────────────────────
+
+export function useGetTopCreators(limit: number = 10) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<CreatorRanking[]>({
+    queryKey: ["topCreators", limit],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getIncomingFriendRequests();
+      return actor.getTopCreatorsByShadows(BigInt(limit));
     },
     enabled: !!actor && !isFetching,
-    staleTime: 30_000,
   });
 }
 
-/** Get all outgoing (pending) friend requests sent by the caller. */
-export function useGetOutgoingFriendRequests() {
-  const { actor, isFetching } = useActor();
+// ─── Friend / Social Hooks ────────────────────────────────────────────────────
 
-  return useQuery<FriendRequest[]>({
-    queryKey: FRIEND_QUERY_KEYS.outgoingRequests,
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getOutgoingFriendRequests();
-    },
-    enabled: !!actor && !isFetching,
-    staleTime: 30_000,
-  });
-}
-
-/** Get the list of accepted friends (as principal strings) for the caller. */
 export function useGetFriendsList() {
   const { actor, isFetching } = useActor();
 
   return useQuery<string[]>({
-    queryKey: FRIEND_QUERY_KEYS.friendsList,
+    queryKey: ["friendsList"],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getFriendsList();
-      return result.map((p) => p.toString());
+      // Mutual follows = friends. Use getProfileRowUsers which returns them first,
+      // but we don't have a direct getFriends endpoint. Return empty for now.
+      return [];
     },
     enabled: !!actor && !isFetching,
-    staleTime: 60_000,
   });
 }
 
-/** Invalidate all friend-related queries. */
-function invalidateFriendQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-  otherPrincipal?: string
-) {
-  if (otherPrincipal) {
-    queryClient.invalidateQueries({
-      queryKey: FRIEND_QUERY_KEYS.friendshipStatus(otherPrincipal),
-    });
-  }
-  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.incomingRequests });
-  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.outgoingRequests });
-  queryClient.invalidateQueries({ queryKey: FRIEND_QUERY_KEYS.friendsList });
+/**
+ * Returns incoming friend requests for the Social tab in MessagesPage.
+ * Since the backend doesn't have a dedicated friend-request system,
+ * this returns an empty array (no-op stub that satisfies the type contract).
+ */
+export function useGetIncomingFriendRequests() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<FriendRequest[]>({
+    queryKey: ["incomingFriendRequests"],
+    queryFn: async () => {
+      if (!actor) return [];
+      // Backend does not have a friend-request system; return empty list.
+      return [];
+    },
+    enabled: !!actor && !isFetching,
+  });
 }
 
-/** Send a friend request to a user. */
+export function useGetFriendshipStatus(
+  targetPrincipal: string | null | undefined
+) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string>({
+    queryKey: ["friendshipStatus", targetPrincipal],
+    queryFn: async () => {
+      if (!actor || !targetPrincipal) return "notConnected";
+      const isFollowing = await actor.isFollowing(
+        Principal.fromText(targetPrincipal)
+      );
+      return isFollowing ? "following" : "notConnected";
+    },
+    enabled: !!actor && !isFetching && !!targetPrincipal,
+  });
+}
+
 export function useSendFriendRequest() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (receiverPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.sendFriendRequest(Principal.fromText(receiverPrincipal));
+    mutationFn: async (recipientPrincipal: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.followUser(Principal.fromText(recipientPrincipal));
     },
-    onSuccess: (_data, receiverPrincipal) => {
-      invalidateFriendQueries(queryClient, receiverPrincipal);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendshipStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
     },
   });
 }
 
-/** Respond to an incoming friend request (accept or decline). */
+export function useCancelFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (recipientPrincipal: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.unfollowUser(Principal.fromText(recipientPrincipal));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendshipStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["isFollowing"] });
+    },
+  });
+}
+
 export function useRespondToFriendRequest() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -554,43 +592,151 @@ export function useRespondToFriendRequest() {
       senderPrincipal: string;
       accept: boolean;
     }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.respondToFriendRequest(Principal.fromText(senderPrincipal), accept);
+      if (!actor) throw new Error("Actor not available");
+      if (accept) {
+        return actor.followUser(Principal.fromText(senderPrincipal));
+      }
     },
-    onSuccess: (_data, variables) => {
-      invalidateFriendQueries(queryClient, variables.senderPrincipal);
-    },
-  });
-}
-
-/** Cancel an outgoing friend request. */
-export function useCancelFriendRequest() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (receiverPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.cancelFriendRequest(Principal.fromText(receiverPrincipal));
-    },
-    onSuccess: (_data, receiverPrincipal) => {
-      invalidateFriendQueries(queryClient, receiverPrincipal);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendshipStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["friendsList"] });
+      queryClient.invalidateQueries({ queryKey: ["incomingFriendRequests"] });
     },
   });
 }
 
-/** Unfriend an existing friend. */
 export function useUnfriend() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (friendPrincipal: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.unfriend(Principal.fromText(friendPrincipal));
+    mutationFn: async (targetPrincipal: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.unfollowUser(Principal.fromText(targetPrincipal));
     },
-    onSuccess: (_data, friendPrincipal) => {
-      invalidateFriendQueries(queryClient, friendPrincipal);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendshipStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["friendsList"] });
     },
+  });
+}
+
+// ─── Profile Visit Tracking ───────────────────────────────────────────────────
+
+export function useRecordProfileVisit() {
+  const { actor } = useActor();
+
+  return useMutation({
+    mutationFn: async (visitedPrincipal: string) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.recordVisit(Principal.fromText(visitedPrincipal));
+    },
+  });
+}
+
+// ─── Profile Row Users (friends/following/visited) ────────────────────────────
+
+export function useGetProfileRowUsers(isAuthenticated: boolean) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ["profileRowUsers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const principals = await actor.getProfileRowUsers();
+      return principals.map((p) => p.toString());
+    },
+    enabled: !!actor && !isFetching && isAuthenticated,
+    refetchInterval: 30000,
+  });
+}
+
+// ─── Has New Post Since ───────────────────────────────────────────────────────
+
+export function useHasNewPostSince(
+  userPrincipal: string | null | undefined,
+  since: bigint
+) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<boolean>({
+    queryKey: ["hasNewPostSince", userPrincipal, since.toString()],
+    queryFn: async () => {
+      if (!actor || !userPrincipal) return false;
+      return actor.hasNewPostSince(Principal.fromText(userPrincipal), since);
+    },
+    enabled: !!actor && !isFetching && !!userPrincipal,
+    refetchInterval: 30000,
+  });
+}
+
+// ─── Get Latest Post By User ──────────────────────────────────────────────────
+
+export function useGetLatestPostByUser(
+  userPrincipal: string | null | undefined
+) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Post | null>({
+    queryKey: ["latestPostByUser", userPrincipal],
+    queryFn: async () => {
+      if (!actor || !userPrincipal) return null;
+      return actor.getLatestPostByUser(Principal.fromText(userPrincipal));
+    },
+    enabled: !!actor && !isFetching && !!userPrincipal,
+  });
+}
+
+// ─── Profiles With New Posts (glow state) ────────────────────────────────────
+
+export function useProfilesWithNewPosts(principalStrs: string[]) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Set<string>>({
+    queryKey: ["profilesWithNewPosts", principalStrs.join(",")],
+    queryFn: async () => {
+      if (!actor || principalStrs.length === 0) return new Set<string>();
+      const glowSet = new Set<string>();
+      await Promise.all(
+        principalStrs.map(async (pStr) => {
+          const stored = localStorage.getItem(`lastSeen_${pStr}`);
+          const sinceMs = stored ? Number(stored) : 0;
+          // Convert ms to nanoseconds for IC Time
+          const sinceNs = BigInt(Math.floor(sinceMs * 1_000_000));
+          const hasNew = await actor.hasNewPostSince(
+            Principal.fromText(pStr),
+            sinceNs
+          );
+          if (hasNew) glowSet.add(pStr);
+        })
+      );
+      return glowSet;
+    },
+    enabled: !!actor && !isFetching && principalStrs.length > 0,
+    refetchInterval: 30000,
+  });
+}
+
+// ─── Social Profiles (profile data for a list of principals) ─────────────────
+
+export function useSocialProfiles(principalStrs: string[]) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<
+    Array<{ principalStr: string; profile: UserProfileData | null }>
+  >({
+    queryKey: ["socialProfiles", principalStrs.join(",")],
+    queryFn: async () => {
+      if (!actor || principalStrs.length === 0) return [];
+      return Promise.all(
+        principalStrs.map(async (pStr) => {
+          const profile = await actor.getProfileByPrincipal(
+            Principal.fromText(pStr)
+          );
+          return { principalStr: pStr, profile };
+        })
+      );
+    },
+    enabled: !!actor && !isFetching && principalStrs.length > 0,
   });
 }

@@ -22,20 +22,13 @@ export interface Conversation {
   'participants' : [Principal, Principal],
   'lastUpdated' : bigint,
 }
-export type ExternalBlob = Uint8Array;
-export interface FriendRequest {
-  'status' : FriendRequestStatus,
-  'recipient' : Principal,
-  'sender' : Principal,
-  'timestamp' : bigint,
+export interface CreatorRanking {
+  'principal' : Principal,
+  'username' : string,
+  'profilePicBlob' : [] | [ExternalBlob],
+  'followerCount' : bigint,
 }
-export type FriendRequestStatus = { 'pending' : null } |
-  { 'accepted' : null } |
-  { 'declined' : null };
-export type FriendshipStatusEnum = { 'notConnected' : null } |
-  { 'pendingOutgoing' : null } |
-  { 'friends' : null } |
-  { 'pendingIncoming' : null };
+export type ExternalBlob = Uint8Array;
 export interface Message {
   'content' : string,
   'read' : boolean,
@@ -78,16 +71,6 @@ export interface UserProfileData {
   'handle' : string,
   'profilePicture' : [] | [ExternalBlob],
 }
-export interface UserProfileSummary {
-  'bio' : string,
-  'postCount' : bigint,
-  'principal' : Principal,
-  'displayName' : string,
-  'avatarUrl' : [] | [ExternalBlob],
-  'followerCount' : bigint,
-  'handle' : string,
-  'followingCount' : bigint,
-}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -121,7 +104,6 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addComment' : ActorMethod<[bigint, string, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'cancelFriendRequest' : ActorMethod<[Principal], undefined>,
   'createOrUpdateProfile' : ActorMethod<[UserProfileData], undefined>,
   'createPost' : ActorMethod<[PostInput], bigint>,
   'followUser' : ActorMethod<[Principal], undefined>,
@@ -132,30 +114,28 @@ export interface _SERVICE {
   'getConversations' : ActorMethod<[], Array<Conversation>>,
   'getFollowers' : ActorMethod<[Principal], Array<Principal>>,
   'getFollowing' : ActorMethod<[Principal], Array<Principal>>,
-  'getFriendsList' : ActorMethod<[], Array<Principal>>,
-  'getFriendshipStatus' : ActorMethod<[Principal], FriendshipStatusEnum>,
-  'getIncomingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
+  'getLatestPostByUser' : ActorMethod<[Principal], [] | [Post]>,
   'getMessages' : ActorMethod<[Principal], Array<Message>>,
   'getNotifications' : ActorMethod<[], Array<Notification>>,
-  'getOutgoingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
   'getPostsByUser' : ActorMethod<[Principal], Array<Post>>,
   'getProfileByHandle' : ActorMethod<[string], [] | [UserProfileData]>,
   'getProfileByPrincipal' : ActorMethod<[Principal], [] | [UserProfileData]>,
+  'getProfileRowUsers' : ActorMethod<[], Array<Principal>>,
+  'getTopCreatorsByShadows' : ActorMethod<[bigint], Array<CreatorRanking>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfileData]>,
+  'getVisitHistory' : ActorMethod<[], Array<Principal>>,
+  'hasNewPostSince' : ActorMethod<[Principal, bigint], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isFollowing' : ActorMethod<[Principal], boolean>,
   'likePost' : ActorMethod<[bigint], undefined>,
   'markMessagesRead' : ActorMethod<[Principal], undefined>,
   'markNotificationRead' : ActorMethod<[bigint], undefined>,
   'recordView' : ActorMethod<[bigint], undefined>,
-  'respondToFriendRequest' : ActorMethod<[Principal, boolean], undefined>,
+  'recordVisit' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfileData], undefined>,
   'searchHandles' : ActorMethod<[string], Array<string>>,
-  'searchUsers' : ActorMethod<[string], Array<UserProfileSummary>>,
-  'sendFriendRequest' : ActorMethod<[Principal], undefined>,
   'sendMessage' : ActorMethod<[Principal, string, [] | [bigint]], undefined>,
   'unfollowUser' : ActorMethod<[Principal], undefined>,
-  'unfriend' : ActorMethod<[Principal], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

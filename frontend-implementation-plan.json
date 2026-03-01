@@ -1,71 +1,65 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix ShortSport message sharing — receiver cannot open sent ShortSport",
+  "title": "Profile row logic: friends/followed/visited profiles with glow and post navigation",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Enable receiver to open and play the specific shared ShortSport video when tapping a message containing a shared post",
+      "id": "REQ-5",
+      "summary": "Populate StoriesRow profile bubbles from getProfileRowUsers backend query with glow indicators for users who have new posts",
       "acceptanceCriteria": [
-        "When a receiver taps a shared ShortSport in their message thread, the specific ShortSport video plays/opens.",
-        "The correct post (the one that was shared) is displayed — not a generic feed or an empty/error state.",
-        "If ShortSportPage is used, it scrolls to and focuses the specific shared post by its post ID.",
-        "No error or blank screen is shown when the receiver opens a shared ShortSport message."
+        "The right-side profile bubbles in StoriesRow are populated from getProfileRowUsers() for the authenticated user.",
+        "Profiles with a new post since the user's last check display a visible glow effect on their avatar.",
+        "The glow state is re-evaluated every ~30 seconds via polling without a full page reload.",
+        "No changes are made to the visual design or layout of StoriesRow beyond toggling the existing glow indicator."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/MessagesPage.tsx",
+          "path": "frontend/src/components/StoriesRow.tsx",
           "operation": "modify",
-          "description": "Update the message rendering logic in the message thread view to detect when a message contains a postId field (indicating a shared ShortSport). Render a tappable preview card for video/ShortSport posts with a thumbnail, play icon, and caption excerpt. On tap, navigate to /shortsport?postId=<id> using the router's navigate function. Ensure this works for both sender and receiver messages in the thread."
+          "description": "Refactor the component to fetch profile row users via getProfileRowUsers() backend query on mount and every ~30 seconds. For each returned principal, call hasNewPostSince with a timestamp stored in localStorage (key: 'lastSeen_<principal>') to determine glow state. Store glow state in component state and apply the existing glow CSS class to avatars with new posts. Use the authorization component's useInternetIdentity hook to ensure the user is authenticated before making backend calls. Preserve all existing StoriesRow layout and styling."
         },
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add logic to read the postId query parameter from the URL on component mount using the urlParams utility or useSearch hook. When postId is present, fetch that specific post using the backend actor and prepend it to the feed array so it displays first and auto-plays. If the postId does not match any loaded post or fetch fails, fall back gracefully to the normal newest-first feed without crashing. Preserve existing feed ordering and auto-advance behavior when no postId parameter is present."
+          "description": "Add a new React Query hook useGetProfileRowUsers() that calls actor.getProfileRowUsers() and returns an array of Principal objects. Add another hook useHasNewPostSince(user: Principal, since: bigint) that calls actor.hasNewPostSince(user, since) and returns a boolean. Both hooks should be enabled only when the actor is available and the user is authenticated. Follow the existing query hook patterns in this file."
         }
       ]
     },
     {
-      "id": "REQ-2",
-      "summary": "Render tappable ShortSport preview cards in message threads and navigate to ShortSportPage with postId parameter",
+      "id": "REQ-6",
+      "summary": "Navigate to the latest post when clicking a glowing profile bubble, otherwise navigate to the user's profile page",
       "acceptanceCriteria": [
-        "Shared ShortSport messages in the thread render a recognizable preview (thumbnail or play icon) that is tappable.",
-        "Tapping the preview navigates to /shortsport with the correct postId parameter.",
-        "ShortSportPage reads the postId parameter on mount and scrolls/focuses to that specific post.",
-        "Works for both the sender and receiver side of the conversation."
+        "Clicking a glowing avatar fetches the user's most recent post and navigates to it.",
+        "Clicking a non-glowing avatar navigates to that user's profile page.",
+        "After clicking a glowing avatar, the glow is cleared for that profile and localStorage is updated with the current timestamp.",
+        "If getLatestPostByUser returns null for a glowing profile, fall back to navigating to the user's profile page."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/MessageBubble.tsx",
-          "operation": "create",
-          "description": "Create a new MessageBubble component that accepts a Message object as props. If the message has a postId field, fetch the post details using useQuery and render a compact video preview card with thumbnail (from post.media.getDirectURL()), a play icon overlay, and the post caption. Include a tap handler that navigates to /shortsport?postId=<postId>. For text-only messages, render the content as before. Style the bubble appropriately for sender vs receiver (align left/right, different background colors)."
+          "path": "frontend/src/components/StoriesRow.tsx",
+          "operation": "modify",
+          "description": "Update the click handler for profile bubbles to check if the clicked profile is glowing. If glowing, call getLatestPostByUser for that principal and navigate to the post (route: /shortsport with query param ?postId=<postId>). If the backend returns null, fall back to navigating to /user/<principalString>. If not glowing, navigate directly to /user/<principalString>. After clicking a glowing profile, update localStorage key 'lastSeen_<principal>' with the current timestamp (Date.now()) and remove the glow from local state. Use TanStack Router's useNavigate hook for navigation."
         },
         {
-          "path": "frontend/src/pages/MessagesPage.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Replace the existing message rendering logic in the message thread section with the new MessageBubble component. Pass each message object to MessageBubble, which will handle rendering text messages vs shared post previews. Ensure the message list is scrollable and displays messages in chronological order. Wire the MessageBubble component into the JSX where messages are currently mapped."
+          "description": "Add a new React Query hook useGetLatestPostByUser(user: Principal) that calls actor.getLatestPostByUser(user) and returns a Post or null. Enable the query only when the actor is available. Follow the existing query hook patterns in this file."
         }
       ]
     },
     {
-      "id": "REQ-3",
-      "summary": "Update ShortSportPage to accept and handle an optional postId URL query parameter",
+      "id": "REQ-7",
+      "summary": "Automatically record profile visits when navigating to UserProfilePage",
       "acceptanceCriteria": [
-        "ShortSportPage reads ?postId=<id> from the URL on mount.",
-        "When postId is present, the matching ShortSport is the first item shown and auto-plays.",
-        "If the postId does not match any loaded post, the page falls back to the normal newest-first feed without crashing.",
-        "When no postId is present, ShortSportPage behaves exactly as before (no regression)."
+        "recordVisit is called with the viewed user's principal each time UserProfilePage mounts for a profile that is not the authenticated user's own.",
+        "The call is fire-and-forget and does not block rendering of the profile page.",
+        "Visiting the same profile twice in a row does not create duplicate entries in visit history."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/pages/UserProfilePage.tsx",
           "operation": "modify",
-          "description": "At the top of the ShortSportPage component, read the postId query parameter using useSearch from TanStack Router or the urlParams utility. If postId is present, use a separate useQuery hook to fetch the specific post by ID from the backend. Once fetched, prepend that post to the beginning of the posts array before rendering. Set the initial currentIndex to 0 so the shared post is the first video shown and auto-plays. Handle loading and error states gracefully: if the postId fetch fails or returns null, log a warning and fall back to the normal feed without the prepended post. Ensure the existing feed logic (newest-first, auto-advance on video end) is preserved when no postId parameter is present."
-        },
-        {
-          "path": "frontend/src/utils/urlParams.ts",
-          "operation": "modify",
-          "description": "Add a helper function getPostIdFromUrl() that extracts the postId query parameter from the current URL (checking both ?postId= and #postId= formats). Return the postId as a bigint or null if not present. This utility will be used by ShortSportPage to detect the shared post parameter."
+          "description": "Add a useEffect hook that runs when the component mounts and whenever the viewed user's principal changes. Inside the effect, check if the viewed principal differs from the authenticated user's principal (using useInternetIdentity().identity?.getPrincipal()). If different, call actor.recordVisit(viewedPrincipal) asynchronously without awaiting the result. Wrap the call in a try-catch to silently handle any errors. Ensure the effect does not block page rendering or data fetching."
         }
       ]
     }

@@ -1,62 +1,102 @@
 import Map "mo:core/Map";
 import List "mo:core/List";
-import Set "mo:core/Set";
+import Nat "mo:core/Nat";
+import Int "mo:core/Int";
+import Principal "mo:core/Principal";
 import Storage "blob-storage/Storage";
 
 module {
-  type OldActor = {
-    postsMap : Map.Map<Nat, { id : Nat; authorPrincipal : Principal; authorName : Text; media : ?Storage.ExternalBlob; mediaType : Text; caption : Text; timestamp : Int; likeCount : Nat; viewCount : Nat }>;
-    commentsMap : Map.Map<Nat, { id : Nat; postId : Nat; authorPrincipal : Principal; authorName : Text; text : Text; timestamp : Int }>;
-    postCounter : Nat;
-    commentCounter : Nat;
-    conversations : Map.Map<Principal, Map.Map<Principal, { participants : (Principal, Principal); lastUpdated : Int }>>;
-    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<{ sender : Principal; recipient : Principal; content : Text; timestamp : Int; postId : ?Nat; read : Bool }>>>;
-    userProfiles : Map.Map<Principal, { caller : Principal; data : { handle : Text; displayName : Text; bio : Text; profilePicture : ?Storage.ExternalBlob } }>;
-    handleToPrincipalMap : Map.Map<Text, Principal>;
-    notifications : Map.Map<Principal, Map.Map<Nat, { id : Nat; notificationType : { #new_shadow; #message; #comment }; fromPrincipal : Principal; timestamp : Int; read : Bool; postId : ?Nat }>>;
-    notificationIdCounter : Nat;
-    followingMap : Map.Map<Principal, Set.Set<Principal>>;
-    followersMap : Map.Map<Principal, Set.Set<Principal>>;
+  type OldUserProfileData = {
+    handle : Text;
+    displayName : Text;
+    bio : Text;
+    profilePicture : ?Storage.ExternalBlob;
   };
 
-  // New actor type including friend system
-  type NewActor = {
-    postsMap : Map.Map<Nat, { id : Nat; authorPrincipal : Principal; authorName : Text; media : ?Storage.ExternalBlob; mediaType : Text; caption : Text; timestamp : Int; likeCount : Nat; viewCount : Nat }>;
-    commentsMap : Map.Map<Nat, { id : Nat; postId : Nat; authorPrincipal : Principal; authorName : Text; text : Text; timestamp : Int }>;
+  type OldNotificationType = {
+    #new_shadow;
+    #message;
+    #comment;
+  };
+
+  type OldPost = {
+    id : Nat;
+    authorPrincipal : Principal;
+    authorName : Text;
+    media : ?Storage.ExternalBlob;
+    mediaType : Text;
+    caption : Text;
+    timestamp : Int;
+    likeCount : Nat;
+    viewCount : Nat;
+  };
+
+  type OldComment = {
+    id : Nat;
+    postId : Nat;
+    authorPrincipal : Principal;
+    authorName : Text;
+    text : Text;
+    timestamp : Int;
+  };
+
+  type OldNotification = {
+    id : Nat;
+    notificationType : OldNotificationType;
+    fromPrincipal : Principal;
+    timestamp : Int;
+    read : Bool;
+    postId : ?Nat;
+  };
+
+  type OldConversation = {
+    participants : (Principal, Principal);
+    lastUpdated : Int;
+  };
+
+  type OldMessage = {
+    sender : Principal;
+    recipient : Principal;
+    content : Text;
+    timestamp : Int;
+    postId : ?Nat;
+    read : Bool;
+  };
+
+  type OldActor = {
+    postsMap : Map.Map<Nat, OldPost>;
+    commentsMap : Map.Map<Nat, OldComment>;
     postCounter : Nat;
     commentCounter : Nat;
-    conversations : Map.Map<Principal, Map.Map<Principal, { participants : (Principal, Principal); lastUpdated : Int }>>;
-    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<{ sender : Principal; recipient : Principal; content : Text; timestamp : Int; postId : ?Nat; read : Bool }>>>;
-    userProfiles : Map.Map<Principal, { caller : Principal; data : { handle : Text; displayName : Text; bio : Text; profilePicture : ?Storage.ExternalBlob } }>;
-    handleToPrincipalMap : Map.Map<Text, Principal>;
-    notifications : Map.Map<Principal, Map.Map<Nat, { id : Nat; notificationType : { #new_shadow; #message; #comment }; fromPrincipal : Principal; timestamp : Int; read : Bool; postId : ?Nat }>>;
+    notifications : Map.Map<Principal, Map.Map<Nat, OldNotification>>;
     notificationIdCounter : Nat;
-    followingMap : Map.Map<Principal, Set.Set<Principal>>;
-    followersMap : Map.Map<Principal, Set.Set<Principal>>;
-    friendRequests : Map.Map<Principal, List.List<{ sender : Principal; recipient : Principal; status : { #pending; #accepted; #declined }; timestamp : Int }>>;
-    friendCount : Nat;
+    conversations : Map.Map<Principal, Map.Map<Principal, OldConversation>>;
+    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<OldMessage>>>;
+  };
+
+  type NewActor = {
+    postsMap : Map.Map<Nat, OldPost>;
+    commentsMap : Map.Map<Nat, OldComment>;
+    postCounter : Nat;
+    commentCounter : Nat;
+    notifications : Map.Map<Principal, Map.Map<Nat, OldNotification>>;
+    notificationIdCounter : Nat;
+    conversations : Map.Map<Principal, Map.Map<Principal, OldConversation>>;
+    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<OldMessage>>>;
+    visitHistory : Map.Map<Principal, List.List<Principal>>;
   };
 
   public func run(old : OldActor) : NewActor {
     {
-      postsMap = old.postsMap.map<Nat, { id : Nat; authorPrincipal : Principal; authorName : Text; media : ?Storage.ExternalBlob; mediaType : Text; caption : Text; timestamp : Int; likeCount : Nat; viewCount : Nat }, { id : Nat; authorPrincipal : Principal; authorName : Text; media : ?Storage.ExternalBlob; mediaType : Text; caption : Text; timestamp : Int; likeCount : Nat; viewCount : Nat }>(
-        func(_id, oldPost) { oldPost },
-      );
+      postsMap = old.postsMap;
       commentsMap = old.commentsMap;
       postCounter = old.postCounter;
       commentCounter = old.commentCounter;
-      conversations = old.conversations;
-      conversationMessages = old.conversationMessages;
-      userProfiles = old.userProfiles.map<Principal, { caller : Principal; data : { handle : Text; displayName : Text; bio : Text; profilePicture : ?Storage.ExternalBlob } }, { caller : Principal; data : { handle : Text; displayName : Text; bio : Text; profilePicture : ?Storage.ExternalBlob } }>(
-        func(_principal, oldProfile) { oldProfile },
-      );
-      handleToPrincipalMap = old.handleToPrincipalMap;
       notifications = old.notifications;
       notificationIdCounter = old.notificationIdCounter;
-      followingMap = old.followingMap;
-      followersMap = old.followersMap;
-      friendRequests = Map.empty<Principal, List.List<{ sender : Principal; recipient : Principal; status : { #pending; #accepted; #declined }; timestamp : Int }>>();
-      friendCount = 0;
+      conversations = old.conversations;
+      conversationMessages = old.conversationMessages;
+      visitHistory = Map.empty<Principal, List.List<Principal>>();
     };
   };
 };

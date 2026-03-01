@@ -1,62 +1,105 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T08:52:22.710Z",
+  "generatedAt": "2026-03-01T11:05:31.314Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
+    "total": 8,
     "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/MessagesPage.tsx",
-          "frontend/src/pages/ShortSportPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/MessagesPage.tsx",
-          "frontend/src/pages/ShortSportPage.tsx"
-        ]
+        "summary": "Extend the Motoko backend actor to store and manage visit history per user: record the last 2 unique profile principals a user has visited, expose a method to log a profile visit (recordVisit(visited: Principal)), and expose a method to retrieve the current user's visit history (getVisitHistory() : [Principal]).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/MessageBubble.tsx",
-          "frontend/src/pages/MessagesPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/MessagesPage.tsx"
-        ]
+        "summary": "Add a backend query method getProfileRowUsers() that returns the list of principals to display in the right-side profile row for the authenticated caller: mutual follows (friends), users the caller follows (non-mutual), and the last 2 visited profiles — deduplicated and ordered (friends first, then following, then visited).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
+        "summary": "Add a backend query method getLatestPostByUser(user: Principal) : ?Post that returns the single most recent post created by the specified user, or null if they have no posts.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add a backend query method hasNewPostSince(user: Principal, since: Int) : Bool that returns true if the specified user has created at least one post after the given timestamp, enabling the frontend to determine whether a profile avatar should glow.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx",
-          "frontend/src/utils/urlParams.ts"
+          "frontend/src/components/StoriesRow.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/components/StoriesRow.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/StoriesRow.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/StoriesRow.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Generate a migration file (backend/migration.mo) to safely upgrade existing stable state with the new visitHistory stable data structure, preserving all existing posts, profiles, follows, and messages.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/StoriesRow.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/ExplorePage.tsx",
     "frontend/src/pages/MessagesPage.tsx",
-    "frontend/src/pages/ShortSportPage.tsx",
-    "frontend/src/routeTree.ts",
+    "frontend/src/pages/UserProfilePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

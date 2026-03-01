@@ -1,88 +1,142 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { MOCK_STORIES, type Story } from '../lib/mockData';
-import AvatarPlaceholder from './AvatarPlaceholder';
-import StoryViewerModal from './StoryViewerModal';
-import { useGetCallerUserProfile } from '../hooks/useQueries';
+import React, { useCallback, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { PlusCircle } from "lucide-react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useActor } from "../hooks/useActor";
+import {
+  useGetProfileRowUsers,
+  useSocialProfiles,
+  useProfilesWithNewPosts,
+} from "../hooks/useQueries";
+import AvatarPlaceholder from "./AvatarPlaceholder";
+import YourStoryPopup from "./YourStoryPopup";
+import { Principal } from "@dfinity/principal";
 
 export default function StoriesRow() {
-  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
-  const { data: userProfile } = useGetCallerUserProfile();
+  const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
+  const isAuthenticated = !!identity;
 
-  const myDisplayName = userProfile?.displayName || 'You';
+  const [showYourStoryPopup, setShowYourStoryPopup] = useState(false);
+
+  // Fetch profile row users from backend
+  const { data: profileRowPrincipals = [] } =
+    useGetProfileRowUsers(isAuthenticated);
+
+  // Fetch profiles for those principals
+  const { data: socialProfilesData = [] } = useSocialProfiles(
+    profileRowPrincipals
+  );
+
+  // Fetch glow state (new posts since last seen)
+  const { data: glowingPrincipals = new Set<string>() } =
+    useProfilesWithNewPosts(profileRowPrincipals);
+
+  const handleProfileClick = useCallback(
+    async (principalStr: string) => {
+      const isGlowing = glowingPrincipals.has(principalStr);
+
+      if (isGlowing && actor) {
+        try {
+          // Fetch latest post
+          const latestPost = await actor.getLatestPostByUser(
+            Principal.fromText(principalStr)
+          );
+
+          // Update lastSeen timestamp
+          localStorage.setItem(`lastSeen_${principalStr}`, String(Date.now()));
+
+          if (latestPost) {
+            navigate({
+              to: "/shortsport",
+              search: { postId: latestPost.id.toString() },
+            });
+            return;
+          }
+        } catch {
+          // fall through to profile navigation
+        }
+      }
+
+      // Navigate to user profile
+      navigate({ to: `/user/${principalStr}` });
+    },
+    [glowingPrincipals, actor, navigate]
+  );
 
   return (
-    <>
-      <div className="w-full overflow-x-auto scrollbar-hide">
-        <div className="flex items-start gap-4 px-4 py-4 min-w-max">
-          {/* Add Story — current user */}
-          <div className="flex flex-col items-center gap-1.5 cursor-pointer group">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center border-2 border-dashed border-gold/40 group-hover:border-gold transition-colors">
-                <AvatarPlaceholder
-                  name={myDisplayName}
-                  size="lg"
-                  className="w-14 h-14"
-                />
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-gold flex items-center justify-center shadow-gold-glow">
-                <Plus className="w-3 h-3 text-surface" strokeWidth={3} />
-              </div>
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-3 py-3 overflow-x-auto scrollbar-hide">
+        {/* Your Story Button */}
+        <div className="flex-shrink-0 relative">
+          <button
+            onClick={() => setShowYourStoryPopup((v) => !v)}
+            className="flex flex-col items-center gap-1.5 w-16"
+          >
+            <div className="w-14 h-14 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center hover:border-primary transition-colors">
+              <PlusCircle size={22} className="text-muted-foreground" />
             </div>
-            <span className="text-[11px] font-medium text-muted-foreground w-16 text-center truncate">
+            <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight">
               Your Story
             </span>
-          </div>
+          </button>
 
-          {/* Story items */}
-          {MOCK_STORIES.map((story) => (
-            <StoryItem
-              key={story.id}
-              story={story}
-              onTap={() => setSelectedStory(story)}
+          {showYourStoryPopup && (
+            <YourStoryPopup
+              isOpen={showYourStoryPopup}
+              onClose={() => setShowYourStoryPopup(false)}
+              onViewMyPosts={() => {
+                setShowYourStoryPopup(false);
+                navigate({ to: "/profile" });
+              }}
+              onCreateNewPost={() => {
+                setShowYourStoryPopup(false);
+                navigate({ to: "/create" });
+              }}
             />
-          ))}
+          )}
         </div>
+
+        {/* Divider */}
+        {socialProfilesData.length > 0 && (
+          <div className="flex-shrink-0 w-px h-10 bg-border" />
+        )}
+
+        {/* Social Profile Bubbles from backend */}
+        {socialProfilesData.map(({ principalStr, profile }) => {
+          const isGlowing = glowingPrincipals.has(principalStr);
+          const displayName =
+            profile?.displayName || principalStr.slice(0, 8) + "…";
+
+          return (
+            <button
+              key={principalStr}
+              onClick={() => handleProfileClick(principalStr)}
+              className="flex-shrink-0 flex flex-col items-center gap-1.5 w-16"
+            >
+              <div
+                className={`w-14 h-14 rounded-full p-0.5 transition-all ${
+                  isGlowing
+                    ? "story-ring animate-pulse-glow"
+                    : "bg-transparent"
+                }`}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden border-2 border-background">
+                  <AvatarPlaceholder
+                    name={displayName}
+                    profilePicture={profile?.profilePicture}
+                    size="md"
+                  />
+                </div>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium text-center leading-tight truncate w-full">
+                {displayName}
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      {selectedStory && (
-        <StoryViewerModal
-          story={selectedStory}
-          onClose={() => setSelectedStory(null)}
-        />
-      )}
-    </>
-  );
-}
-
-interface StoryItemProps {
-  story: Story;
-  onTap: () => void;
-}
-
-function StoryItem({ story, onTap }: StoryItemProps) {
-  return (
-    <button
-      onClick={onTap}
-      className="flex flex-col items-center gap-1.5 group focus:outline-none"
-    >
-      <div className={story.viewed ? 'story-ring-viewed' : 'story-ring'}>
-        <div className="w-[60px] h-[60px] rounded-full bg-surface flex items-center justify-center overflow-hidden">
-          <AvatarPlaceholder
-            userId={story.userId}
-            name={story.displayName}
-            size="lg"
-            className="w-full h-full"
-          />
-        </div>
-      </div>
-      <span
-        className={`text-[11px] font-medium w-16 text-center truncate transition-colors ${
-          story.viewed ? 'text-muted-foreground' : 'text-foreground'
-        }`}
-      >
-        {story.displayName.split(' ')[0]}
-      </span>
-    </button>
+    </div>
   );
 }

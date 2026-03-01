@@ -1,76 +1,180 @@
 {
   "kind": "build_request",
-  "title": "Fix ShortSport message sharing — receiver cannot open sent ShortSport",
+  "title": "Profile row logic: friends/followed/visited profiles with glow and post navigation",
   "projectName": "Smileup",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
-      "target": "frontend",
+      "text": "Extend the Motoko backend actor to store and manage visit history per user: record the last 2 unique profile principals a user has visited, expose a method to log a profile visit (recordVisit(visited: Principal)), and expose a method to retrieve the current user's visit history (getVisitHistory() : [Principal]).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-9",
+          "msg-11"
         ],
         "quotes": [
-          "The user can send Shortsport but the receiver can not open to see the exact shortsport which is sended fix it"
+          "yes,only 2 profile he visited",
+          "yes if it make it advance"
         ]
       },
       "acceptanceCriteria": [
-        "When a receiver taps a shared ShortSport in their message thread, the specific ShortSport video plays/opens.",
-        "The correct post (the one that was shared) is displayed — not a generic feed or an empty/error state.",
-        "If ShortSportPage is used, it scrolls to and focuses the specific shared post by its post ID.",
-        "No error or blank screen is shown when the receiver opens a shared ShortSport message."
+        "recordVisit stores up to the 2 most recent distinct principals visited by the caller, dropping the oldest when a 3rd is added.",
+        "getVisitHistory returns the stored visit history for the authenticated caller in recency order.",
+        "Visit history is persisted across canister upgrades using stable storage."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
-      "target": "frontend",
+      "text": "Add a backend query method getProfileRowUsers() that returns the list of principals to display in the right-side profile row for the authenticated caller: mutual follows (friends), users the caller follows (non-mutual), and the last 2 visited profiles — deduplicated and ordered (friends first, then following, then visited).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-9",
+          "msg-11"
         ],
         "quotes": [
-          "The user can send Shortsport but the receiver can not open to see the exact shortsport which is sended fix it"
+          "the profiles in the right side of the your story is be the profile of the users friend,the user he follow,and the last user he visited"
         ]
       },
       "acceptanceCriteria": [
-        "Shared ShortSport messages in the thread render a recognizable preview (thumbnail or play icon) that is tappable.",
-        "Tapping the preview navigates to /shortsport with the correct postId parameter.",
-        "ShortSportPage reads the postId parameter on mount and scrolls/focuses to that specific post.",
-        "Works for both the sender and receiver side of the conversation."
+        "getProfileRowUsers returns principals for mutual follows, one-way follows, and last 2 visited profiles, deduplicated.",
+        "The ordering is: mutual follows first, then non-mutual follows, then visited profiles.",
+        "The method is only callable by authenticated users."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
-      "target": "frontend",
+      "text": "Add a backend query method getLatestPostByUser(user: Principal) : ?Post that returns the single most recent post created by the specified user, or null if they have no posts.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-9",
+          "msg-11"
         ],
         "quotes": [
-          "the receiver can not open to see the exact shortsport which is sended"
+          "most recent posts",
+          "clicking a glowing profile navigates directly to that user's most recent post"
         ]
       },
       "acceptanceCriteria": [
-        "ShortSportPage reads ?postId=<id> from the URL on mount.",
-        "When postId is present, the matching ShortSport is the first item shown and auto-plays.",
-        "If the postId does not match any loaded post, the page falls back to the normal newest-first feed without crashing.",
-        "When no postId is present, ShortSportPage behaves exactly as before (no regression)."
+        "getLatestPostByUser returns the post with the highest timestamp for the given user.",
+        "Returns null when the user has no posts.",
+        "Any caller (authenticated or anonymous) can call this query."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add a backend query method hasNewPostSince(user: Principal, since: Int) : Bool that returns true if the specified user has created at least one post after the given timestamp, enabling the frontend to determine whether a profile avatar should glow.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-9",
+          "msg-11"
+        ],
+        "quotes": [
+          "if any friend of user, follow user and the visited profile user if send and post anything the profile should glow"
+        ]
+      },
+      "acceptanceCriteria": [
+        "hasNewPostSince returns true when the user has a post with timestamp > since.",
+        "Returns false when no such post exists.",
+        "The query is callable by any authenticated user."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-9",
+          "msg-11"
+        ],
+        "quotes": [
+          "the profiles in the right side of the your story is be the profile of the users friend,the user he follow,and the last user he visited",
+          "if any friend of user, follow user and the visited profile user if send and post anything the profile should glow"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The right-side profile bubbles in StoriesRow are populated from getProfileRowUsers() for the authenticated user.",
+        "Profiles with a new post since the user's last check display a visible glow effect on their avatar.",
+        "The glow state is re-evaluated every ~30 seconds via polling without a full page reload.",
+        "No changes are made to the visual design or layout of StoriesRow beyond toggling the existing glow indicator."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-9",
+          "msg-11"
+        ],
+        "quotes": [
+          "the user click on it he directly go to the post of the friend, following or visited profile",
+          "most recent posts"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking a glowing avatar fetches the user's most recent post and navigates to it.",
+        "Clicking a non-glowing avatar navigates to that user's profile page.",
+        "After clicking a glowing avatar, the glow is cleared for that profile and localStorage is updated with the current timestamp.",
+        "If getLatestPostByUser returns null for a glowing profile, fall back to navigating to the user's profile page."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-9",
+          "msg-11"
+        ],
+        "quotes": [
+          "the last user he visited",
+          "yes,only 2 profile he visited"
+        ]
+      },
+      "acceptanceCriteria": [
+        "recordVisit is called with the viewed user's principal each time UserProfilePage mounts for a profile that is not the authenticated user's own.",
+        "The call is fire-and-forget and does not block rendering of the profile page.",
+        "Visiting the same profile twice in a row does not create duplicate entries in visit history."
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Generate a migration file (backend/migration.mo) to safely upgrade existing stable state with the new visitHistory stable data structure, preserving all existing posts, profiles, follows, and messages.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-11"
+        ],
+        "quotes": [
+          "yes if it make it advance"
+        ]
+      },
+      "acceptanceCriteria": [
+        "migration.mo initializes the visitHistory stable map as empty for all existing users.",
+        "All previously stored posts, profiles, follow relationships, and messages are preserved after upgrade.",
+        "The canister can be upgraded without data loss."
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
-    "Do not change the backend message data model unless the shared post reference is not currently stored — only add fields if strictly necessary.",
-    "Preserve existing ShortSport feed ordering (newest-first) and auto-advance behavior."
+    "Do not change the visual design, layout, or styling of the StoriesRow component or any other UI component.",
+    "All Motoko logic must remain in the single main actor (backend/main.mo).",
+    "Do not modify any files under frontend/src/hooks/ or frontend/src/components/ui.",
+    "Internet Identity remains the sole authentication mechanism."
   ],
   "nonGoals": [
-    "Redesigning the messaging UI beyond rendering the ShortSport preview correctly.",
-    "Adding new backend endpoints unless the post ID is demonstrably not stored in shared messages.",
-    "Changing how ShortSports are recorded, created, or uploaded."
+    "Redesigning or restyling any UI component.",
+    "Adding real-time WebSocket-based glow updates (polling is sufficient).",
+    "Tracking more than the last 2 visited profiles per user.",
+    "Showing stories or story viewer functionality changes.",
+    "Adding push notifications for new posts."
   ],
   "imageRequirements": {
     "required": [],

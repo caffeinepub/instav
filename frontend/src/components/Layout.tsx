@@ -1,15 +1,14 @@
-import React from 'react';
 import { Outlet } from '@tanstack/react-router';
 import TopBar from './TopBar';
 import BottomNav from './BottomNav';
 
 export default function Layout() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col bg-background">
       <TopBar />
-      <div className="flex-1">
+      <main className="flex-1 pt-14 pb-16">
         <Outlet />
-      </div>
+      </main>
       <BottomNav />
     </div>
   );

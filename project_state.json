@@ -1,39 +1,113 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Sports social app with ShortSport video feed feature. Users can send ShortSports but receivers cannot open/view the sent ShortSport — fix in progress.",
-  "architectural_notes": [],
-  "known_issues": [
-    "Receiver cannot open/view a ShortSport sent to them by another user"
+  "summary": "Social app with Internet Identity authentication, Motoko backend (user accounts, follow relationships, post storage, visit history), profile row logic showing friends/followed/last-2-visited users, glow effect when those users post, and click-to-post navigation to most recent post.",
+  "architectural_notes": [
+    "Backend built with Motoko canisters on the Internet Computer",
+    "Authentication via Internet Identity",
+    "Visit history tracks last 2 visited profiles per user",
+    "No UI layout changes — only data/logic layer updates"
   ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-when-a-user-receives-a-message-containing-a-shared-shortsport-post-tapping-clicking-that-message-must-open-and-play-the-exact-shortsport-video-that-was-sent-the-shortsport-should-be-displayed-in-the-full-screen-vertical-reel-view-shortsportpage-scrolled-focused-to-the-specific-post-or-in-a-modal-overlay-that-plays-that-specific-video",
-      "title": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
+      "id": "feature-update-the-storiesrow-component-to-populate-the-right-side-profile-bubbles-using-the-new-getprofilerowusers-backend-query-when-the-component-mounts-and-on-a-polling-interval-of-30-seconds-fetch-the-profile-row-principals-and-for-each-user-call-hasnewpostsince-with-the-last-seen-timestamp-stored-in-localstorage-to-determine-if-their-avatar-should-glow",
+      "title": "Update the StoriesRow component to populate the right-side profile bubbles using the new getProfileRowUsers() backend query. When the component mounts (and on a polling interval of ~30 seconds), fetch the profile row principals and for each user call hasNewPostSince with the last-seen timestamp stored in localStorage to determine if their avatar should glow.",
       "reqIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-in-messagespage-and-any-message-thread-component-detect-when-a-message-contains-a-shared-post-of-type-video-shortsport-and-render-a-tappable-shortsport-preview-card-on-tap-navigate-to-shortsportpage-with-the-specific-post-id-as-a-url-parameter-e-g-shortsport-postid-id-so-the-correct-short-is-loaded-and-displayed",
-      "title": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
+      "id": "feature-when-the-user-clicks-a-glowing-profile-bubble-in-storiesrow-call-getlatestpostbyuser-for-that-principal-and-navigate-directly-to-that-post-if-the-profile-is-not-glowing-clicking-it-navigates-to-the-user-s-profile-page-as-before-after-clicking-clear-the-glow-state-for-that-profile-and-update-the-last-seen-timestamp-in-localstorage-for-that-user",
+      "title": "When the user clicks a glowing profile bubble in StoriesRow, call getLatestPostByUser for that principal and navigate directly to that post. If the profile is not glowing, clicking it navigates to the user's profile page as before. After clicking, clear the glow state for that profile and update the last-seen timestamp in localStorage for that user.",
       "reqIds": [
-        "REQ-2"
+        "REQ-6"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-shortsportpage-to-accept-an-optional-postid-url-query-parameter-when-present-the-page-must-load-and-display-the-shortsport-with-that-specific-id-first-scrolled-into-view-and-auto-playing-before-or-alongside-the-rest-of-the-feed",
-      "title": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
+      "id": "feature-automatically-call-recordvisit-principalid-on-the-backend-whenever-the-authenticated-user-navigates-to-a-userprofilepage-so-the-visit-history-is-kept-up-to-date-do-not-record-a-visit-to-the-user-s-own-profile",
+      "title": "Automatically call recordVisit(principalId) on the backend whenever the authenticated user navigates to a UserProfilePage, so the visit history is kept up to date. Do not record a visit to the user's own profile.",
       "reqIds": [
-        "REQ-3"
+        "REQ-7"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Motoko backend with user accounts, follow relationships, post storage, and visit history tracking",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Internet Identity authentication integration",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Profile row populated with friends (mutual follows), followed users, and last 2 visited profiles",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Glow effect on profile avatar when that user creates a new post",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Clicking a glowing profile navigates directly to that user's most recent post",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Extend the Motoko backend actor to store and manage visit history per user: record the last 2 unique profile principals a user has visited, expose a method to log a profile visit (recordVisit(visited: Principal)), and expose a method to retrieve the current user's visit history (getVisitHistory() : [Principal]).",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Add a backend query method getProfileRowUsers() that returns the list of principals to display in the right-side profile row for the authenticated caller: mutual follows (friends), users the caller follows (non-mutual), and the last 2 visited profiles — deduplicated and ordered (friends first, then following, then visited).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Add a backend query method getLatestPostByUser(user: Principal) : ?Post that returns the single most recent post created by the specified user, or null if they have no posts.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Add a backend query method hasNewPostSince(user: Principal, since: Int) : Bool that returns true if the specified user has created at least one post after the given timestamp, enabling the frontend to determine whether a profile avatar should glow.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Generate a migration file (backend/migration.mo) to safely upgrade existing stable state with the new visitHistory stable data structure, preserving all existing posts, profiles, follows, and messages.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "status": "pending"
+    }
+  ],
   "gameProjectType": "none",
   "projectName": "Smileup",
   "clarification_mode": "instant",
