@@ -11,7 +11,7 @@ import {
   PauseCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { Post } from '../backend';
 import { useGetAllPosts, useLikePost, useGetComments } from '../hooks/useQueries';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
@@ -187,10 +187,17 @@ export default function ShortSportPage() {
   const likePost = useLikePost();
   const navigate = useNavigate();
 
+  // Read the optional postId search param (set when navigating from a shared message)
+  const search = useSearch({ from: '/shortsport' });
+  const targetPostIdStr = (search as { postId?: string }).postId;
+
   const [muted, setMuted] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [optimisticLikes, setOptimisticLikes] = useState<Record<string, number>>({});
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
+  // Auto-scroll is ON by default so newest → oldest plays automatically
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  // Track whether we've already scrolled to the target post on initial load
+  const hasScrolledToTarget = useRef(false);
 
   // Comments sheet state
   const [commentPost, setCommentPost] = useState<Post | null>(null);
@@ -202,8 +209,29 @@ export default function ShortSportPage() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Show all posts (videos and images)
-  const feedPosts: Post[] = posts ?? [];
+  // Sort posts newest-first (descending by timestamp) so the feed always
+  // starts with the most recently created post regardless of backend order.
+  // If a targetPostId is present, move that post to the front of the list.
+  const feedPosts: Post[] = React.useMemo(() => {
+    if (!posts) return [];
+    const sorted = [...posts].sort((a, b) => {
+      if (b.timestamp > a.timestamp) return 1;
+      if (b.timestamp < a.timestamp) return -1;
+      return 0;
+    });
+
+    if (!targetPostIdStr) return sorted;
+
+    // Find the target post and move it to index 0
+    const targetId = BigInt(targetPostIdStr);
+    const targetIdx = sorted.findIndex((p) => p.id === targetId);
+    if (targetIdx <= 0) return sorted; // already first or not found
+
+    const reordered = [...sorted];
+    const [targetPost] = reordered.splice(targetIdx, 1);
+    reordered.unshift(targetPost);
+    return reordered;
+  }, [posts, targetPostIdStr]);
 
   // Track which reel is visible via IntersectionObserver
   useEffect(() => {
@@ -239,25 +267,48 @@ export default function ShortSportPage() {
     }
   }, []);
 
-  // When a video ends and auto-scroll is enabled, advance to next
+  // When a targetPostId is present and posts have loaded, scroll to index 0
+  // (the target post is already moved to the front in feedPosts).
+  useEffect(() => {
+    if (
+      targetPostIdStr &&
+      feedPosts.length > 0 &&
+      !hasScrolledToTarget.current
+    ) {
+      hasScrolledToTarget.current = true;
+      // Ensure the container is rendered before scrolling
+      requestAnimationFrame(() => {
+        scrollToIndex(0);
+        setCurrentIndex(0);
+      });
+    }
+  }, [targetPostIdStr, feedPosts.length, scrollToIndex]);
+
+  // When a video ends and auto-scroll is enabled, advance to next.
+  // After the last (oldest) short finishes, loop back to the newest (index 0).
   const handleVideoEnded = useCallback(() => {
     if (!autoScrollEnabled) return;
     const next = currentIndex + 1;
     if (next >= feedPosts.length) {
-      // Reached the end — stop auto-scroll
-      setAutoScrollEnabled(false);
-      toast('End of feed', { description: 'Auto-scroll stopped.' });
+      // All shorts played — loop back to the newest post
+      scrollToIndex(0);
+      toast('Starting over', { description: 'Playing from the newest short again.' });
       return;
     }
     scrollToIndex(next);
   }, [autoScrollEnabled, currentIndex, feedPosts.length, scrollToIndex]);
 
-  // Clicking the video activates auto-scroll mode
+  // Clicking the video toggles auto-scroll mode
   const handleVideoClick = useCallback(() => {
-    setAutoScrollEnabled(true);
-    toast.success('Auto-scroll activated', {
-      description: 'Videos will advance automatically after each one finishes.',
-      duration: 2000,
+    setAutoScrollEnabled((prev) => {
+      const next = !prev;
+      if (next) {
+        toast.success('Auto-play activated', {
+          description: 'Videos will advance automatically.',
+          duration: 1800,
+        });
+      }
+      return next;
     });
   }, []);
 
@@ -299,10 +350,13 @@ export default function ShortSportPage() {
 
   const toggleAutoScroll = () => {
     setAutoScrollEnabled((prev) => {
-      if (!prev) {
-        toast.success('Auto-scroll activated', { duration: 1500 });
+      const next = !prev;
+      if (next) {
+        toast.success('Auto-play activated', { duration: 1500 });
+      } else {
+        toast('Auto-play paused', { duration: 1500 });
       }
-      return !prev;
+      return next;
     });
   };
 
@@ -362,7 +416,7 @@ export default function ShortSportPage() {
         {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
 
-      {/* Navigation dots — right side (only when no side actions overlap) */}
+      {/* Navigation dots — left side */}
       {feedPosts.length > 1 && (
         <div className="absolute left-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-50">
           {feedPosts.map((_, i) => (
@@ -380,7 +434,7 @@ export default function ShortSportPage() {
       {/* Auto-scroll FAB — bottom-right corner */}
       <button
         onClick={toggleAutoScroll}
-        title={autoScrollEnabled ? 'Stop auto-scroll' : 'Start auto-scroll'}
+        title={autoScrollEnabled ? 'Pause auto-play' : 'Start auto-play'}
         className={`
           absolute bottom-20 right-4 z-50
           w-12 h-12 rounded-full shadow-lg
@@ -402,7 +456,7 @@ export default function ShortSportPage() {
       {/* Auto-scroll indicator badge */}
       {autoScrollEnabled && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-sm">
-          Auto-scroll ON
+          Auto-play ON · Newest first
         </div>
       )}
 

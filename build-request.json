@@ -1,106 +1,76 @@
 {
   "kind": "build_request",
-  "title": "ShortSport: Auto-scroll, Comments & Sharing, Profile Navigation",
+  "title": "Fix ShortSport message sharing — receiver cannot open sent ShortSport",
   "projectName": "Smileup",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+      "text": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-4"
         ],
         "quotes": [
-          "auto scroll works when it is clicked and if clicked it automatically scroll down the next video after completing the previous video"
+          "The user can send Shortsport but the receiver can not open to see the exact shortsport which is sended fix it"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking a video activates auto-scroll mode for that session",
-        "After the active video finishes playing, the page automatically scrolls to the next video",
-        "The next video begins playing and the same auto-scroll behavior continues",
-        "If there is no next video, auto-scroll stops gracefully",
-        "Auto-scroll does not trigger before the video has finished playing"
+        "When a receiver taps a shared ShortSport in their message thread, the specific ShortSport video plays/opens.",
+        "The correct post (the one that was shared) is displayed — not a generic feed or an empty/error state.",
+        "If ShortSportPage is used, it scrolls to and focuses the specific shared post by its post ID.",
+        "No error or blank screen is shown when the receiver opens a shared ShortSport message."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "text": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-4"
         ],
         "quotes": [
-          "their iss a comment box where all coments are visible to all user"
+          "The user can send Shortsport but the receiver can not open to see the exact shortsport which is sended fix it"
         ]
       },
       "acceptanceCriteria": [
-        "Each ShortSport item has a comment icon/button",
-        "Tapping the comment button opens a comments panel showing all existing comments for that post",
-        "Comments display the commenter's username/avatar and comment text",
-        "Authenticated users can type and submit a new comment",
-        "New comments appear immediately after submission (optimistic or refetch)",
-        "Comment count updates visibly on the ShortSport item"
+        "Shared ShortSport messages in the thread render a recognizable preview (thumbnail or play icon) that is tappable.",
+        "Tapping the preview navigates to /shortsport with the correct postId parameter.",
+        "ShortSportPage reads the postId parameter on mount and scrolls/focuses to that specific post.",
+        "Works for both the sender and receiver side of the conversation."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
+      "text": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-4"
         ],
         "quotes": [
-          "share option to share the video or picture to their friends"
+          "the receiver can not open to see the exact shortsport which is sended"
         ]
       },
       "acceptanceCriteria": [
-        "Each ShortSport item has a share icon/button",
-        "Tapping share opens a modal or bottom sheet listing the current user's friends",
-        "The user can select one or more friends and confirm to share",
-        "The post is sent as a message to the selected friend(s) using the existing messaging system",
-        "A success confirmation is shown after sharing"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6",
-          "msg-8"
-        ],
-        "quotes": [
-          "add profile logo and name of user who post the shortsport",
-          "when some click on it the clicker(who click) directly see the profile page of the user who post the video"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Each ShortSport item displays the poster's avatar and display name as an overlay on the video/image",
-        "The avatar falls back to gradient initials if no profile picture is set (reusing AvatarPlaceholder component)",
-        "Clicking/tapping the avatar or name navigates to the poster's UserProfilePage",
-        "Navigation uses the poster's principal ID in the route (consistent with existing user profile routing)"
+        "ShortSportPage reads ?postId=<id> from the URL on mount.",
+        "When postId is present, the matching ShortSport is the first item shown and auto-plays.",
+        "If the postId does not match any loaded post, the page falls back to the normal newest-first feed without crashing.",
+        "When no postId is present, ShortSportPage behaves exactly as before (no regression)."
       ]
     }
   ],
   "constraints": [
-    "Only modify files that are strictly necessary — do not refactor or rewrite unrelated components",
-    "Reuse existing backend calls (addComment, getComments, sendMessage, getFriends) — do not add new backend endpoints unless absolutely required",
-    "Do not modify any files listed in frontend.immutablePaths",
-    "Reuse CommentsSheet or its logic where possible rather than duplicating comment functionality"
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
+    "Do not change the backend message data model unless the shared post reference is not currently stored — only add fields if strictly necessary.",
+    "Preserve existing ShortSport feed ordering (newest-first) and auto-advance behavior."
   ],
   "nonGoals": [
-    "Adding new backend data models or actor state beyond what already exists",
-    "Redesigning or restyling the ShortSport page layout beyond what is needed for the new UI elements",
-    "Implementing real-time comment updates (polling or live refresh not required)",
-    "Changing the friend system or messaging system logic"
+    "Redesigning the messaging UI beyond rendering the ShortSport preview correctly.",
+    "Adding new backend endpoints unless the post ID is demonstrably not stored in shared messages.",
+    "Changing how ShortSports are recorded, created, or uploaded."
   ],
   "imageRequirements": {
     "required": [],

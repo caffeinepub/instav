@@ -1,66 +1,39 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "ShortSport feature enhancement project. Building auto-scroll (activates on click, scrolls to next video after current completes), comments & sharing (visible comment box for all users, share to friends via friend system), and profile navigation (click poster's profile logo/name to go to their full profile page). Minimal code changes only.",
-  "architectural_notes": [
-    "Minimal code changes policy: only modify code that is strictly necessary for new features"
+  "summary": "Sports social app with ShortSport video feed feature. Users can send ShortSports but receivers cannot open/view the sent ShortSport — fix in progress.",
+  "architectural_notes": [],
+  "known_issues": [
+    "Receiver cannot open/view a ShortSport sent to them by another user"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-in-shortsportpage-add-a-click-to-activate-auto-scroll-mode-when-the-user-clicks-a-video-enable-auto-scroll-so-that-once-the-current-video-finishes-playing-it-automatically-scrolls-to-the-next-video-in-the-feed-each-subsequent-video-should-do-the-same-play-fully-then-scroll-to-the-next-one-automatically",
-      "title": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+      "id": "feature-when-a-user-receives-a-message-containing-a-shared-shortsport-post-tapping-clicking-that-message-must-open-and-play-the-exact-shortsport-video-that-was-sent-the-shortsport-should-be-displayed-in-the-full-screen-vertical-reel-view-shortsportpage-scrolled-focused-to-the-specific-post-or-in-a-modal-overlay-that-plays-that-specific-video",
+      "title": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-a-comments-section-to-each-shortsport-item-display-a-comment-box-inline-or-as-a-bottom-drawer-sheet-showing-all-existing-comments-from-all-users-and-allow-authenticated-users-to-post-new-comments-reuse-the-existing-comments-backend-addcomment-getcomments-already-used-in-postcard-and-commentssheet",
-      "title": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "id": "feature-in-messagespage-and-any-message-thread-component-detect-when-a-message-contains-a-shared-post-of-type-video-shortsport-and-render-a-tappable-shortsport-preview-card-on-tap-navigate-to-shortsportpage-with-the-specific-post-id-as-a-url-parameter-e-g-shortsport-postid-id-so-the-correct-short-is-loaded-and-displayed",
+      "title": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-a-share-button-to-each-shortsport-item-that-allows-the-current-user-to-share-the-video-or-picture-to-their-friends-using-the-existing-friend-system-opening-the-share-ui-should-show-a-list-of-the-user-s-friends-so-they-can-select-recipients-and-send-the-post-as-a-direct-message-reusing-the-existing-messaging-backend",
-      "title": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
+      "id": "feature-update-shortsportpage-to-accept-an-optional-postid-url-query-parameter-when-present-the-page-must-load-and-display-the-shortsport-with-that-specific-id-first-scrolled-into-view-and-auto-playing-before-or-alongside-the-rest-of-the-feed",
+      "title": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
-    },
-    {
-      "id": "feature-display-the-poster-s-profile-avatar-and-username-display-name-on-each-shortsport-item-overlay-on-the-video-e-g-bottom-left-tapping-the-avatar-or-name-navigates-directly-to-that-user-s-full-profile-page-userprofilepage-using-their-principal-id",
-      "title": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Auto-scroll in ShortSport: activates on click, scrolls to next video after current video finishes playing",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Comments and share option in ShortSport: visible comment box for all users, share video/picture to friends via existing friend system",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Profile logo and name display on ShortSport posts; clicking navigates to the poster's full profile page",
-      "reqIds": [],
-      "status": "pending"
-    }
-  ],
+  "new_feature_requests": [],
   "gameProjectType": "none",
   "projectName": "Smileup",
   "clarification_mode": "instant",

@@ -1,15 +1,16 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T21:11:00.453Z",
-  "summary": "The diff implements all four requirements: auto-scroll (REQ-1), comments (REQ-2), sharing (REQ-3), and profile overlay navigation (REQ-4). The implementation appears complete based on the available evidence, though some files are truncated. All core acceptance criteria appear addressed.",
+  "generatedAt": "2026-03-01T08:52:22.707Z",
+  "summary": "The diff implements the three requirements: ShortSportPage now reads the optional postId URL parameter and moves the matching post to the front of the feed (REQ-3); MessagesPage renders a tappable ShortSport preview card for messages with a postId and navigates to /shortsport?postId=<id> (REQ-2); the route tree adds validateSearch for the postId parameter. All core requirements appear addressed. Minor uncertainty exists due to file truncation, but evidence is strong across all three requirements.",
   "missing_requirements": [],
   "hallucinated_features": [],
-  "confidence": 0.85,
+  "confidence": 0.88,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/ShareModal.tsx",
+    "frontend/src/pages/MessagesPage.tsx",
     "frontend/src/pages/ShortSportPage.tsx",
+    "frontend/src/routeTree.ts",
     "project_state.json"
   ]
 }

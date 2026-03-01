@@ -1,82 +1,71 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "ShortSport: Auto-scroll, Comments & Sharing, Profile Navigation",
+  "title": "Fix ShortSport message sharing — receiver cannot open sent ShortSport",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Add click-to-activate auto-scroll mode in ShortSportPage that automatically advances to the next video after the current video finishes playing",
+      "summary": "Enable receiver to open and play the specific shared ShortSport video when tapping a message containing a shared post",
       "acceptanceCriteria": [
-        "Clicking a video activates auto-scroll mode for that session",
-        "After the active video finishes playing, the page automatically scrolls to the next video",
-        "The next video begins playing and the same auto-scroll behavior continues",
-        "If there is no next video, auto-scroll stops gracefully",
-        "Auto-scroll does not trigger before the video has finished playing"
+        "When a receiver taps a shared ShortSport in their message thread, the specific ShortSport video plays/opens.",
+        "The correct post (the one that was shared) is displayed — not a generic feed or an empty/error state.",
+        "If ShortSportPage is used, it scrolls to and focuses the specific shared post by its post ID.",
+        "No error or blank screen is shown when the receiver opens a shared ShortSport message."
       ],
       "file_operations": [
         {
+          "path": "frontend/src/pages/MessagesPage.tsx",
+          "operation": "modify",
+          "description": "Update the message rendering logic in the message thread view to detect when a message contains a postId field (indicating a shared ShortSport). Render a tappable preview card for video/ShortSport posts with a thumbnail, play icon, and caption excerpt. On tap, navigate to /shortsport?postId=<id> using the router's navigate function. Ensure this works for both sender and receiver messages in the thread."
+        },
+        {
           "path": "frontend/src/pages/ShortSportPage.tsx",
           "operation": "modify",
-          "description": "Add state to track auto-scroll activation (boolean flag). On video click, enable auto-scroll mode. Add an onEnded event handler to the <video> element that checks if auto-scroll is active; if so, programmatically scroll to the next video ref using scrollIntoView with smooth behavior. Ensure auto-scroll gracefully stops when reaching the last video in the feed."
+          "description": "Add logic to read the postId query parameter from the URL on component mount using the urlParams utility or useSearch hook. When postId is present, fetch that specific post using the backend actor and prepend it to the feed array so it displays first and auto-plays. If the postId does not match any loaded post or fetch fails, fall back gracefully to the normal newest-first feed without crashing. Preserve existing feed ordering and auto-advance behavior when no postId parameter is present."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Add a comments section to each ShortSport item, reusing the existing CommentsSheet component and backend methods (addComment, getComments)",
+      "summary": "Render tappable ShortSport preview cards in message threads and navigate to ShortSportPage with postId parameter",
       "acceptanceCriteria": [
-        "Each ShortSport item has a comment icon/button",
-        "Tapping the comment button opens a comments panel showing all existing comments for that post",
-        "Comments display the commenter's username/avatar and comment text",
-        "Authenticated users can type and submit a new comment",
-        "New comments appear immediately after submission (optimistic or refetch)",
-        "Comment count updates visibly on the ShortSport item"
+        "Shared ShortSport messages in the thread render a recognizable preview (thumbnail or play icon) that is tappable.",
+        "Tapping the preview navigates to /shortsport with the correct postId parameter.",
+        "ShortSportPage reads the postId parameter on mount and scrolls/focuses to that specific post.",
+        "Works for both the sender and receiver side of the conversation."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/components/MessageBubble.tsx",
+          "operation": "create",
+          "description": "Create a new MessageBubble component that accepts a Message object as props. If the message has a postId field, fetch the post details using useQuery and render a compact video preview card with thumbnail (from post.media.getDirectURL()), a play icon overlay, and the post caption. Include a tap handler that navigates to /shortsport?postId=<postId>. For text-only messages, render the content as before. Style the bubble appropriately for sender vs receiver (align left/right, different background colors)."
+        },
+        {
+          "path": "frontend/src/pages/MessagesPage.tsx",
           "operation": "modify",
-          "description": "Add a comment button overlay on each video (positioned bottom-right or near like button) with an icon and comment count badge. Import and render the existing CommentsSheet component (conditionally visible when a post is selected). Add state to track the currently open post for comments. On comment button click, set the selected post and open the CommentsSheet. Reuse the existing getComments and addComment hooks from useQueries.ts."
+          "description": "Replace the existing message rendering logic in the message thread section with the new MessageBubble component. Pass each message object to MessageBubble, which will handle rendering text messages vs shared post previews. Ensure the message list is scrollable and displays messages in chronological order. Wire the MessageBubble component into the JSX where messages are currently mapped."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Add a share button to each ShortSport item that opens a friend selector modal, allowing users to share the video/picture via the existing messaging system",
+      "summary": "Update ShortSportPage to accept and handle an optional postId URL query parameter",
       "acceptanceCriteria": [
-        "Each ShortSport item has a share icon/button",
-        "Tapping share opens a modal or bottom sheet listing the current user's friends",
-        "The user can select one or more friends and confirm to share",
-        "The post is sent as a message to the selected friend(s) using the existing messaging system",
-        "A success confirmation is shown after sharing"
+        "ShortSportPage reads ?postId=<id> from the URL on mount.",
+        "When postId is present, the matching ShortSport is the first item shown and auto-plays.",
+        "If the postId does not match any loaded post, the page falls back to the normal newest-first feed without crashing.",
+        "When no postId is present, ShortSportPage behaves exactly as before (no regression)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/ShareModal.tsx",
-          "operation": "create",
-          "description": "Create a new modal component that displays a list of the current user's friends using the useFriendsList hook. Render each friend with their avatar (using AvatarPlaceholder) and display name. Support multi-select checkboxes. Include a 'Send' button that calls the sendMessage backend method for each selected friend, passing the postId. Show a toast or inline success message after sharing completes. Accept postId as a prop."
+          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "operation": "modify",
+          "description": "At the top of the ShortSportPage component, read the postId query parameter using useSearch from TanStack Router or the urlParams utility. If postId is present, use a separate useQuery hook to fetch the specific post by ID from the backend. Once fetched, prepend that post to the beginning of the posts array before rendering. Set the initial currentIndex to 0 so the shared post is the first video shown and auto-plays. Handle loading and error states gracefully: if the postId fetch fails or returns null, log a warning and fall back to the normal feed without the prepended post. Ensure the existing feed logic (newest-first, auto-advance on video end) is preserved when no postId parameter is present."
         },
         {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "path": "frontend/src/utils/urlParams.ts",
           "operation": "modify",
-          "description": "Add a share button overlay on each video (positioned near like/comment buttons). Import and render the new ShareModal component. Add state to track which post is being shared. On share button click, open the ShareModal with the selected post's ID. After sharing completes, close the modal and show a brief confirmation (e.g., toast or temporary message)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Display the poster's profile avatar and username as an overlay on each ShortSport item, navigating to their profile page on tap",
-      "acceptanceCriteria": [
-        "Each ShortSport item displays the poster's avatar and display name as an overlay on the video/image",
-        "The avatar falls back to gradient initials if no profile picture is set (reusing AvatarPlaceholder component)",
-        "Clicking/tapping the avatar or name navigates to the poster's UserProfilePage",
-        "Navigation uses the poster's principal ID in the route (consistent with existing user profile routing)"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
-          "operation": "modify",
-          "description": "Add an overlay div positioned at the bottom-left of each video displaying the poster's avatar (using AvatarPlaceholder with the post's authorPrincipal and authorName) and the authorName/display name. Wrap the avatar and name in a clickable element that navigates to /profile/{authorPrincipal} using the router's navigate function. Ensure the overlay is z-indexed above the video but below interactive buttons (like, comment, share)."
+          "description": "Add a helper function getPostIdFromUrl() that extracts the postId query parameter from the current URL (checking both ?postId= and #postId= formats). Return the postId as a bigint or null if not present. This utility will be used by ShortSportPage to detect the shared post parameter."
         }
       ]
     }

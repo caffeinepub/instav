@@ -11,6 +11,8 @@ import Iter "mo:core/Iter";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Set "mo:core/Set";
+import Int "mo:core/Int";
+import Order "mo:core/Order";
 
 
 
@@ -842,9 +844,14 @@ actor {
     newPost.id;
   };
 
-  // Get all posts (public)
+  // Custom comparator function for sorting by timestamp DESC (newest first)
+  func compareByTimestampDesc(a : Post, b : Post) : Order.Order {
+    Int.compare(b.timestamp, a.timestamp);
+  };
+
+  // Get the most recent 100 posts sorted by timestamp (descending order)
   public query func getAllPosts() : async [Post] {
-    postsMap.values().toArray();
+    postsMap.values().toArray().sort(compareByTimestampDesc) 
   };
 
   // Get posts by user (public)

@@ -1,56 +1,47 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T21:11:00.456Z",
+  "generatedAt": "2026-03-01T08:52:22.710Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 4,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+        "summary": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/pages/MessagesPage.tsx",
           "frontend/src/pages/ShortSportPage.tsx"
         ],
         "matchedFiles": [
+          "frontend/src/pages/MessagesPage.tsx",
           "frontend/src/pages/ShortSportPage.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+        "summary": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/components/MessageBubble.tsx",
+          "frontend/src/pages/MessagesPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/MessagesPage.tsx"
         ]
       },
       {
         "id": "REQ-3",
-        "summary": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
+        "summary": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/ShareModal.tsx",
-          "frontend/src/pages/ShortSportPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/ShareModal.tsx",
-          "frontend/src/pages/ShortSportPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
+          "frontend/src/pages/ShortSportPage.tsx",
+          "frontend/src/utils/urlParams.ts"
         ],
         "matchedFiles": [
           "frontend/src/pages/ShortSportPage.tsx"
@@ -63,8 +54,9 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/ShareModal.tsx",
+    "frontend/src/pages/MessagesPage.tsx",
     "frontend/src/pages/ShortSportPage.tsx",
+    "frontend/src/routeTree.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

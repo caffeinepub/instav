@@ -2,9 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-shortsportpage-add-a-click-to-activate-auto-scroll-mode-when-the-user-clicks-a-video-enable-auto-scroll-so-that-once-the-current-video-finishes-playing-it-automatically-scrolls-to-the-next-video-in-the-feed-each-subsequent-video-should-do-the-same-play-fully-then-scroll-to-the-next-one-automatically",
-      "featureTitle": "In ShortSportPage, add a click-to-activate auto-scroll mode: when the user clicks a video, enable auto-scroll so that once the current video finishes playing it automatically scrolls to the next video in the feed. Each subsequent video should do the same — play fully then scroll to the next one automatically.",
+      "featureId": "feature-when-a-user-receives-a-message-containing-a-shared-shortsport-post-tapping-clicking-that-message-must-open-and-play-the-exact-shortsport-video-that-was-sent-the-shortsport-should-be-displayed-in-the-full-screen-vertical-reel-view-shortsportpage-scrolled-focused-to-the-specific-post-or-in-a-modal-overlay-that-plays-that-specific-video",
+      "featureTitle": "When a user receives a message containing a shared ShortSport post, tapping/clicking that message must open and play the exact ShortSport video that was sent. The ShortSport should be displayed in the full-screen vertical reel view (ShortSportPage) scrolled/focused to the specific post, or in a modal/overlay that plays that specific video.",
       "files": [
+        "frontend/src/pages/MessagesPage.tsx",
         "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
@@ -22,10 +23,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-comments-section-to-each-shortsport-item-display-a-comment-box-inline-or-as-a-bottom-drawer-sheet-showing-all-existing-comments-from-all-users-and-allow-authenticated-users-to-post-new-comments-reuse-the-existing-comments-backend-addcomment-getcomments-already-used-in-postcard-and-commentssheet",
-      "featureTitle": "Add a comments section to each ShortSport item: display a comment box (inline or as a bottom drawer/sheet) showing all existing comments from all users, and allow authenticated users to post new comments. Reuse the existing comments backend (addComment / getComments) already used in PostCard and CommentsSheet.",
+      "featureId": "feature-in-messagespage-and-any-message-thread-component-detect-when-a-message-contains-a-shared-post-of-type-video-shortsport-and-render-a-tappable-shortsport-preview-card-on-tap-navigate-to-shortsportpage-with-the-specific-post-id-as-a-url-parameter-e-g-shortsport-postid-id-so-the-correct-short-is-loaded-and-displayed",
+      "featureTitle": "In MessagesPage and any message thread component, detect when a message contains a shared post of type video/ShortSport and render a tappable ShortSport preview card. On tap, navigate to ShortSportPage with the specific post ID as a URL parameter (e.g., /shortsport?postId=<id>) so the correct short is loaded and displayed.",
       "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
+        "frontend/src/pages/MessagesPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -42,10 +43,9 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-share-button-to-each-shortsport-item-that-allows-the-current-user-to-share-the-video-or-picture-to-their-friends-using-the-existing-friend-system-opening-the-share-ui-should-show-a-list-of-the-user-s-friends-so-they-can-select-recipients-and-send-the-post-as-a-direct-message-reusing-the-existing-messaging-backend",
-      "featureTitle": "Add a share button to each ShortSport item that allows the current user to share the video or picture to their friends using the existing friend system. Opening the share UI should show a list of the user's friends so they can select recipients and send the post as a direct message (reusing the existing messaging backend).",
+      "featureId": "feature-update-shortsportpage-to-accept-an-optional-postid-url-query-parameter-when-present-the-page-must-load-and-display-the-shortsport-with-that-specific-id-first-scrolled-into-view-and-auto-playing-before-or-alongside-the-rest-of-the-feed",
+      "featureTitle": "Update ShortSportPage to accept an optional postId URL query parameter. When present, the page must load and display the ShortSport with that specific ID first (scrolled into view and auto-playing), before or alongside the rest of the feed.",
       "files": [
-        "frontend/src/components/ShareModal.tsx",
         "frontend/src/pages/ShortSportPage.tsx"
       ],
       "components": [
@@ -59,26 +59,6 @@
       ],
       "testIds": [
         "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-display-the-poster-s-profile-avatar-and-username-display-name-on-each-shortsport-item-overlay-on-the-video-e-g-bottom-left-tapping-the-avatar-or-name-navigates-directly-to-that-user-s-full-profile-page-userprofilepage-using-their-principal-id",
-      "featureTitle": "Display the poster's profile avatar and username/display name on each ShortSport item (overlay on the video, e.g. bottom-left). Tapping the avatar or name navigates directly to that user's full profile page (UserProfilePage) using their principal ID.",
-      "files": [
-        "frontend/src/pages/ShortSportPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
       ],
       "confidence": "high"
     }

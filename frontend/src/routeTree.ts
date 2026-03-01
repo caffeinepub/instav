@@ -42,6 +42,11 @@ const shortSportRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/shortsport',
   component: ShortSportPage,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      postId: search.postId !== undefined ? String(search.postId) : undefined,
+    };
+  },
 });
 
 const createPostRoute = createRoute({
