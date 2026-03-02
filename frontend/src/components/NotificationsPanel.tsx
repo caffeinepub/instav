@@ -89,7 +89,7 @@ function NotificationItem({
       <div className="relative shrink-0">
         <AvatarPlaceholder
           name={profile?.displayName ?? fromPrincipal.slice(0, 8)}
-          profilePicture={profile?.profilePicture}
+          profilePicture={profile?.profilePhoto}
           size="sm"
         />
         <span className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 border border-border">

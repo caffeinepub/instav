@@ -114,6 +114,7 @@ export interface UserProfileSummary {
     displayName: string;
     avatarUrl?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
     handle: string;
     followingCount: bigint;
 }
@@ -132,6 +133,7 @@ export interface CreatorRanking {
     username: string;
     profilePicBlob?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
 }
 export interface Post {
     id: bigint;
@@ -163,8 +165,9 @@ export interface Message {
 export interface UserProfileData {
     bio: string;
     displayName: string;
+    profilePhoto?: ExternalBlob;
+    bannerImage?: ExternalBlob;
     handle: string;
-    profilePicture?: ExternalBlob;
 }
 export interface PostInput {
     media?: ExternalBlob;
@@ -216,10 +219,13 @@ export interface backendInterface {
     createPost(postInput: PostInput): Promise<bigint>;
     followUser(target: Principal): Promise<void>;
     getAllPosts(): Promise<Array<Post>>;
+    getBannerImage(): Promise<ExternalBlob | null>;
+    getBannerImageForUser(userPrincipal: Principal): Promise<ExternalBlob | null>;
     getCallerUserProfile(): Promise<UserProfileData | null>;
     getCallerUserRole(): Promise<UserRole>;
     getComments(postId: bigint): Promise<Array<Comment>>;
     getConversations(): Promise<Array<Conversation>>;
+    getFollowerCount(user: Principal): Promise<bigint>;
     getFollowers(user: Principal): Promise<Array<Principal>>;
     getFollowing(user: Principal): Promise<Array<Principal>>;
     getFriendsList(): Promise<Array<Principal>>;
@@ -227,12 +233,15 @@ export interface backendInterface {
     getIncomingFriendRequests(): Promise<Array<FriendRequest>>;
     getLikedPosts(): Promise<Array<Post>>;
     getMessages(otherParticipant: Principal): Promise<Array<Message>>;
+    getMyFollowerCount(): Promise<bigint>;
     getNotifications(): Promise<Array<Notification>>;
     getOutgoingFriendRequests(): Promise<Array<FriendRequest>>;
     getPostsByUser(authorPrincipal: Principal): Promise<Array<Post>>;
     getProfileByHandle(handle: string): Promise<UserProfileData | null>;
     getProfileByPrincipal(principal: Principal): Promise<UserProfileData | null>;
+    getProfilePhotoForUser(userPrincipal: Principal): Promise<ExternalBlob | null>;
     getTopCreatorsByShadows(limit: bigint): Promise<Array<CreatorRanking>>;
+    getUserBanner(user: Principal): Promise<ExternalBlob | null>;
     getUserProfile(identifier: UserIdentifier): Promise<UserProfileData | null>;
     isCallerAdmin(): Promise<boolean>;
     isFollowing(target: Principal): Promise<boolean>;
@@ -246,9 +255,11 @@ export interface backendInterface {
     searchUsers(searchStr: string): Promise<Array<UserProfileSummary>>;
     sendFriendRequest(receiver: Principal): Promise<void>;
     sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
+    setBannerImage(newBanner: ExternalBlob): Promise<void>;
     unfollowUser(target: Principal): Promise<void>;
     unfriend(friendPrincipal: Principal): Promise<void>;
     unlikePost(postId: bigint): Promise<void>;
+    updateProfilePhoto(newPhoto: ExternalBlob): Promise<void>;
 }
 import type { CreatorRanking as _CreatorRanking, ExternalBlob as _ExternalBlob, FriendRequest as _FriendRequest, FriendRequestStatus as _FriendRequestStatus, FriendshipStatusEnum as _FriendshipStatusEnum, Message as _Message, Notification as _Notification, NotificationType as _NotificationType, Post as _Post, PostInput as _PostInput, UserIdentifier as _UserIdentifier, UserProfileData as _UserProfileData, UserProfileSummary as _UserProfileSummary, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -449,6 +460,34 @@ export class Backend implements backendInterface {
             return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getBannerImage(): Promise<ExternalBlob | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getBannerImage();
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getBannerImage();
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getBannerImageForUser(arg0: Principal): Promise<ExternalBlob | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getBannerImageForUser(arg0);
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getBannerImageForUser(arg0);
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getCallerUserProfile(): Promise<UserProfileData | null> {
         if (this.processError) {
             try {
@@ -502,6 +541,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getConversations();
+            return result;
+        }
+    }
+    async getFollowerCount(arg0: Principal): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getFollowerCount(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getFollowerCount(arg0);
             return result;
         }
     }
@@ -603,6 +656,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n32(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getMyFollowerCount(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyFollowerCount();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyFollowerCount();
+            return result;
+        }
+    }
     async getNotifications(): Promise<Array<Notification>> {
         if (this.processError) {
             try {
@@ -673,6 +740,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getProfilePhotoForUser(arg0: Principal): Promise<ExternalBlob | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getProfilePhotoForUser(arg0);
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getProfilePhotoForUser(arg0);
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getTopCreatorsByShadows(arg0: bigint): Promise<Array<CreatorRanking>> {
         if (this.processError) {
             try {
@@ -685,6 +766,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getTopCreatorsByShadows(arg0);
             return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserBanner(arg0: Principal): Promise<ExternalBlob | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserBanner(arg0);
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserBanner(arg0);
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: UserIdentifier): Promise<UserProfileData | null> {
@@ -869,6 +964,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setBannerImage(arg0: ExternalBlob): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setBannerImage(await to_candid_ExternalBlob_n12(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setBannerImage(await to_candid_ExternalBlob_n12(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
     async unfollowUser(arg0: Principal): Promise<void> {
         if (this.processError) {
             try {
@@ -908,6 +1017,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.unlikePost(arg0);
+            return result;
+        }
+    }
+    async updateProfilePhoto(arg0: ExternalBlob): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateProfilePhoto(await to_candid_ExternalBlob_n12(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateProfilePhoto(await to_candid_ExternalBlob_n12(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -999,19 +1122,22 @@ async function from_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promi
 async function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     bio: string;
     displayName: string;
+    profilePhoto: [] | [_ExternalBlob];
+    bannerImage: [] | [_ExternalBlob];
     handle: string;
-    profilePicture: [] | [_ExternalBlob];
 }): Promise<{
     bio: string;
     displayName: string;
+    profilePhoto?: ExternalBlob;
+    bannerImage?: ExternalBlob;
     handle: string;
-    profilePicture?: ExternalBlob;
 }> {
     return {
         bio: value.bio,
         displayName: value.displayName,
-        handle: value.handle,
-        profilePicture: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.profilePicture))
+        profilePhoto: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.profilePhoto)),
+        bannerImage: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.bannerImage)),
+        handle: value.handle
     };
 }
 function from_candid_record_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1085,17 +1211,20 @@ async function from_candid_record_n42(_uploadFile: (file: ExternalBlob) => Promi
     username: string;
     profilePicBlob: [] | [_ExternalBlob];
     followerCount: bigint;
+    bannerImage: [] | [_ExternalBlob];
 }): Promise<{
     principal: Principal;
     username: string;
     profilePicBlob?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
 }> {
     return {
         principal: value.principal,
         username: value.username,
         profilePicBlob: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.profilePicBlob)),
-        followerCount: value.followerCount
+        followerCount: value.followerCount,
+        bannerImage: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.bannerImage))
     };
 }
 async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1105,6 +1234,7 @@ async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promi
     displayName: string;
     avatarUrl: [] | [_ExternalBlob];
     followerCount: bigint;
+    bannerImage: [] | [_ExternalBlob];
     handle: string;
     followingCount: bigint;
 }): Promise<{
@@ -1114,6 +1244,7 @@ async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promi
     displayName: string;
     avatarUrl?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
     handle: string;
     followingCount: bigint;
 }> {
@@ -1124,6 +1255,7 @@ async function from_candid_record_n47(_uploadFile: (file: ExternalBlob) => Promi
         displayName: value.displayName,
         avatarUrl: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.avatarUrl)),
         followerCount: value.followerCount,
+        bannerImage: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.bannerImage)),
         handle: value.handle,
         followingCount: value.followingCount
     };
@@ -1223,19 +1355,22 @@ function to_candid_opt_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Arr
 async function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     bio: string;
     displayName: string;
+    profilePhoto?: ExternalBlob;
+    bannerImage?: ExternalBlob;
     handle: string;
-    profilePicture?: ExternalBlob;
 }): Promise<{
     bio: string;
     displayName: string;
+    profilePhoto: [] | [_ExternalBlob];
+    bannerImage: [] | [_ExternalBlob];
     handle: string;
-    profilePicture: [] | [_ExternalBlob];
 }> {
     return {
         bio: value.bio,
         displayName: value.displayName,
-        handle: value.handle,
-        profilePicture: value.profilePicture ? candid_some(await to_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.profilePicture)) : candid_none()
+        profilePhoto: value.profilePhoto ? candid_some(await to_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.profilePhoto)) : candid_none(),
+        bannerImage: value.bannerImage ? candid_some(await to_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.bannerImage)) : candid_none(),
+        handle: value.handle
     };
 }
 async function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

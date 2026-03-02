@@ -115,7 +115,7 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
             <div className="w-9 h-9 rounded-full overflow-hidden bg-surface">
               <AvatarPlaceholder
                 name={displayName}
-                profilePicture={authorProfile?.profilePicture ?? null}
+                profilePicture={authorProfile?.profilePhoto ?? null}
                 size="sm"
                 className="w-full h-full"
               />

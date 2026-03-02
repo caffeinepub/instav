@@ -1,14 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix media (images and videos) not rendering across the feed, explore, profile, and short video pages in the Smileup app.
+**Goal:** Redesign the ProfilePage with a professional Instagram-style layout featuring an uploadable banner, uploadable profile photo, and an enhanced dark/golden-themed profile info section.
 
 **Planned changes:**
-- Fix PostCard component to correctly resolve and display image and video media from backend blob/URL data
-- Fix the blob rendering utility so binary blob data is properly converted to object URLs or data URLs before being assigned to `img`/`video` src attributes
-- Fix ProfilePage to correctly fetch and display the current user's posts including media thumbnails in the posts grid and liked posts tab
-- Fix UserProfilePage to correctly fetch and display any public user's posts with media visible
-- Fix ShortSportPage so video posts load, display thumbnails, and play back correctly with working controls
-- Fix ExplorePage so all posts render their image and video media without broken placeholders
+- Add a full-width uploadable banner image area (~180px tall) at the top of ProfilePage, with a dark gradient fallback and a camera icon overlay to trigger image upload; save banner blob to the backend
+- Replace the orange initials avatar with an uploadable circular profile photo that overlaps the bottom edge of the banner (Instagram-style); show a camera icon overlay to trigger upload; fall back to gradient initials avatar if no photo is set; save photo blob to the backend
+- Display the user's display name inside a dark rounded pill/box with a golden glow/drop-shadow
+- Show the user's @handle in smaller grey text below the name
+- Show Followers, Following, and Posts counts in a horizontal stats row; Followers displayed in a golden-bordered box with golden drop-shadow
+- Keep the Edit Profile button right-aligned in the profile header area
 
-**User-visible outcome:** Users can see all photos, videos, and post media on the feed, explore page, their own profile, other users' profiles, and the short video feed — with no broken image or video placeholders.
+**User-visible outcome:** Users see a polished profile page with an uploadable banner and profile photo (Instagram-style overlap), their name styled in a dark golden-glow box, their handle, and a clean horizontal stats row — all consistent with the app's dark golden theme.

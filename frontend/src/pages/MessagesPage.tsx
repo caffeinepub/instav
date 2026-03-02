@@ -5,7 +5,7 @@ import {
   useGetMessages,
   useSendMessage,
   useMarkMessagesRead,
-  useGetUserProfileByPrincipal,
+  useGetUserProfile,
   useGetFriendsList,
   useGetIncomingFriendRequests,
   useRespondToFriendRequest,
@@ -32,7 +32,7 @@ function ConversationItem({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
+  const { data: profile } = useGetUserProfile(principalStr);
 
   return (
     <button
@@ -65,7 +65,7 @@ function MessageThread({
   onBack?: () => void;
 }) {
   const { data: messages, isLoading } = useGetMessages(otherPrincipal);
-  const { data: profile } = useGetUserProfileByPrincipal(otherPrincipal);
+  const { data: profile } = useGetUserProfile(otherPrincipal);
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
   const [newMessage, setNewMessage] = useState('');
@@ -83,9 +83,8 @@ function MessageThread({
 
   const handleSend = async () => {
     if (!newMessage.trim()) return;
-    const recipientStr = otherPrincipal;
     try {
-      await sendMessage.mutateAsync({ recipient: recipientStr, content: newMessage.trim() });
+      await sendMessage.mutateAsync({ recipient: otherPrincipal, content: newMessage.trim() });
       setNewMessage('');
     } catch (err) {
       console.error('Send message error:', err);
@@ -241,11 +240,11 @@ function FriendZoneTab({ currentPrincipal, onStartChat }: { currentPrincipal: st
           </div>
         ) : (
           <div className="space-y-2">
-            {friendsList?.map((friendPrincipal) => (
+            {friendsList?.map((friendPrincipalStr) => (
               <FriendItem
-                key={friendPrincipal}
-                principalStr={friendPrincipal}
-                onChat={() => onStartChat(friendPrincipal)}
+                key={friendPrincipalStr}
+                principalStr={friendPrincipalStr}
+                onChat={() => onStartChat(friendPrincipalStr)}
               />
             ))}
           </div>
@@ -266,7 +265,7 @@ function FriendRequestItem({
   onDecline: () => void;
   isLoading: boolean;
 }) {
-  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
+  const { data: profile } = useGetUserProfile(principalStr);
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
       <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
@@ -283,7 +282,7 @@ function FriendRequestItem({
 }
 
 function FriendItem({ principalStr, onChat }: { principalStr: string; onChat: () => void }) {
-  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
+  const { data: profile } = useGetUserProfile(principalStr);
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
       <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
@@ -311,10 +310,8 @@ function ShadowingTab({ currentPrincipal }: { currentPrincipal: string }) {
     <div className="p-4">
       {/* Gold Premium Header Card */}
       <div className="relative mb-5 rounded-2xl overflow-hidden border border-amber-400/60 shadow-lg shadow-amber-400/20">
-        {/* Gold gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-yellow-900/30 to-amber-800/40" />
         <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/5 via-amber-300/10 to-yellow-400/5" />
-        {/* Shimmer line */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
         <div className="relative px-5 py-4 flex items-center gap-4">
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-md shadow-amber-500/40">
@@ -328,7 +325,6 @@ function ShadowingTab({ currentPrincipal }: { currentPrincipal: string }) {
             <p className="text-xs text-amber-400/60 mt-0.5">People you are shadowing</p>
           </div>
         </div>
-        {/* Bottom shimmer */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
       </div>
 
@@ -347,7 +343,7 @@ function ShadowingTab({ currentPrincipal }: { currentPrincipal: string }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {(followingProfiles ?? followingList?.map(p => ({ principal: p, profile: null })) ?? []).map((item) => (
+          {(followingProfiles ?? followingList?.map(p => ({ principal: p.toString(), profile: null })) ?? []).map((item) => (
             <ShadowingUserItem
               key={item.principal}
               principalStr={item.principal}
@@ -372,10 +368,9 @@ function ShadowingUserItem({
       <div className="relative">
         <AvatarPlaceholder
           name={profile?.displayName || principalStr.slice(0, 8)}
-          profilePicture={profile?.profilePicture}
+          profilePicture={profile?.profilePhoto}
           size="sm"
         />
-        {/* Gold ring */}
         <div className="absolute inset-0 rounded-full ring-1 ring-amber-400/40" />
       </div>
       <div className="flex-1 min-w-0">
@@ -403,7 +398,7 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
 
   const { data: conversations, isLoading: convsLoading } = useGetConversations();
   const [selectedPrincipal, setSelectedPrincipal] = useState<string | null>(initialPrincipal ?? null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'social' | 'friendzone' | 'shadowing'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'friendzone' | 'shadowing'>('inbox');
 
   useEffect(() => {
     if (initialPrincipal) {
@@ -430,7 +425,7 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] max-w-4xl mx-auto">
-      {/* Left Panel — full width on mobile when no conversation selected, hidden on mobile when thread is open */}
+      {/* Left Panel */}
       <div
         className={`
           flex flex-col bg-background border-r border-border
@@ -475,15 +470,21 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
           {activeTab === 'inbox' && (
             <>
               {convsLoading ? (
-                <div className="p-4 space-y-3">
+                <div className="space-y-1 p-2">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-14 rounded-xl" />
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <Skeleton className="w-8 h-8 rounded-full" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-3 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : conversationPrincipals.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
-                  <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
-                  <p className="text-sm text-center">No conversations yet.</p>
+                <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
+                  <MessageCircle className="w-10 h-10 mb-3 opacity-30" />
+                  <p className="text-sm">No conversations yet</p>
                 </div>
               ) : (
                 conversationPrincipals.map((p) => (
@@ -497,25 +498,23 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
               )}
             </>
           )}
-
           {activeTab === 'friendzone' && (
             <FriendZoneTab
               currentPrincipal={currentPrincipal}
               onStartChat={handleSelectConversation}
             />
           )}
-
           {activeTab === 'shadowing' && (
             <ShadowingTab currentPrincipal={currentPrincipal} />
           )}
         </div>
       </div>
 
-      {/* Right Panel — hidden on mobile when no conversation selected, full width on mobile when thread is open */}
+      {/* Right Panel — Message Thread */}
       <div
         className={`
-          flex-1 flex flex-col bg-background
-          ${selectedPrincipal ? 'flex' : 'hidden md:flex'}
+          flex-1 bg-background
+          ${selectedPrincipal ? 'flex flex-col' : 'hidden md:flex md:flex-col'}
         `}
       >
         {selectedPrincipal ? (
@@ -525,11 +524,9 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
             onBack={handleBack}
           />
         ) : (
-          /* Desktop-only empty state — hidden on mobile via parent */
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle className="w-16 h-16 mb-4 opacity-20" />
-            <p className="text-lg font-medium">Select a conversation</p>
-            <p className="text-sm mt-1">Choose from your inbox or start a new chat</p>
+            <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
+            <p className="text-sm">Select a conversation to start messaging</p>
           </div>
         )}
       </div>

@@ -28,8 +28,9 @@ export const ExternalBlob = IDL.Vec(IDL.Nat8);
 export const UserProfileData = IDL.Record({
   'bio' : IDL.Text,
   'displayName' : IDL.Text,
+  'profilePhoto' : IDL.Opt(ExternalBlob),
+  'bannerImage' : IDL.Opt(ExternalBlob),
   'handle' : IDL.Text,
-  'profilePicture' : IDL.Opt(ExternalBlob),
 });
 export const PostInput = IDL.Record({
   'media' : IDL.Opt(ExternalBlob),
@@ -103,6 +104,7 @@ export const CreatorRanking = IDL.Record({
   'username' : IDL.Text,
   'profilePicBlob' : IDL.Opt(ExternalBlob),
   'followerCount' : IDL.Nat,
+  'bannerImage' : IDL.Opt(ExternalBlob),
 });
 export const UserIdentifier = IDL.Variant({
   'principal' : IDL.Principal,
@@ -115,6 +117,7 @@ export const UserProfileSummary = IDL.Record({
   'displayName' : IDL.Text,
   'avatarUrl' : IDL.Opt(ExternalBlob),
   'followerCount' : IDL.Nat,
+  'bannerImage' : IDL.Opt(ExternalBlob),
   'handle' : IDL.Text,
   'followingCount' : IDL.Nat,
 });
@@ -154,10 +157,17 @@ export const idlService = IDL.Service({
   'createPost' : IDL.Func([PostInput], [IDL.Nat], []),
   'followUser' : IDL.Func([IDL.Principal], [], []),
   'getAllPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
+  'getBannerImage' : IDL.Func([], [IDL.Opt(ExternalBlob)], ['query']),
+  'getBannerImageForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(ExternalBlob)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfileData)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getComments' : IDL.Func([IDL.Nat], [IDL.Vec(Comment)], ['query']),
   'getConversations' : IDL.Func([], [IDL.Vec(Conversation)], ['query']),
+  'getFollowerCount' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getFollowers' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(IDL.Principal)],
@@ -181,6 +191,7 @@ export const idlService = IDL.Service({
     ),
   'getLikedPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
   'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
+  'getMyFollowerCount' : IDL.Func([], [IDL.Nat], ['query']),
   'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
   'getOutgoingFriendRequests' : IDL.Func(
       [],
@@ -198,9 +209,19 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfileData)],
       ['query'],
     ),
+  'getProfilePhotoForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(ExternalBlob)],
+      ['query'],
+    ),
   'getTopCreatorsByShadows' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(CreatorRanking)],
+      ['query'],
+    ),
+  'getUserBanner' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(ExternalBlob)],
       ['query'],
     ),
   'getUserProfile' : IDL.Func(
@@ -220,9 +241,11 @@ export const idlService = IDL.Service({
   'searchUsers' : IDL.Func([IDL.Text], [IDL.Vec(UserProfileSummary)], []),
   'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'sendMessage' : IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Nat)], [], []),
+  'setBannerImage' : IDL.Func([ExternalBlob], [], []),
   'unfollowUser' : IDL.Func([IDL.Principal], [], []),
   'unfriend' : IDL.Func([IDL.Principal], [], []),
   'unlikePost' : IDL.Func([IDL.Nat], [], []),
+  'updateProfilePhoto' : IDL.Func([ExternalBlob], [], []),
 });
 
 export const idlInitArgs = [];
@@ -248,8 +271,9 @@ export const idlFactory = ({ IDL }) => {
   const UserProfileData = IDL.Record({
     'bio' : IDL.Text,
     'displayName' : IDL.Text,
+    'profilePhoto' : IDL.Opt(ExternalBlob),
+    'bannerImage' : IDL.Opt(ExternalBlob),
     'handle' : IDL.Text,
-    'profilePicture' : IDL.Opt(ExternalBlob),
   });
   const PostInput = IDL.Record({
     'media' : IDL.Opt(ExternalBlob),
@@ -323,6 +347,7 @@ export const idlFactory = ({ IDL }) => {
     'username' : IDL.Text,
     'profilePicBlob' : IDL.Opt(ExternalBlob),
     'followerCount' : IDL.Nat,
+    'bannerImage' : IDL.Opt(ExternalBlob),
   });
   const UserIdentifier = IDL.Variant({
     'principal' : IDL.Principal,
@@ -335,6 +360,7 @@ export const idlFactory = ({ IDL }) => {
     'displayName' : IDL.Text,
     'avatarUrl' : IDL.Opt(ExternalBlob),
     'followerCount' : IDL.Nat,
+    'bannerImage' : IDL.Opt(ExternalBlob),
     'handle' : IDL.Text,
     'followingCount' : IDL.Nat,
   });
@@ -374,6 +400,12 @@ export const idlFactory = ({ IDL }) => {
     'createPost' : IDL.Func([PostInput], [IDL.Nat], []),
     'followUser' : IDL.Func([IDL.Principal], [], []),
     'getAllPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
+    'getBannerImage' : IDL.Func([], [IDL.Opt(ExternalBlob)], ['query']),
+    'getBannerImageForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(ExternalBlob)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func(
         [],
         [IDL.Opt(UserProfileData)],
@@ -382,6 +414,7 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getComments' : IDL.Func([IDL.Nat], [IDL.Vec(Comment)], ['query']),
     'getConversations' : IDL.Func([], [IDL.Vec(Conversation)], ['query']),
+    'getFollowerCount' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
     'getFollowers' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(IDL.Principal)],
@@ -405,6 +438,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getLikedPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
     'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
+    'getMyFollowerCount' : IDL.Func([], [IDL.Nat], ['query']),
     'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
     'getOutgoingFriendRequests' : IDL.Func(
         [],
@@ -422,9 +456,19 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfileData)],
         ['query'],
       ),
+    'getProfilePhotoForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(ExternalBlob)],
+        ['query'],
+      ),
     'getTopCreatorsByShadows' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(CreatorRanking)],
+        ['query'],
+      ),
+    'getUserBanner' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(ExternalBlob)],
         ['query'],
       ),
     'getUserProfile' : IDL.Func(
@@ -448,9 +492,11 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'setBannerImage' : IDL.Func([ExternalBlob], [], []),
     'unfollowUser' : IDL.Func([IDL.Principal], [], []),
     'unfriend' : IDL.Func([IDL.Principal], [], []),
     'unlikePost' : IDL.Func([IDL.Nat], [], []),
+    'updateProfilePhoto' : IDL.Func([ExternalBlob], [], []),
   });
 };
 

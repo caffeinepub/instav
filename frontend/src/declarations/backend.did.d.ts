@@ -27,6 +27,7 @@ export interface CreatorRanking {
   'username' : string,
   'profilePicBlob' : [] | [ExternalBlob],
   'followerCount' : bigint,
+  'bannerImage' : [] | [ExternalBlob],
 }
 export type ExternalBlob = Uint8Array;
 export interface FriendRequest {
@@ -83,8 +84,9 @@ export type UserIdentifier = { 'principal' : Principal } |
 export interface UserProfileData {
   'bio' : string,
   'displayName' : string,
+  'profilePhoto' : [] | [ExternalBlob],
+  'bannerImage' : [] | [ExternalBlob],
   'handle' : string,
-  'profilePicture' : [] | [ExternalBlob],
 }
 export interface UserProfileSummary {
   'bio' : string,
@@ -93,6 +95,7 @@ export interface UserProfileSummary {
   'displayName' : string,
   'avatarUrl' : [] | [ExternalBlob],
   'followerCount' : bigint,
+  'bannerImage' : [] | [ExternalBlob],
   'handle' : string,
   'followingCount' : bigint,
 }
@@ -134,10 +137,13 @@ export interface _SERVICE {
   'createPost' : ActorMethod<[PostInput], bigint>,
   'followUser' : ActorMethod<[Principal], undefined>,
   'getAllPosts' : ActorMethod<[], Array<Post>>,
+  'getBannerImage' : ActorMethod<[], [] | [ExternalBlob]>,
+  'getBannerImageForUser' : ActorMethod<[Principal], [] | [ExternalBlob]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfileData]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getComments' : ActorMethod<[bigint], Array<Comment>>,
   'getConversations' : ActorMethod<[], Array<Conversation>>,
+  'getFollowerCount' : ActorMethod<[Principal], bigint>,
   'getFollowers' : ActorMethod<[Principal], Array<Principal>>,
   'getFollowing' : ActorMethod<[Principal], Array<Principal>>,
   'getFriendsList' : ActorMethod<[], Array<Principal>>,
@@ -145,12 +151,15 @@ export interface _SERVICE {
   'getIncomingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
   'getLikedPosts' : ActorMethod<[], Array<Post>>,
   'getMessages' : ActorMethod<[Principal], Array<Message>>,
+  'getMyFollowerCount' : ActorMethod<[], bigint>,
   'getNotifications' : ActorMethod<[], Array<Notification>>,
   'getOutgoingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
   'getPostsByUser' : ActorMethod<[Principal], Array<Post>>,
   'getProfileByHandle' : ActorMethod<[string], [] | [UserProfileData]>,
   'getProfileByPrincipal' : ActorMethod<[Principal], [] | [UserProfileData]>,
+  'getProfilePhotoForUser' : ActorMethod<[Principal], [] | [ExternalBlob]>,
   'getTopCreatorsByShadows' : ActorMethod<[bigint], Array<CreatorRanking>>,
+  'getUserBanner' : ActorMethod<[Principal], [] | [ExternalBlob]>,
   'getUserProfile' : ActorMethod<[UserIdentifier], [] | [UserProfileData]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isFollowing' : ActorMethod<[Principal], boolean>,
@@ -164,9 +173,11 @@ export interface _SERVICE {
   'searchUsers' : ActorMethod<[string], Array<UserProfileSummary>>,
   'sendFriendRequest' : ActorMethod<[Principal], undefined>,
   'sendMessage' : ActorMethod<[Principal, string, [] | [bigint]], undefined>,
+  'setBannerImage' : ActorMethod<[ExternalBlob], undefined>,
   'unfollowUser' : ActorMethod<[Principal], undefined>,
   'unfriend' : ActorMethod<[Principal], undefined>,
   'unlikePost' : ActorMethod<[bigint], undefined>,
+  'updateProfilePhoto' : ActorMethod<[ExternalBlob], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

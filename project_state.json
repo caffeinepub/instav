@@ -1,61 +1,58 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Social media app with profiles, posts, photos, videos, and Snapchat-style content. User reported media and posts not visible across tabs and profile.",
-  "architectural_notes": [],
-  "known_issues": [
-    "Videos, photos, Snapchat posts, and user posts are not visible on any tab or profile page"
+  "summary": "Social app with a professional profile page upgrade being built in steps. Step 1: professional layout with uploadable banner/photo, golden followers box, stats. Step 2: Edit Profile flow with Save. Step 3: Follow system with real-time follower count updates.",
+  "architectural_notes": [
+    "Profile page has two views: own profile (Edit Profile button, no Follow button) and other user's profile (Follow button, no Edit)",
+    "Profile photo and banner are uploadable actual images; photo overlaps banner in Instagram-style layout"
   ],
-  "isFixRequest": true,
+  "known_issues": [
+    "Previous full-build attempts for profile upgrade failed twice; building in steps (1-by-1) to improve reliability"
+  ],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-fix-postcard-component-so-that-image-and-video-media-attached-to-posts-is-correctly-rendered-and-visible-ensure-the-media-url-blob-is-properly-resolved-and-passed-to-the-img-video-element-so-content-displays-for-all-posts-across-all-pages",
-      "title": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
+      "id": "feature-add-a-full-width-uploadable-banner-image-at-the-top-of-the-profile-page-profilepage-tsx-the-banner-area-should-be-approximately-180px-tall-display-the-uploaded-image-as-a-cover-and-fall-back-to-a-dark-gradient-when-no-image-is-set-include-a-camera-icon-overlay-button-on-the-banner-so-the-user-can-tap-to-upload-a-new-banner-image-store-the-banner-image-as-a-blob-in-the-backend-already-supported-via-existing-banner-blob-logic",
+      "title": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-fix-explorepage-so-that-posts-returned-by-usegetallposts-render-their-media-images-and-videos-correctly-applying-the-same-blob-resolution-fix-used-in-postcard",
-      "title": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
+      "id": "feature-replace-the-orange-initials-avatar-avatarplaceholder-on-profilepage-tsx-with-an-uploadable-circular-profile-photo-the-profile-photo-should-overlap-the-bottom-edge-of-the-banner-positioned-absolutely-bottom-40px-from-banner-bottom-left-aligned-with-padding-show-a-small-camera-icon-overlay-on-the-avatar-circle-so-the-user-can-tap-to-upload-a-new-profile-photo-store-the-profile-photo-blob-in-the-backend-fall-back-to-the-existing-gradient-initials-avatar-if-no-photo-is-uploaded",
+      "title": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
       "reqIds": [
-        "REQ-5"
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-the-profile-info-section-below-the-banner-avatar-on-profilepage-tsx-with-a-professional-dark-theme-layout-1-display-the-user-s-display-name-inside-a-dark-rounded-pill-box-with-a-subtle-golden-glow-or-drop-shadow-2-show-the-user-s-handle-in-smaller-grey-text-below-the-name-3-show-the-followers-count-inside-a-dark-rounded-box-with-a-golden-border-and-golden-drop-shadow-existing-golden-followers-box-enhanced-4-show-following-count-as-a-stat-5-show-posts-count-as-a-stat-6-arrange-the-stats-followers-following-posts-in-a-horizontal-row-beneath-the-name-handle-keep-the-existing-edit-profile-button-aligned-to-the-right-side-of-the-profile-header-area",
+      "title": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
+      "reqIds": [
+        "REQ-3"
       ],
       "version": 1
     }
   ],
   "new_feature_requests": [
     {
+      "id": "AR-1",
+      "summary": "Step 1: Professional profile layout - uploadable banner, uploadable profile photo overlapping banner, name in styled dark box with golden glow, handle, followers in golden box with shadow, following count, posts count",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
       "id": "AR-2",
-      "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
-      "reqIds": [
-        "REQ-2"
-      ],
+      "summary": "Step 2: Edit Profile flow with Save button - editable name, handle, bio, profile photo, and banner",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
-      "reqIds": [
-        "REQ-6"
-      ],
+      "summary": "Step 3: Follow system - Follow button on other users' profiles (not own), real-time follower count updates when followed",
+      "reqIds": [],
       "status": "pending"
     }
   ],

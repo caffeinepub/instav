@@ -1,104 +1,75 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix media visibility: videos, photos, and posts not rendering on feed, explore, and profile pages",
+  "title": "Step 1: Professional Profile Layout with Uploadable Banner & Photo",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible",
+      "summary": "Add uploadable full-width banner image at the top of ProfilePage with camera overlay and dark gradient fallback",
       "acceptanceCriteria": [
-        "Image posts display their image in PostCard on the feed, explore, and profile pages",
-        "Video posts display their video thumbnail and play correctly in PostCard",
-        "Posts with no media render cleanly without broken image/video placeholders"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/PostCard.tsx",
-          "operation": "modify",
-          "description": "Fix media rendering by ensuring ExternalBlob instances are converted to displayable URLs using getDirectURL() method. For image posts (mediaType starts with 'image'), render an img element with src set to media.getDirectURL(). For video posts (mediaType starts with 'video'), render a video element with src set to media.getDirectURL(). Add null/undefined checks for media field and only render media elements when post.media exists and post.mediaType is truthy. Verify the blob-storage component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos",
-      "acceptanceCriteria": [
-        "Authenticated user's ProfilePage shows all their posts in the posts grid",
-        "Post thumbnails (images/videos) are visible in the profile grid",
-        "Liked posts tab also renders post media correctly"
+        "A wide banner image area is visible at the top of the profile page",
+        "A camera/upload icon is shown on the banner that triggers a file input on click",
+        "Selecting an image file updates the displayed banner immediately (optimistic preview)",
+        "The uploaded banner is saved to the backend and persists across page reloads",
+        "When no banner is uploaded, a dark gradient placeholder is shown"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/ProfilePage.tsx",
           "operation": "modify",
-          "description": "Ensure the posts grid renders post media correctly by passing the post objects to PostCard or by rendering thumbnail images/videos directly. For the posts grid, if rendering thumbnails directly, use post.media?.getDirectURL() as the img or video src. Ensure both 'My Posts' and 'Liked Posts' tabs correctly display media thumbnails. Verify that useGetPostsByUser is called with the correct principal (identity.getPrincipal()) and that the resulting posts array includes media fields. Verify the blob-storage component's usage instructions before implementing."
+          "description": "Add a full-width banner section at the top of the profile page with a height of approximately 180px. Display the uploaded banner image using ExternalBlob.getDirectURL() when available, or fall back to a dark gradient background (e.g., from-gray-900 to-gray-800). Include a camera icon overlay button positioned in the top-right or bottom-right corner of the banner that triggers a hidden file input on click. On file selection, convert the file to Uint8Array, create an ExternalBlob using ExternalBlob.fromBytes(), and call the useUpdateBanner mutation hook with optimistic preview. Use the blob-storage component to handle the upload; verify the component's usage instructions before implementing. Ensure the banner renders above the existing avatar and profile info sections."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a `useUpdateBanner` mutation hook that accepts an ExternalBlob parameter and calls `actor.setBannerImage(blob)`. Include error handling and invalidate the `['bannerImage']` query key on success to refetch the banner. Ensure the mutation supports optimistic updates by temporarily displaying the new banner before backend confirmation."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Replace the gradient initials avatar with an uploadable circular profile photo that overlaps the banner bottom edge",
+      "acceptanceCriteria": [
+        "Profile photo is displayed as a circle overlapping the banner bottom edge",
+        "A camera icon overlay on the avatar triggers a file picker on click",
+        "Selecting an image updates the avatar preview immediately",
+        "The uploaded profile photo persists after page reload",
+        "Falls back to gradient initials avatar when no photo is set"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ProfilePage.tsx",
+          "operation": "modify",
+          "description": "Modify the existing AvatarPlaceholder component rendering to position it absolutely at the bottom edge of the banner (e.g., bottom: -40px or transform: translateY(50%)) with left padding alignment. Wrap the avatar in a relative-positioned container and add a small camera icon overlay in the bottom-right corner of the circle. On camera icon click, trigger a hidden file input. On file selection, convert the file to Uint8Array, create an ExternalBlob using ExternalBlob.fromBytes(), and call the useUpdateProfilePhoto mutation hook with optimistic preview. Use the blob-storage component to handle the upload; verify the component's usage instructions before implementing. Ensure the AvatarPlaceholder component receives the profile photo ExternalBlob as the `imageUrl` or `avatarUrl` prop and falls back to gradient initials when null."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a `useUpdateProfilePhoto` mutation hook that accepts an ExternalBlob parameter and calls `actor.updateProfilePhoto(blob)`. Include error handling and invalidate the `['currentUserProfile']` query key on success to refetch the user profile with the new photo. Support optimistic updates to display the new photo immediately."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos",
+      "summary": "Redesign profile info section with professional dark-theme layout including name in golden-glow box, handle, and stats (Followers, Following, Posts) in a horizontal row",
       "acceptanceCriteria": [
-        "Visiting another user's profile shows all their posts with media visible",
-        "No broken image/video placeholders appear in the posts grid"
+        "Display name is shown inside a dark rounded box with a visible golden glow/shadow",
+        "@handle is shown in smaller muted text below the name",
+        "Followers count is displayed in a golden-bordered box with a golden drop-shadow",
+        "Following count and Posts count are displayed as labelled stats in a horizontal row",
+        "Edit Profile button is visible and correctly positioned on own profile",
+        "Layout is clean, professional, and consistent with the dark golden theme of the app"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UserProfilePage.tsx",
+          "path": "frontend/src/pages/ProfilePage.tsx",
           "operation": "modify",
-          "description": "Ensure the posts grid fetches posts using either principalId or handle route parameters and renders post media correctly. When rendering post thumbnails, use post.media?.getDirectURL() as the img or video src. Verify that the route parameter extraction and profile/posts fetching logic correctly resolves the user by principal or handle. Ensure posts with media display their thumbnails in the grid. Verify the blob-storage component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Fix ShortSportPage so that video posts are fetched and rendered with working playback",
-      "acceptanceCriteria": [
-        "Short videos load and play in the ShortSportPage vertical feed",
-        "Video thumbnail/poster is visible before playback begins",
-        "Mute/unmute and play/pause controls work correctly"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/ShortSportPage.tsx",
-          "operation": "modify",
-          "description": "Fix video rendering in the vertical feed by ensuring each video element's src attribute is set using post.media?.getDirectURL(). Ensure that video elements have proper controls (play/pause, mute/unmute) wired to state and that the video ref correctly points to the HTML video element. Add null checks for post.media before calling getDirectURL(). Verify that the intersection observer and auto-play logic work correctly with the fixed video sources. Verify the blob-storage component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Fix ExplorePage so that posts returned by useGetAllPosts render their media correctly",
-      "acceptanceCriteria": [
-        "Explore page post grid shows image and video content for all posts",
-        "No broken media placeholders appear on the explore page"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/ExplorePage.tsx",
-          "operation": "modify",
-          "description": "Ensure that the posts grid on the 'Browse' tab renders media correctly by passing post objects to PostCard or by rendering thumbnails with post.media?.getDirectURL() as the src. Verify that useGetAllPosts is called and that the resulting posts array includes media fields. Ensure that media thumbnails are visible in the explore grid. Verify the blob-storage component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Audit and fix the ExternalBlob rendering utility to ensure binary blob data is correctly converted to displayable URLs",
-      "acceptanceCriteria": [
-        "Blobs fetched from the backend are converted to valid displayable URLs",
-        "Profile pictures, post images, and post videos all resolve correctly from blob data",
-        "No console errors related to invalid blob/object URLs"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AvatarPlaceholder.tsx",
-          "operation": "modify",
-          "description": "Ensure that when an ExternalBlob avatarUrl or profilePicture is present, it is rendered using avatarUrl.getDirectURL() as the img src attribute. Verify that the component correctly handles ExternalBlob instances and does not attempt to use them as strings directly. Add null/undefined checks before calling getDirectURL(). Verify the blob-storage component's usage instructions before implementing."
+          "description": "Redesign the profile info section below the avatar: (1) Wrap the display name in a dark rounded pill container (e.g., bg-gray-900/80 rounded-full px-6 py-2) with a golden box-shadow (e.g., shadow-[0_0_20px_rgba(251,191,36,0.5)]). (2) Display the @handle in smaller muted grey text (text-sm text-gray-400) directly below the name box. (3) Create a horizontal flexbox row for stats with three items: Followers (existing golden box with border-amber-500 and shadow-amber-500/50), Following count (fetched via useGetFollowing), and Posts count (from userProfile.postCount). Each stat should have a label and value in a consistent dark rounded box style. (4) Keep the existing Edit Profile button aligned to the right of the header area. Ensure spacing and alignment are clean and professional, matching the dark golden theme."
         },
         {
-          "path": "frontend/src/components/VideoCard.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Fix video thumbnail and playback by ensuring the video src is set using post.media?.getDirectURL(). Add null checks for post.media before rendering the video element. Ensure that the video element correctly displays the thumbnail/poster and that play/pause controls work. Verify the blob-storage component's usage instructions before implementing."
+          "description": "Add a `useGetFollowing` query hook that returns the following list for the current user by calling `actor.getFollowing(identity.getPrincipal())`. Extract the array length to display the Following count. Ensure the hook is disabled when the actor or identity is not available. Use query key `['following', principalString]` for caching."
         }
       ]
     }

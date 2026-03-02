@@ -13,7 +13,9 @@ import List "mo:core/List";
 import Set "mo:core/Set";
 import Int "mo:core/Int";
 import Order "mo:core/Order";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   type Post = {
     id : Nat;
@@ -47,7 +49,8 @@ actor {
     handle : Text;
     displayName : Text;
     bio : Text;
-    profilePicture : ?Storage.ExternalBlob;
+    bannerImage : ?Storage.ExternalBlob;
+    profilePhoto : ?Storage.ExternalBlob;
   };
 
   type UserProfile = {
@@ -120,6 +123,7 @@ actor {
     displayName : Text;
     bio : Text;
     avatarUrl : ?Storage.ExternalBlob;
+    bannerImage : ?Storage.ExternalBlob;
     postCount : Nat;
     followerCount : Nat;
     followingCount : Nat;
@@ -149,6 +153,24 @@ actor {
   // friendRequests keyed by recipient principal, storing list of requests sent to that recipient
   let friendRequests = Map.empty<Principal, List.List<FriendRequest>>();
   var friendCount = 0;
+
+  public query ({ caller }) func getMyFollowerCount() : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can check follower count");
+    };
+    switch (followersMap.get(caller)) {
+      case (?followers) { followers.size() };
+      case (null) { 0 };
+    };
+  };
+
+  // Fetch follower count for a specific user principal. This endpoint is public and requires no authentication.
+  public query func getFollowerCount(user : Principal) : async Nat {
+    switch (followersMap.get(user)) {
+      case (?followers) { followers.size() };
+      case (null) { 0 };
+    };
+  };
 
   // Friend Request Logic
 
@@ -396,8 +418,12 @@ actor {
     #notConnected;
   };
 
-  // New searchUsers endpoint
+  // Search users endpoint - requires authenticated user
   public shared ({ caller }) func searchUsers(searchStr : Text) : async [UserProfileSummary] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can search for other users");
+    };
+
     let entries = userProfiles.entries();
     let results = List.empty<UserProfileSummary>();
 
@@ -425,7 +451,8 @@ actor {
           handle = user.data.handle;
           displayName = user.data.displayName;
           bio = user.data.bio;
-          avatarUrl = user.data.profilePicture;
+          avatarUrl = user.data.profilePhoto;
+          bannerImage = user.data.bannerImage;
           postCount;
           followerCount = followersCount;
           followingCount;
@@ -682,6 +709,7 @@ actor {
     principal : Principal;
     username : Text;
     profilePicBlob : ?Storage.ExternalBlob;
+    bannerImage : ?Storage.ExternalBlob;
     followerCount : Nat;
   };
 
@@ -701,7 +729,8 @@ actor {
       let ranking = {
         principal;
         username = profile.data.displayName;
-        profilePicBlob = profile.data.profilePicture;
+        profilePicBlob = profile.data.profilePhoto;
+        bannerImage = profile.data.bannerImage;
         followerCount;
       };
 
@@ -830,6 +859,47 @@ actor {
           case (null) { null };
         };
       };
+    };
+  };
+
+  // Banner Image Functionality
+
+  // Get caller's banner image (authenticated users only)
+  public query ({ caller }) func getBannerImage() : async ?Storage.ExternalBlob {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can get their banner image");
+    };
+    switch (userProfiles.get(caller)) {
+      case (?profile) {
+        profile.data.bannerImage;
+      };
+      case (null) { null };
+    };
+  };
+
+  // Set/Update banner image (authenticated users only)
+  public shared ({ caller }) func setBannerImage(newBanner : Storage.ExternalBlob) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can set banner images");
+    };
+    switch (userProfiles.get(caller)) {
+      case (?oldProfile) {
+        let newProfileData = { oldProfile.data with bannerImage = ?newBanner };
+        userProfiles.add(caller, { oldProfile with data = newProfileData });
+      };
+      case (null) {
+        Runtime.trap("Profile does not exist");
+      };
+    };
+  };
+
+  // Get banner image for another user (public)
+  public query func getUserBanner(user : Principal) : async ?Storage.ExternalBlob {
+    switch (userProfiles.get(user)) {
+      case (?profile) {
+        profile.data.bannerImage;
+      };
+      case (null) { null };
     };
   };
 
@@ -1044,5 +1114,42 @@ actor {
         comment.postId == postId;
       }
     );
+  };
+
+  // Function to get the raw banner image for a specific user (public)
+  public query func getBannerImageForUser(userPrincipal : Principal) : async ?Storage.ExternalBlob {
+    switch (userProfiles.get(userPrincipal)) {
+      case (?profile) {
+        profile.data.bannerImage;
+      };
+      case (null) { null };
+    };
+  };
+
+  // Function to get the raw profile photo for a specific user (public)
+  public query func getProfilePhotoForUser(userPrincipal : Principal) : async ?Storage.ExternalBlob {
+    switch (userProfiles.get(userPrincipal)) {
+      case (?profile) {
+        profile.data.profilePhoto;
+      };
+      case (null) { null };
+    };
+  };
+
+  // Update profile photo for the current caller
+  public shared ({ caller }) func updateProfilePhoto(newPhoto : Storage.ExternalBlob) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can update profile photos");
+    };
+
+    switch (userProfiles.get(caller)) {
+      case (?existingProfile) {
+        let updatedProfileData = { existingProfile.data with profilePhoto = ?newPhoto };
+        userProfiles.add(caller, { existingProfile with data = updatedProfileData });
+      };
+      case (null) {
+        Runtime.trap("Profile does not exist");
+      };
+    };
   };
 };

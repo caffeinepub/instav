@@ -1,83 +1,74 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-02T07:04:10.798Z",
+  "generatedAt": "2026-03-02T17:08:51.899Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 6,
-    "implemented": 2,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
+        "summary": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/PostCard.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/PostCard.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx"
-        ],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/src/pages/UserProfilePage.tsx"
-        ],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/src/pages/ShortSportPage.tsx"
-        ],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
+        "summary": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ExplorePage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ExplorePage.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
-        "id": "REQ-6",
-        "summary": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
-        "status": "missing",
+        "id": "REQ-3",
+        "summary": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
+        "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/AvatarPlaceholder.tsx",
-          "frontend/src/components/VideoCard.tsx"
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
-        "matchedFiles": []
+        "matchedFiles": [
+          "frontend/src/pages/ProfilePage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/NotificationsPanel.tsx",
     "frontend/src/components/PostCard.tsx",
-    "frontend/src/pages/ExplorePage.tsx",
+    "frontend/src/components/ShareModal.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/MessagesPage.tsx",
+    "frontend/src/pages/ProfilePage.tsx",
+    "frontend/src/pages/UserProfilePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

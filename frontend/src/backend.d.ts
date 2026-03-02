@@ -36,6 +36,7 @@ export interface UserProfileSummary {
     displayName: string;
     avatarUrl?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
     handle: string;
     followingCount: bigint;
 }
@@ -50,6 +51,7 @@ export interface CreatorRanking {
     username: string;
     profilePicBlob?: ExternalBlob;
     followerCount: bigint;
+    bannerImage?: ExternalBlob;
 }
 export interface Post {
     id: bigint;
@@ -81,8 +83,9 @@ export interface Message {
 export interface UserProfileData {
     bio: string;
     displayName: string;
+    profilePhoto?: ExternalBlob;
+    bannerImage?: ExternalBlob;
     handle: string;
-    profilePicture?: ExternalBlob;
 }
 export interface PostInput {
     media?: ExternalBlob;
@@ -123,10 +126,13 @@ export interface backendInterface {
     createPost(postInput: PostInput): Promise<bigint>;
     followUser(target: Principal): Promise<void>;
     getAllPosts(): Promise<Array<Post>>;
+    getBannerImage(): Promise<ExternalBlob | null>;
+    getBannerImageForUser(userPrincipal: Principal): Promise<ExternalBlob | null>;
     getCallerUserProfile(): Promise<UserProfileData | null>;
     getCallerUserRole(): Promise<UserRole>;
     getComments(postId: bigint): Promise<Array<Comment>>;
     getConversations(): Promise<Array<Conversation>>;
+    getFollowerCount(user: Principal): Promise<bigint>;
     getFollowers(user: Principal): Promise<Array<Principal>>;
     getFollowing(user: Principal): Promise<Array<Principal>>;
     getFriendsList(): Promise<Array<Principal>>;
@@ -134,12 +140,15 @@ export interface backendInterface {
     getIncomingFriendRequests(): Promise<Array<FriendRequest>>;
     getLikedPosts(): Promise<Array<Post>>;
     getMessages(otherParticipant: Principal): Promise<Array<Message>>;
+    getMyFollowerCount(): Promise<bigint>;
     getNotifications(): Promise<Array<Notification>>;
     getOutgoingFriendRequests(): Promise<Array<FriendRequest>>;
     getPostsByUser(authorPrincipal: Principal): Promise<Array<Post>>;
     getProfileByHandle(handle: string): Promise<UserProfileData | null>;
     getProfileByPrincipal(principal: Principal): Promise<UserProfileData | null>;
+    getProfilePhotoForUser(userPrincipal: Principal): Promise<ExternalBlob | null>;
     getTopCreatorsByShadows(limit: bigint): Promise<Array<CreatorRanking>>;
+    getUserBanner(user: Principal): Promise<ExternalBlob | null>;
     getUserProfile(identifier: UserIdentifier): Promise<UserProfileData | null>;
     isCallerAdmin(): Promise<boolean>;
     isFollowing(target: Principal): Promise<boolean>;
@@ -153,7 +162,9 @@ export interface backendInterface {
     searchUsers(searchStr: string): Promise<Array<UserProfileSummary>>;
     sendFriendRequest(receiver: Principal): Promise<void>;
     sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
+    setBannerImage(newBanner: ExternalBlob): Promise<void>;
     unfollowUser(target: Principal): Promise<void>;
     unfriend(friendPrincipal: Principal): Promise<void>;
     unlikePost(postId: bigint): Promise<void>;
+    updateProfilePhoto(newPhoto: ExternalBlob): Promise<void>;
 }

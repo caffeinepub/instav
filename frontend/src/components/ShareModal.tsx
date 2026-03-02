@@ -36,7 +36,7 @@ function FriendItem({ principalStr, selected, onToggle }: FriendItemProps) {
       <AvatarPlaceholder
         userId={principalStr}
         name={displayName}
-        profilePicture={profile?.profilePicture}
+        profilePicture={profile?.profilePhoto}
         size="sm"
       />
       <span className="flex-1 text-left text-sm font-medium text-foreground truncate">
@@ -87,7 +87,7 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
       await Promise.all(
         Array.from(selectedFriends).map((friendPrincipal) =>
           sendMessage.mutateAsync({
-            recipientStr: friendPrincipal,
+            recipient: friendPrincipal,
             content: shareText,
             postId,
           })
@@ -97,83 +97,73 @@ export default function ShareModal({ open, onOpenChange, postId, postCaption }: 
       setSelectedFriends(new Set());
       onOpenChange(false);
     } catch {
-      toast.error('Failed to share. Please try again.');
+      toast.error('Failed to share post');
     }
   };
 
-  const handleClose = () => {
-    setSelectedFriends(new Set());
-    onOpenChange(false);
-  };
-
-  // friends is Principal[] — convert to string[] for rendering
-  const friendStrings: string[] = friends?.map((p) => p.toString()) ?? [];
-
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-sm w-full p-0 overflow-hidden rounded-2xl">
-        <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
-          <DialogTitle className="flex items-center gap-2 text-base">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Send className="w-4 h-4" />
             Share with Friends
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Select friends to share this post with
+          <DialogDescription>
+            Select friends to share this post with via direct message.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-72 overflow-y-auto px-2 py-2">
-          {!identity ? (
-            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-              <Users className="w-8 h-8 opacity-30" />
-              <p className="text-sm">Sign in to share with friends</p>
-            </div>
-          ) : loadingFriends ? (
-            <div className="space-y-2 px-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2">
-                  <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                  <Skeleton className="h-4 w-32" />
+        <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+          {loadingFriends ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <Skeleton className="h-4 flex-1" />
                 </div>
               ))}
             </div>
-          ) : friendStrings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-              <Users className="w-8 h-8 opacity-30" />
+          ) : !friends || friends.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Users className="w-10 h-10 mb-2 opacity-30" />
               <p className="text-sm">No friends yet</p>
-              <p className="text-xs opacity-60">Add friends to share posts with them</p>
+              <p className="text-xs mt-1">Add friends to share posts with them</p>
             </div>
           ) : (
             <div className="space-y-1">
-              {friendStrings.map((principalStr) => (
+              {friends.map((friendPrincipal) => (
                 <FriendItem
-                  key={principalStr}
-                  principalStr={principalStr}
-                  selected={selectedFriends.has(principalStr)}
-                  onToggle={() => toggleFriend(principalStr)}
+                  key={friendPrincipal}
+                  principalStr={friendPrincipal}
+                  selected={selectedFriends.has(friendPrincipal)}
+                  onToggle={() => toggleFriend(friendPrincipal)}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {identity && friendStrings.length > 0 && (
-          <div className="px-4 py-3 border-t border-border">
+        {friends && friends.length > 0 && (
+          <div className="flex gap-2 pt-2 border-t border-border">
             <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
               onClick={handleSend}
               disabled={selectedFriends.size === 0 || sendMessage.isPending}
-              className="w-full rounded-xl gap-2"
             >
               {sendMessage.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : (
-                <Send className="w-4 h-4" />
+                <Send className="w-4 h-4 mr-2" />
               )}
-              {sendMessage.isPending
-                ? 'Sending…'
-                : selectedFriends.size > 0
-                  ? `Send to ${selectedFriends.size} friend${selectedFriends.size > 1 ? 's' : ''}`
-                  : 'Select friends'}
+              Send ({selectedFriends.size})
             </Button>
           </div>
         )}

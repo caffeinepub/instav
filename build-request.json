@@ -1,126 +1,93 @@
 {
   "kind": "build_request",
-  "title": "Fix media visibility: videos, photos, and posts not rendering on feed, explore, and profile pages",
+  "title": "Step 1: Professional Profile Layout with Uploadable Banner & Photo",
   "projectName": "Smileup",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
-      "target": "frontend",
+      "text": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-14",
+          "msg-16"
         ],
         "quotes": [
-          "I struggling to see videoes,photos,and snapchat and post by any user even in my profile so fix it"
+          "Uploadable Banner — full-width image at the top replacing the black area",
+          "banner both by upload actual image"
         ]
       },
       "acceptanceCriteria": [
-        "Image posts display their image in PostCard on the feed, explore, and profile pages",
-        "Video posts display their video thumbnail and play correctly in PostCard",
-        "Posts with no media render cleanly without broken image/video placeholders"
+        "A wide banner image area is visible at the top of the profile page",
+        "A camera/upload icon is shown on the banner that triggers a file input on click",
+        "Selecting an image file updates the displayed banner immediately (optimistic preview)",
+        "The uploaded banner is saved to the backend and persists across page reloads",
+        "When no banner is uploaded, a dark gradient placeholder is shown"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
-      "target": "frontend",
+      "text": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-14",
+          "msg-16"
         ],
         "quotes": [
-          "even in my profile so fix it"
+          "Uploadable Profile Photo — replaces the orange 'A' avatar",
+          "profile and banner both by upload actual image",
+          "Profile photo overlapping the banner (Instagram-style layout)"
         ]
       },
       "acceptanceCriteria": [
-        "Authenticated user's ProfilePage shows all their posts in the posts grid",
-        "Post thumbnails (images/videos) are visible in the profile grid",
-        "Liked posts tab also renders post media correctly"
+        "Profile photo is displayed as a circle overlapping the banner bottom edge",
+        "A camera icon overlay on the avatar triggers a file picker on click",
+        "Selecting an image updates the avatar preview immediately",
+        "The uploaded profile photo persists after page reload",
+        "Falls back to gradient initials avatar when no photo is set"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
+      "text": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-14",
+          "msg-16"
         ],
         "quotes": [
-          "post by any user"
+          "Name in a styled dark box with golden glow/shadow",
+          "Followers count in golden box with shadow effect",
+          "Following count displayed",
+          "Posts count displayed",
+          "Handle (@username) shown below name",
+          "shadows in golden box, banner, profile photo, name in box, handle, following"
         ]
       },
       "acceptanceCriteria": [
-        "Visiting another user's profile shows all their posts with media visible",
-        "No broken image/video placeholders appear in the posts grid"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "I struggling to see videoes"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Short videos load and play in the ShortSportPage vertical feed",
-        "Video thumbnail/poster is visible before playback begins",
-        "Mute/unmute and play/pause controls work correctly"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "I struggling to see videoes,photos,and snapchat and post by any user"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Explore page post grid shows image and video content for all posts",
-        "No broken media placeholders appear on the explore page"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "I struggling to see videoes,photos,and snapchat and post by any user even in my profile"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Blobs fetched from the backend are converted to valid displayable URLs",
-        "Profile pictures, post images, and post videos all resolve correctly from blob data",
-        "No console errors related to invalid blob/object URLs"
+        "Display name is shown inside a dark rounded box with a visible golden glow/shadow",
+        "@handle is shown in smaller muted text below the name",
+        "Followers count is displayed in a golden-bordered box with a golden drop-shadow",
+        "Following count and Posts count are displayed as labelled stats in a horizontal row",
+        "Edit Profile button is visible and correctly positioned on own profile",
+        "Layout is clean, professional, and consistent with the dark golden theme of the app"
       ]
     }
   ],
   "constraints": [
-    "Only change code strictly necessary to fix media and post visibility — do not refactor unrelated logic",
-    "Do not alter backend data models or canister API",
-    "Do not modify immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, components/ui"
+    "Do not modify files under frontend/src/hooks/ or frontend/src/components/ui/",
+    "Only modify ProfilePage.tsx and any directly related query hooks in useQueries.ts",
+    "Do not implement the Edit Profile save flow or Follow system in this step — those are Step 2 and Step 3",
+    "Reuse existing backend blob storage endpoints for banner and profile photo uploads"
   ],
   "nonGoals": [
-    "Adding new features or UI sections",
-    "Changing the visual design or layout",
-    "Modifying the messaging or notification systems",
-    "Refactoring working components that are unrelated to media rendering"
+    "Edit Profile modal with Save button (Step 2)",
+    "Follow / Unfollow button and real-time follower count update (Step 3)",
+    "Changes to UserProfilePage.tsx (other users' profiles)",
+    "Any changes to the feed, explore, or messaging pages"
   ],
   "imageRequirements": {
     "required": [],

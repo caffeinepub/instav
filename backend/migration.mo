@@ -1,102 +1,58 @@
 import Map "mo:core/Map";
-import List "mo:core/List";
-import Nat "mo:core/Nat";
-import Int "mo:core/Int";
 import Principal "mo:core/Principal";
 import Storage "blob-storage/Storage";
 
 module {
+  // Old profile data type with profilePicture field
   type OldUserProfileData = {
     handle : Text;
     displayName : Text;
     bio : Text;
+    bannerImage : ?Storage.ExternalBlob;
     profilePicture : ?Storage.ExternalBlob;
   };
 
-  type OldNotificationType = {
-    #new_shadow;
-    #message;
-    #comment;
+  type OldUserProfile = {
+    caller : Principal;
+    data : OldUserProfileData;
   };
 
-  type OldPost = {
-    id : Nat;
-    authorPrincipal : Principal;
-    authorName : Text;
-    media : ?Storage.ExternalBlob;
-    mediaType : Text;
-    caption : Text;
-    timestamp : Int;
-    likeCount : Nat;
-    viewCount : Nat;
-  };
-
-  type OldComment = {
-    id : Nat;
-    postId : Nat;
-    authorPrincipal : Principal;
-    authorName : Text;
-    text : Text;
-    timestamp : Int;
-  };
-
-  type OldNotification = {
-    id : Nat;
-    notificationType : OldNotificationType;
-    fromPrincipal : Principal;
-    timestamp : Int;
-    read : Bool;
-    postId : ?Nat;
-  };
-
-  type OldConversation = {
-    participants : (Principal, Principal);
-    lastUpdated : Int;
-  };
-
-  type OldMessage = {
-    sender : Principal;
-    recipient : Principal;
-    content : Text;
-    timestamp : Int;
-    postId : ?Nat;
-    read : Bool;
-  };
-
+  // Old actor type
   type OldActor = {
-    postsMap : Map.Map<Nat, OldPost>;
-    commentsMap : Map.Map<Nat, OldComment>;
-    postCounter : Nat;
-    commentCounter : Nat;
-    notifications : Map.Map<Principal, Map.Map<Nat, OldNotification>>;
-    notificationIdCounter : Nat;
-    conversations : Map.Map<Principal, Map.Map<Principal, OldConversation>>;
-    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<OldMessage>>>;
+    userProfiles : Map.Map<Principal, OldUserProfile>;
   };
 
+  // New profile data type with profilePhoto field
+  type NewUserProfileData = {
+    handle : Text;
+    displayName : Text;
+    bio : Text;
+    bannerImage : ?Storage.ExternalBlob;
+    profilePhoto : ?Storage.ExternalBlob;
+  };
+
+  type NewUserProfile = {
+    caller : Principal;
+    data : NewUserProfileData;
+  };
+
+  // New actor type
   type NewActor = {
-    postsMap : Map.Map<Nat, OldPost>;
-    commentsMap : Map.Map<Nat, OldComment>;
-    postCounter : Nat;
-    commentCounter : Nat;
-    notifications : Map.Map<Principal, Map.Map<Nat, OldNotification>>;
-    notificationIdCounter : Nat;
-    conversations : Map.Map<Principal, Map.Map<Principal, OldConversation>>;
-    conversationMessages : Map.Map<Principal, Map.Map<Principal, List.List<OldMessage>>>;
-    visitHistory : Map.Map<Principal, List.List<Principal>>;
+    userProfiles : Map.Map<Principal, NewUserProfile>;
   };
 
   public func run(old : OldActor) : NewActor {
-    {
-      postsMap = old.postsMap;
-      commentsMap = old.commentsMap;
-      postCounter = old.postCounter;
-      commentCounter = old.commentCounter;
-      notifications = old.notifications;
-      notificationIdCounter = old.notificationIdCounter;
-      conversations = old.conversations;
-      conversationMessages = old.conversationMessages;
-      visitHistory = Map.empty<Principal, List.List<Principal>>();
-    };
+    let newProfiles = old.userProfiles.map<Principal, OldUserProfile, NewUserProfile>(
+      func(_principal, oldProfile) {
+        {
+          oldProfile with
+          data = {
+            oldProfile.data with
+            profilePhoto = oldProfile.data.profilePicture
+          }
+        };
+      }
+    );
+    { userProfiles = newProfiles };
   };
 };

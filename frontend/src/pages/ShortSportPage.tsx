@@ -36,7 +36,7 @@ interface FollowButtonProps {
 
 function FollowButton({ authorPrincipalStr, currentUserPrincipalStr }: FollowButtonProps) {
   const isOwnPost = currentUserPrincipalStr === authorPrincipalStr;
-  // useIsFollowing expects string | null — use null (not undefined) when skipping
+  // Pass null (not string) when skipping — useIsFollowing accepts string | Principal | null
   const { data: isFollowing, isLoading } = useIsFollowing(
     isOwnPost ? null : authorPrincipalStr
   );
@@ -48,6 +48,7 @@ function FollowButton({ authorPrincipalStr, currentUserPrincipalStr }: FollowBut
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isFollowing) {
+      // useFollowUser/useUnfollowUser accept string | Principal
       unfollowMutation.mutate(authorPrincipalStr);
     } else {
       followMutation.mutate(authorPrincipalStr);
@@ -236,10 +237,7 @@ function VideoItem({
       {/* ── Right-side action buttons ── */}
       <div className="absolute right-3 bottom-6 flex flex-col items-center gap-4 z-10">
         {/* Volume */}
-        <button
-          onClick={onToggleMute}
-          className="flex flex-col items-center gap-1"
-        >
+        <button onClick={onToggleMute} className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
             {isMuted ? (
               <VolumeX size={18} className="text-white" />
@@ -250,10 +248,7 @@ function VideoItem({
         </button>
 
         {/* Like */}
-        <button
-          onClick={handleLike}
-          className="flex flex-col items-center gap-1"
-        >
+        <button onClick={handleLike} className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
             <Heart
               size={20}
@@ -273,10 +268,7 @@ function VideoItem({
         </button>
 
         {/* Comment */}
-        <button
-          onClick={onComment}
-          className="flex flex-col items-center gap-1"
-        >
+        <button onClick={onComment} className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
             <MessageCircle size={20} className="text-white" />
           </div>
@@ -302,10 +294,7 @@ function VideoItem({
         </button>
 
         {/* Share */}
-        <button
-          onClick={onShare}
-          className="flex flex-col items-center gap-1"
-        >
+        <button onClick={onShare} className="flex flex-col items-center gap-1">
           <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
             <Share2 size={20} className="text-white" />
           </div>

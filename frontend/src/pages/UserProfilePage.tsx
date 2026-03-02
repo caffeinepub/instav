@@ -1,373 +1,361 @@
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import {
-  useProfileByPrincipal,
-  useProfileByHandle,
+  useGetUserProfile,
+  useGetUserProfileByHandle,
   useGetPostsByUser,
-  useGetFollowers,
-  useGetFollowing,
   useIsFollowing,
   useFollowUser,
   useUnfollowUser,
   useGetFriendshipStatus,
   useSendFriendRequest,
-  useCancelFriendRequest,
   useRespondToFriendRequest,
+  useCancelFriendRequest,
+  useUnfriend,
+  useGetFollowerCount,
 } from '../hooks/useQueries';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
+import { Principal } from '@dfinity/principal';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
-import { Grid3X3, AlertCircle, RefreshCw, UserPlus, UserCheck, Users } from 'lucide-react';
+import { ExternalBlob } from '../backend';
 import { FriendshipStatusEnum } from '../backend';
-import type { Post } from '../backend';
+import { Heart, Grid, UserPlus, UserCheck, UserX, Clock, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
-function PostGridItem({ post }: { post: Post }) {
-  const [imgError, setImgError] = React.useState(false);
-  const mediaUrl = post.media ? post.media.getDirectURL() : null;
+interface PostGridItemProps {
+  post: {
+    id: bigint;
+    media?: ExternalBlob;
+    mediaType: string;
+    caption: string;
+    likeCount: bigint;
+    viewCount: bigint;
+  };
+}
+
+function PostGridItem({ post }: PostGridItemProps) {
+  const isVideo = post.mediaType?.startsWith('video');
+  const mediaUrl = post.media?.getDirectURL();
 
   return (
-    <div className="aspect-square bg-surface-2 rounded-lg overflow-hidden relative group cursor-pointer">
-      {mediaUrl && !imgError ? (
-        <img
-          src={mediaUrl}
-          alt={post.caption}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          onError={() => setImgError(true)}
-        />
+    <div className="relative aspect-square bg-surface-2 rounded-lg overflow-hidden group cursor-pointer">
+      {mediaUrl ? (
+        isVideo ? (
+          <video
+            src={mediaUrl}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+          />
+        ) : (
+          <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
+        )
       ) : (
-        <div className="w-full h-full flex items-center justify-center p-2">
-          <p className="text-xs text-muted-foreground text-center line-clamp-4">
-            {post.caption || 'Post'}
-          </p>
+        <div className="w-full h-full flex items-center justify-center bg-surface-2">
+          <span className="text-muted-foreground text-xs text-center px-2 line-clamp-3">
+            {post.caption}
+          </span>
         </div>
       )}
-      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-        <span className="text-white text-xs font-medium">❤️ {post.likeCount.toString()}</span>
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+        <span className="text-white text-sm font-semibold flex items-center gap-1">
+          <Heart className="w-4 h-4 fill-white" />
+          {post.likeCount.toString()}
+        </span>
       </div>
     </div>
   );
 }
 
-// Determine if the param looks like a principal (contains dashes and is long)
-function looksLikePrincipal(param: string): boolean {
-  return param.includes('-') && param.length > 20;
-}
-
 export default function UserProfilePage() {
   const { identity } = useInternetIdentity();
-  const callerPrincipal = identity?.getPrincipal().toString() ?? null;
+  const params = useParams({ strict: false }) as { principalOrHandle?: string };
+  const paramValue = params.principalOrHandle ?? '';
 
-  // Try to get route params - support both 'handle' and 'principal' params
-  let routeParam: string | null = null;
+  // Determine if param is a principal or handle
+  let resolvedPrincipalId: string | undefined;
+  let resolvedHandle: string | undefined;
   try {
-    const params = useParams({ strict: false }) as Record<string, string | undefined>;
-    routeParam = params?.handle ?? params?.principal ?? params?.principalId ?? null;
+    Principal.fromText(paramValue);
+    resolvedPrincipalId = paramValue;
   } catch {
-    routeParam = null;
+    resolvedHandle = paramValue;
   }
 
-  const isPrincipalParam = routeParam ? looksLikePrincipal(routeParam) : false;
+  const { data: profileByPrincipal, isLoading: loadingByPrincipal } = useGetUserProfile(
+    resolvedPrincipalId
+  );
+  const { data: profileByHandle, isLoading: loadingByHandle } = useGetUserProfileByHandle(
+    resolvedHandle
+  );
 
-  // Fetch profile by principal or handle
-  const {
-    data: profileByPrincipal,
-    isLoading: loadingByPrincipal,
-    error: errorByPrincipal,
-    refetch: refetchByPrincipal,
-  } = useProfileByPrincipal(isPrincipalParam ? routeParam : null);
+  const profile = resolvedPrincipalId ? profileByPrincipal : profileByHandle;
+  const isLoading = resolvedPrincipalId ? loadingByPrincipal : loadingByHandle;
 
-  const {
-    data: profileByHandle,
-    isLoading: loadingByHandle,
-    error: errorByHandle,
-    refetch: refetchByHandle,
-  } = useProfileByHandle(!isPrincipalParam ? routeParam : null);
+  const [activeTab, setActiveTab] = useState<'posts'>('posts');
 
-  const profile = isPrincipalParam ? profileByPrincipal : profileByHandle;
-  const profileLoading = isPrincipalParam ? loadingByPrincipal : loadingByHandle;
-  const profileError = isPrincipalParam ? errorByPrincipal : errorByHandle;
-  const refetchProfile = isPrincipalParam ? refetchByPrincipal : refetchByHandle;
+  const targetPrincipalStr = resolvedPrincipalId;
+  const targetPrincipal = targetPrincipalStr ? Principal.fromText(targetPrincipalStr) : null;
 
-  // Resolve the target principal string
-  const targetPrincipalStr = useMemo(() => {
-    if (isPrincipalParam && routeParam) return routeParam;
-    return null;
-  }, [isPrincipalParam, routeParam]);
+  const myPrincipalStr = identity?.getPrincipal().toString();
+  const isOwnProfile = myPrincipalStr && targetPrincipalStr && myPrincipalStr === targetPrincipalStr;
 
-  // Get posts by principal if we have it
-  const {
-    data: posts,
-    isLoading: postsLoading,
-    error: postsError,
-    refetch: refetchPosts,
-  } = useGetPostsByUser(targetPrincipalStr);
-
-  // Infer principal from posts if we fetched by handle
-  const inferredPrincipal = useMemo(() => {
-    if (targetPrincipalStr) return targetPrincipalStr;
-    if (posts && posts.length > 0) {
-      return posts[0].authorPrincipal.toString();
-    }
-    return null;
-  }, [targetPrincipalStr, posts]);
-
-  const { data: followers } = useGetFollowers(inferredPrincipal);
-  const { data: following } = useGetFollowing(inferredPrincipal);
-  const { data: isFollowingTarget } = useIsFollowing(inferredPrincipal);
-  const { data: friendshipStatus } = useGetFriendshipStatus(inferredPrincipal);
+  const { data: posts, isLoading: postsLoading } = useGetPostsByUser(targetPrincipalStr);
+  const { data: isFollowing } = useIsFollowing(isOwnProfile ? null : targetPrincipal);
+  const { data: friendshipStatus } = useGetFriendshipStatus(
+    isOwnProfile ? undefined : targetPrincipalStr
+  );
+  const { data: followerCount, isLoading: followerCountLoading } = useGetFollowerCount(
+    targetPrincipalStr
+  );
 
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
   const sendFriendRequest = useSendFriendRequest();
-  const cancelFriendRequest = useCancelFriendRequest();
   const respondToFriendRequest = useRespondToFriendRequest();
-
-  const isOwnProfile = !!(callerPrincipal && inferredPrincipal && callerPrincipal === inferredPrincipal);
+  const cancelFriendRequest = useCancelFriendRequest();
+  const unfriend = useUnfriend();
 
   const handleFollow = async () => {
-    if (!inferredPrincipal) return;
+    if (!targetPrincipal) return;
     try {
-      if (isFollowingTarget) {
-        await unfollowUser.mutateAsync(inferredPrincipal);
+      if (isFollowing) {
+        await unfollowUser.mutateAsync(targetPrincipal);
+        toast.success('Unfollowed');
       } else {
-        await followUser.mutateAsync(inferredPrincipal);
+        await followUser.mutateAsync(targetPrincipal);
+        toast.success('Following!');
       }
-    } catch (err) {
-      console.error('Follow/unfollow error:', err);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Action failed');
     }
   };
 
   const handleFriendAction = async () => {
-    if (!inferredPrincipal) return;
+    if (!targetPrincipalStr) return;
     try {
-      if (friendshipStatus === FriendshipStatusEnum.notConnected || friendshipStatus == null) {
-        await sendFriendRequest.mutateAsync(inferredPrincipal);
+      if (friendshipStatus === FriendshipStatusEnum.notConnected) {
+        await sendFriendRequest.mutateAsync(targetPrincipalStr);
+        toast.success('Friend request sent!');
       } else if (friendshipStatus === FriendshipStatusEnum.pendingOutgoing) {
-        await cancelFriendRequest.mutateAsync(inferredPrincipal);
+        await cancelFriendRequest.mutateAsync(targetPrincipalStr);
+        toast.success('Friend request cancelled');
       } else if (friendshipStatus === FriendshipStatusEnum.pendingIncoming) {
-        await respondToFriendRequest.mutateAsync({ senderStr: inferredPrincipal, accept: true });
+        await respondToFriendRequest.mutateAsync({ sender: targetPrincipalStr, accept: true });
+        toast.success('Friend request accepted!');
+      } else if (friendshipStatus === FriendshipStatusEnum.friends) {
+        await unfriend.mutateAsync(targetPrincipalStr);
+        toast.success('Unfriended');
       }
-    } catch (err) {
-      console.error('Friend action error:', err);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Action failed');
     }
   };
 
-  const followerCount = followers?.length ?? 0;
-  const followingCount = following?.length ?? 0;
-  const postCount = posts?.length ?? 0;
+  const bannerUrl = profile?.bannerImage?.getDirectURL();
+  const followerNum = followerCount !== undefined ? Number(followerCount) : null;
 
-  // ── Loading state ──────────────────────────────────────────────────────────
-  if (profileLoading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pb-24">
-        <div className="max-w-lg mx-auto px-4 pt-6">
-          <div className="flex items-center gap-4 mb-6">
-            <Skeleton className="w-20 h-20 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-48" />
-            </div>
-          </div>
-          <div className="flex gap-6 mb-6">
-            <Skeleton className="h-10 w-16" />
-            <Skeleton className="h-10 w-16" />
-            <Skeleton className="h-10 w-16" />
-          </div>
-          <div className="grid grid-cols-3 gap-1">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-square rounded-lg" />
-            ))}
-          </div>
+      <div className="min-h-screen bg-background pb-20">
+        <Skeleton className="w-full h-48" />
+        <div className="px-4 pt-16">
+          <Skeleton className="w-24 h-6 mb-2" />
+          <Skeleton className="w-32 h-4 mb-4" />
+          <Skeleton className="w-full h-16" />
         </div>
       </div>
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────────────────
-  if (profileError) {
+  if (!profile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
-        <div className="text-center px-4">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">Failed to load profile</h2>
-          <p className="text-sm text-muted-foreground mb-4">
-            {(profileError as Error)?.message ?? 'An unexpected error occurred.'}
-          </p>
-          <Button onClick={() => refetchProfile()} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </Button>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <p className="text-muted-foreground">User not found</p>
         </div>
       </div>
     );
   }
 
-  // ── Not found state ────────────────────────────────────────────────────────
-  if (!profile && !profileLoading && !postsLoading && !inferredPrincipal) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
-        <div className="text-center px-4">
-          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-40" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">User not found</h2>
-          <p className="text-sm text-muted-foreground">
-            This profile doesn't exist or may have been removed.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Synthesize display name from posts if no profile
-  const displayName =
-    profile?.displayName ??
-    (posts && posts.length > 0 ? posts[0].authorName : routeParam ?? 'Unknown User');
-  const handle = profile?.handle ?? routeParam ?? '';
-  const bio = profile?.bio ?? '';
-
-  const followPending = followUser.isPending || unfollowUser.isPending;
-  const friendPending =
-    sendFriendRequest.isPending ||
-    cancelFriendRequest.isPending ||
-    respondToFriendRequest.isPending;
-
-  const isFriends = friendshipStatus === FriendshipStatusEnum.friends;
-
-  const getFriendButtonLabel = () => {
-    if (friendPending) return 'Loading...';
-    switch (friendshipStatus) {
-      case FriendshipStatusEnum.pendingOutgoing: return 'Cancel Request';
-      case FriendshipStatusEnum.pendingIncoming: return 'Accept Request';
-      default: return 'Add Friend';
-    }
-  };
-
-  const getFriendButtonVariant = (): 'default' | 'outline' | 'secondary' => {
-    switch (friendshipStatus) {
-      case FriendshipStatusEnum.pendingOutgoing: return 'outline';
-      case FriendshipStatusEnum.pendingIncoming: return 'default';
-      default: return 'outline';
-    }
-  };
+  const displayName = profile.displayName ?? 'Anonymous';
+  const handle = profile.handle ?? '';
+  const bio = profile.bio ?? '';
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="max-w-lg mx-auto px-4 pt-6">
-        {/* Profile header */}
-        <div className="flex items-start gap-4 mb-5">
-          <AvatarPlaceholder
-            name={displayName}
-            profilePicture={profile?.profilePicture}
-            size="xl"
-          />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-display font-bold text-foreground truncate">
-              {displayName}
-            </h1>
-            {handle && (
-              <p className="text-sm text-accent-gold font-medium">@{handle}</p>
-            )}
-            {bio && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{bio}</p>
-            )}
+      {/* Banner */}
+      <div className="relative w-full h-48 md:h-64 overflow-hidden">
+        {bannerUrl ? (
+          <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gold-500/30 via-surface-2 to-coral-500/20" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent" />
+      </div>
 
-            {/* Action buttons for other users */}
-            {!isOwnProfile && identity && (
-              <div className="flex gap-2 mt-3 flex-wrap">
-                {/* Follow button */}
-                <Button
-                  size="sm"
-                  variant={isFollowingTarget ? 'secondary' : 'default'}
-                  onClick={handleFollow}
-                  disabled={followPending}
-                  className="h-8 text-xs"
-                >
-                  {followPending ? (
-                    'Loading...'
-                  ) : isFollowingTarget ? (
-                    <>
-                      <UserCheck className="w-3 h-3 mr-1" />
-                      Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-3 h-3 mr-1" />
-                      Follow
-                    </>
-                  )}
-                </Button>
-
-                {/* Friend button — show "Friends ✓" if already friends, otherwise show action */}
-                {isFriends ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled
-                    className="h-8 text-xs"
-                  >
-                    <UserCheck className="w-3 h-3 mr-1" />
-                    Friends ✓
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={getFriendButtonVariant()}
-                    onClick={handleFriendAction}
-                    disabled={friendPending}
-                    className="h-8 text-xs"
-                  >
-                    {friendPending ? (
-                      'Loading...'
-                    ) : (
-                      <>
-                        <UserPlus className="w-3 h-3 mr-1" />
-                        {getFriendButtonLabel()}
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            )}
+      <div className="relative px-4">
+        {/* Avatar + Action buttons row */}
+        <div className="flex items-end justify-between -mt-12 mb-4">
+          <div className="w-24 h-24 rounded-full p-0.5 bg-gradient-to-br from-gold-500 to-coral-500 shadow-gold-glow">
+            <div className="w-full h-full rounded-full border-2 border-background overflow-hidden">
+              <AvatarPlaceholder
+                name={displayName}
+                profilePicture={profile.profilePhoto}
+                size="xl"
+                className="w-full h-full"
+              />
+            </div>
           </div>
+
+          {!isOwnProfile && targetPrincipalStr && (
+            <div className="flex gap-2 mb-2">
+              {/* Follow button */}
+              <button
+                onClick={handleFollow}
+                disabled={followUser.isPending || unfollowUser.isPending}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors disabled:opacity-50 ${
+                  isFollowing
+                    ? 'bg-surface-2 border border-border text-foreground hover:bg-surface-3'
+                    : 'bg-gold-500 hover:bg-gold-400 text-background shadow-gold-glow'
+                }`}
+              >
+                {followUser.isPending || unfollowUser.isPending ? (
+                  <span className="w-3.5 h-3.5 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                ) : isFollowing ? (
+                  <UserCheck className="w-3.5 h-3.5" />
+                ) : (
+                  <UserPlus className="w-3.5 h-3.5" />
+                )}
+                {isFollowing ? 'Following' : 'Follow'}
+              </button>
+
+              {/* Friend button */}
+              {friendshipStatus === FriendshipStatusEnum.friends ? (
+                <button
+                  onClick={handleFriendAction}
+                  disabled={unfriend.isPending}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold bg-surface-2 border border-border text-foreground hover:bg-surface-3 transition-colors disabled:opacity-50"
+                >
+                  <UserX className="w-3.5 h-3.5" />
+                  Friends
+                </button>
+              ) : (
+                <button
+                  onClick={handleFriendAction}
+                  disabled={
+                    sendFriendRequest.isPending ||
+                    cancelFriendRequest.isPending ||
+                    respondToFriendRequest.isPending
+                  }
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors disabled:opacity-50 ${
+                    friendshipStatus === FriendshipStatusEnum.pendingOutgoing
+                      ? 'bg-surface-2 border border-border text-muted-foreground hover:bg-surface-3'
+                      : friendshipStatus === FriendshipStatusEnum.pendingIncoming
+                      ? 'bg-coral-500/20 border border-coral-500/50 text-coral-400 hover:bg-coral-500/30'
+                      : 'bg-surface-2 border border-border text-foreground hover:bg-surface-3'
+                  }`}
+                >
+                  {sendFriendRequest.isPending ||
+                  cancelFriendRequest.isPending ||
+                  respondToFriendRequest.isPending ? (
+                    <span className="w-3.5 h-3.5 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                  ) : friendshipStatus === FriendshipStatusEnum.pendingOutgoing ? (
+                    <Clock className="w-3.5 h-3.5" />
+                  ) : friendshipStatus === FriendshipStatusEnum.pendingIncoming ? (
+                    <UserCheck className="w-3.5 h-3.5" />
+                  ) : (
+                    <UserPlus className="w-3.5 h-3.5" />
+                  )}
+                  {friendshipStatus === FriendshipStatusEnum.pendingOutgoing
+                    ? 'Requested'
+                    : friendshipStatus === FriendshipStatusEnum.pendingIncoming
+                    ? 'Accept'
+                    : 'Add Friend'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Profile Info */}
+        <div className="mb-4 space-y-2">
+          {/* Styled username box with golden glow */}
+          <div className="inline-block">
+            <div
+              className="bg-gray-900/90 border border-gold-500/40 rounded-2xl px-5 py-2.5"
+              style={{ boxShadow: '0 0 18px rgba(234,179,8,0.35), 0 2px 8px rgba(0,0,0,0.5)' }}
+            >
+              <h1 className="text-xl font-bold text-foreground font-display tracking-tight">
+                {displayName}
+              </h1>
+            </div>
+          </div>
+
+          {/* Handle */}
+          {handle && (
+            <p className="text-muted-foreground text-sm ml-1">@{handle}</p>
+          )}
+
+          {/* Golden follower count box */}
+          <div className="inline-flex items-center gap-2 mt-1">
+            <div
+              className="flex items-center gap-2 bg-gold-500/10 border border-gold-500/60 rounded-2xl px-4 py-2"
+              style={{ boxShadow: '0 0 16px rgba(234,179,8,0.3), 0 2px 6px rgba(0,0,0,0.4)' }}
+            >
+              <span className="text-gold-400 text-xs font-semibold uppercase tracking-wider">
+                Shadows
+              </span>
+              {followerCountLoading ? (
+                <Skeleton className="w-8 h-4" />
+              ) : (
+                <span className="text-gold-300 font-bold text-lg leading-none">
+                  {followerNum !== null ? followerNum.toLocaleString() : '0'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Bio */}
+          {bio && (
+            <p className="text-foreground/80 text-sm leading-relaxed mt-2 ml-1 max-w-sm">{bio}</p>
+          )}
         </div>
 
         {/* Stats row */}
-        <div className="flex gap-6 mb-6 border-b border-border pb-5">
+        <div className="flex gap-6 mb-6 ml-1">
           <div className="text-center">
-            <p className="text-lg font-bold text-foreground">{postCount}</p>
-            <p className="text-xs text-muted-foreground">Posts</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-foreground">{followerCount}</p>
-            <p className="text-xs text-muted-foreground">Shadows</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-foreground">{followingCount}</p>
-            <p className="text-xs text-muted-foreground">Following</p>
+            <div className="text-foreground font-bold text-lg">
+              {postsLoading ? <Skeleton className="w-8 h-5 mx-auto" /> : (posts?.length ?? 0)}
+            </div>
+            <div className="text-muted-foreground text-xs">Posts</div>
           </div>
         </div>
 
-        {/* Posts grid */}
-        <div className="mb-4 flex items-center gap-2">
-          <Grid3X3 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Posts</span>
+        {/* Tabs */}
+        <div className="flex border-b border-border mb-4">
+          <button
+            onClick={() => setActiveTab('posts')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'posts'
+                ? 'border-gold-500 text-gold-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            Posts
+          </button>
         </div>
 
+        {/* Posts Grid */}
         {postsLoading ? (
           <div className="grid grid-cols-3 gap-1">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-lg" />
             ))}
-          </div>
-        ) : postsError ? (
-          <div className="text-center py-8">
-            <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">Failed to load posts</p>
-            <Button onClick={() => refetchPosts()} variant="outline" size="sm">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry
-            </Button>
           </div>
         ) : posts && posts.length > 0 ? (
           <div className="grid grid-cols-3 gap-1">
@@ -376,9 +364,9 @@ export default function UserProfilePage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <Grid3X3 className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-            <p className="text-sm text-muted-foreground">No posts yet</p>
+          <div className="text-center py-16 text-muted-foreground">
+            <Grid className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No posts yet</p>
           </div>
         )}
       </div>

@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-postcard-component-so-that-image-and-video-media-attached-to-posts-is-correctly-rendered-and-visible-ensure-the-media-url-blob-is-properly-resolved-and-passed-to-the-img-video-element-so-content-displays-for-all-posts-across-all-pages",
-      "featureTitle": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
+      "featureId": "feature-add-a-full-width-uploadable-banner-image-at-the-top-of-the-profile-page-profilepage-tsx-the-banner-area-should-be-approximately-180px-tall-display-the-uploaded-image-as-a-cover-and-fall-back-to-a-dark-gradient-when-no-image-is-set-include-a-camera-icon-overlay-button-on-the-banner-so-the-user-can-tap-to-upload-a-new-banner-image-store-the-banner-image-as-a-blob-in-the-backend-already-supported-via-existing-banner-blob-logic",
+      "featureTitle": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
       "files": [
-        "frontend/src/components/PostCard.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -22,10 +23,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-explorepage-so-that-posts-returned-by-usegetallposts-render-their-media-images-and-videos-correctly-applying-the-same-blob-resolution-fix-used-in-postcard",
-      "featureTitle": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
+      "featureId": "feature-replace-the-orange-initials-avatar-avatarplaceholder-on-profilepage-tsx-with-an-uploadable-circular-profile-photo-the-profile-photo-should-overlap-the-bottom-edge-of-the-banner-positioned-absolutely-bottom-40px-from-banner-bottom-left-aligned-with-padding-show-a-small-camera-icon-overlay-on-the-avatar-circle-so-the-user-can-tap-to-upload-a-new-profile-photo-store-the-profile-photo-blob-in-the-backend-fall-back-to-the-existing-gradient-initials-avatar-if-no-photo-is-uploaded",
+      "featureTitle": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
       "files": [
-        "frontend/src/pages/ExplorePage.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -37,7 +39,28 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-5"
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-redesign-the-profile-info-section-below-the-banner-avatar-on-profilepage-tsx-with-a-professional-dark-theme-layout-1-display-the-user-s-display-name-inside-a-dark-rounded-pill-box-with-a-subtle-golden-glow-or-drop-shadow-2-show-the-user-s-handle-in-smaller-grey-text-below-the-name-3-show-the-followers-count-inside-a-dark-rounded-box-with-a-golden-border-and-golden-drop-shadow-existing-golden-followers-box-enhanced-4-show-following-count-as-a-stat-5-show-posts-count-as-a-stat-6-arrange-the-stats-followers-following-posts-in-a-horizontal-row-beneath-the-name-handle-keep-the-existing-edit-profile-button-aligned-to-the-right-side-of-the-profile-header-area",
+      "featureTitle": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ProfilePage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
       ],
       "confidence": "high"
     }
