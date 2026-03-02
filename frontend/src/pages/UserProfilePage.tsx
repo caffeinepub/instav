@@ -1,513 +1,387 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from '@tanstack/react-router';
+import React, { useMemo } from 'react';
+import { useParams } from '@tanstack/react-router';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import {
   useProfileByPrincipal,
   useProfileByHandle,
   useGetPostsByUser,
+  useGetFollowers,
+  useGetFollowing,
   useIsFollowing,
   useFollowUser,
   useUnfollowUser,
-  useGetFollowers,
-  useGetFollowing,
   useGetFriendshipStatus,
   useSendFriendRequest,
-  useRespondToFriendRequest,
   useCancelFriendRequest,
-  useUnfriend,
-  usePrincipalByHandle,
+  useRespondToFriendRequest,
 } from '../hooks/useQueries';
-import { toast } from 'sonner';
-import { Post } from '../backend';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
-import CommentsSheet from '../components/CommentsSheet';
+import { Grid3X3, AlertCircle, RefreshCw, UserPlus, UserCheck, Users } from 'lucide-react';
 import { FriendshipStatusEnum } from '../backend';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
-import { ChevronDown, UserMinus, MessageCircle, UserPlus, UserCheck, Clock } from 'lucide-react';
+import type { Post } from '../backend';
 
-// ─── Friend Action Button ─────────────────────────────────────────────────────
-
-interface FriendActionButtonProps {
-  targetPrincipalStr: string;
-}
-
-function FriendActionButton({ targetPrincipalStr }: FriendActionButtonProps) {
-  const { data: status, isLoading } = useGetFriendshipStatus(targetPrincipalStr);
-  const sendRequest = useSendFriendRequest();
-  const cancelRequest = useCancelFriendRequest();
-  const respond = useRespondToFriendRequest();
-  const unfriendMutation = useUnfriend();
-
-  if (isLoading) {
-    return (
-      <div className="h-9 w-28 rounded-lg bg-surface-2 animate-pulse" />
-    );
-  }
-
-  if (status === FriendshipStatusEnum.friends) {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors">
-            <UserCheck size={15} />
-            Friends
-            <ChevronDown size={13} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => {
-              unfriendMutation.mutate(targetPrincipalStr, {
-                onSuccess: () => toast.success('Unfriended'),
-                onError: () => toast.error('Failed to unfriend'),
-              });
-            }}
-          >
-            <UserMinus size={14} className="mr-2" />
-            Unfriend
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  if (status === FriendshipStatusEnum.pendingOutgoing) {
-    return (
-      <button
-        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-muted-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
-        onClick={() => {
-          cancelRequest.mutate(targetPrincipalStr, {
-            onSuccess: () => toast.success('Request cancelled'),
-            onError: () => toast.error('Failed to cancel request'),
-          });
-        }}
-        disabled={cancelRequest.isPending}
-      >
-        <Clock size={15} />
-        Request Sent
-      </button>
-    );
-  }
-
-  if (status === FriendshipStatusEnum.pendingIncoming) {
-    return (
-      <div className="flex gap-2">
-        <button
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-          onClick={() => {
-            respond.mutate(
-              { senderStr: targetPrincipalStr, accept: true },
-              {
-                onSuccess: () => toast.success('Friend request accepted'),
-                onError: () => toast.error('Failed to accept request'),
-              }
-            );
-          }}
-          disabled={respond.isPending}
-        >
-          <UserCheck size={15} />
-          Accept
-        </button>
-        <button
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-muted-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
-          onClick={() => {
-            respond.mutate(
-              { senderStr: targetPrincipalStr, accept: false },
-              {
-                onSuccess: () => toast.success('Request declined'),
-                onError: () => toast.error('Failed to decline request'),
-              }
-            );
-          }}
-          disabled={respond.isPending}
-        >
-          Decline
-        </button>
-      </div>
-    );
-  }
-
-  // notConnected
-  return (
-    <button
-      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
-      onClick={() => {
-        sendRequest.mutate(targetPrincipalStr, {
-          onSuccess: () => toast.success('Friend request sent'),
-          onError: () => toast.error('Failed to send friend request'),
-        });
-      }}
-      disabled={sendRequest.isPending}
-    >
-      <UserPlus size={15} />
-      Add Friend
-    </button>
-  );
-}
-
-// ─── Post Grid Item ───────────────────────────────────────────────────────────
-
-interface PostGridItemProps {
-  post: Post;
-  onClick: () => void;
-}
-
-function PostGridItem({ post, onClick }: PostGridItemProps) {
-  const [imgError, setImgError] = useState(false);
-  const isVideo = post.mediaType?.startsWith('video');
+function PostGridItem({ post }: { post: Post }) {
+  const [imgError, setImgError] = React.useState(false);
+  const mediaUrl = post.media ? post.media.getDirectURL() : null;
 
   return (
-    <button
-      onClick={onClick}
-      className="relative aspect-square bg-surface-2 rounded-lg overflow-hidden group hover:opacity-90 transition-opacity"
-    >
-      {post.media && !imgError ? (
-        isVideo ? (
-          <video
-            src={post.media.getDirectURL()}
-            className="w-full h-full object-cover"
-            muted
-            playsInline
-          />
-        ) : (
-          <img
-            src={post.media.getDirectURL()}
-            alt={post.caption}
-            className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
-          />
-        )
+    <div className="aspect-square bg-surface-2 rounded-lg overflow-hidden relative group cursor-pointer">
+      {mediaUrl && !imgError ? (
+        <img
+          src={mediaUrl}
+          alt={post.caption}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={() => setImgError(true)}
+        />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-surface-3">
-          <span className="text-2xl">📷</span>
+        <div className="w-full h-full flex items-center justify-center p-2">
+          <p className="text-xs text-muted-foreground text-center line-clamp-4">
+            {post.caption || 'Post'}
+          </p>
         </div>
       )}
-      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <span className="text-white text-xs font-medium px-2 text-center line-clamp-2">
-          {post.caption || 'View post'}
-        </span>
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+        <span className="text-white text-xs font-medium">❤️ {post.likeCount.toString()}</span>
       </div>
-    </button>
+    </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// Determine if the param looks like a principal (contains dashes and is long)
+function looksLikePrincipal(param: string): boolean {
+  return param.includes('-') && param.length > 20;
+}
 
 export default function UserProfilePage() {
-  const params = useParams({ strict: false }) as {
-    principal?: string;
-    handle?: string;
-  };
-  const navigate = useNavigate();
   const { identity } = useInternetIdentity();
+  const callerPrincipal = identity?.getPrincipal().toString() ?? null;
 
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  // Try to get route params - support both 'handle' and 'principal' params
+  let routeParam: string | null = null;
+  try {
+    const params = useParams({ strict: false }) as Record<string, string | undefined>;
+    routeParam = params?.handle ?? params?.principal ?? params?.principalId ?? null;
+  } catch {
+    routeParam = null;
+  }
 
-  // Determine if we're looking up by principal or handle
-  const principalParam = params.principal;
-  const handleParam = params.handle;
+  const isPrincipalParam = routeParam ? looksLikePrincipal(routeParam) : false;
 
-  // If we have a handle, resolve the principal from it
-  const { data: resolvedPrincipalFromHandle } = usePrincipalByHandle(
-    handleParam && !principalParam ? handleParam : undefined
-  );
-
-  // The actual principal string to use for queries
-  const targetPrincipal = principalParam ?? resolvedPrincipalFromHandle ?? undefined;
-
-  // Fetch profile — try by principal first, then by handle
+  // Fetch profile by principal or handle
   const {
     data: profileByPrincipal,
     isLoading: loadingByPrincipal,
-  } = useProfileByPrincipal(targetPrincipal);
+    error: errorByPrincipal,
+    refetch: refetchByPrincipal,
+  } = useProfileByPrincipal(isPrincipalParam ? routeParam : null);
 
   const {
     data: profileByHandle,
     isLoading: loadingByHandle,
-  } = useProfileByHandle(
-    !targetPrincipal && handleParam ? handleParam : undefined
-  );
+    error: errorByHandle,
+    refetch: refetchByHandle,
+  } = useProfileByHandle(!isPrincipalParam ? routeParam : null);
 
-  // Fetch posts for this user
-  const { data: userPosts = [], isLoading: loadingPosts } = useGetPostsByUser(targetPrincipal);
+  const profile = isPrincipalParam ? profileByPrincipal : profileByHandle;
+  const profileLoading = isPrincipalParam ? loadingByPrincipal : loadingByHandle;
+  const profileError = isPrincipalParam ? errorByPrincipal : errorByHandle;
+  const refetchProfile = isPrincipalParam ? refetchByPrincipal : refetchByHandle;
 
-  // Follow state
-  const { data: isFollowing } = useIsFollowing(targetPrincipal);
-  const followMutation = useFollowUser();
-  const unfollowMutation = useUnfollowUser();
+  // Resolve the target principal string
+  const targetPrincipalStr = useMemo(() => {
+    if (isPrincipalParam && routeParam) return routeParam;
+    return null;
+  }, [isPrincipalParam, routeParam]);
 
-  // Follower/following counts
-  const { data: followers = [] } = useGetFollowers(targetPrincipal);
-  const { data: following = [] } = useGetFollowing(targetPrincipal);
+  // Get posts by principal if we have it
+  const {
+    data: posts,
+    isLoading: postsLoading,
+    error: postsError,
+    refetch: refetchPosts,
+  } = useGetPostsByUser(targetPrincipalStr);
 
-  const isOwnProfile =
-    identity && targetPrincipal
-      ? identity.getPrincipal().toString() === targetPrincipal
-      : false;
+  // Infer principal from posts if we fetched by handle
+  const inferredPrincipal = useMemo(() => {
+    if (targetPrincipalStr) return targetPrincipalStr;
+    if (posts && posts.length > 0) {
+      return posts[0].authorPrincipal.toString();
+    }
+    return null;
+  }, [targetPrincipalStr, posts]);
 
-  const isLoading =
-    loadingByPrincipal ||
-    loadingByHandle ||
-    (!targetPrincipal && !!handleParam);
+  const { data: followers } = useGetFollowers(inferredPrincipal);
+  const { data: following } = useGetFollowing(inferredPrincipal);
+  const { data: isFollowingTarget } = useIsFollowing(inferredPrincipal);
+  const { data: friendshipStatus } = useGetFriendshipStatus(inferredPrincipal);
 
-  // Resolve the profile to display
-  // If no saved profile but we have posts, synthesize a basic profile from post data
-  const profile = profileByPrincipal ?? profileByHandle ?? null;
+  const followUser = useFollowUser();
+  const unfollowUser = useUnfollowUser();
+  const sendFriendRequest = useSendFriendRequest();
+  const cancelFriendRequest = useCancelFriendRequest();
+  const respondToFriendRequest = useRespondToFriendRequest();
 
-  // Synthesize a display name from posts if no profile exists
-  const syntheticDisplayName =
-    userPosts.length > 0 ? userPosts[0].authorName : null;
+  const isOwnProfile = !!(callerPrincipal && inferredPrincipal && callerPrincipal === inferredPrincipal);
 
-  const displayName =
-    profile?.displayName || syntheticDisplayName || 'Unknown User';
-  const handle = profile?.handle || '';
-  const bio = profile?.bio || '';
-
-  // Determine if we genuinely have no user (no profile AND no posts AND not loading)
-  const hasNoUser =
-    !isLoading &&
-    !loadingPosts &&
-    !profile &&
-    userPosts.length === 0 &&
-    !!targetPrincipal;
-
-  const handleFollowToggle = () => {
-    if (!targetPrincipal) return;
-    if (isFollowing) {
-      unfollowMutation.mutate(targetPrincipal, {
-        onSuccess: () => toast.success(`Unfollowed ${displayName}`),
-        onError: () => toast.error('Failed to unfollow'),
-      });
-    } else {
-      followMutation.mutate(targetPrincipal, {
-        onSuccess: () => toast.success(`Now following ${displayName}`),
-        onError: () => toast.error('Failed to follow'),
-      });
+  const handleFollow = async () => {
+    if (!inferredPrincipal) return;
+    try {
+      if (isFollowingTarget) {
+        await unfollowUser.mutateAsync(inferredPrincipal);
+      } else {
+        await followUser.mutateAsync(inferredPrincipal);
+      }
+    } catch (err) {
+      console.error('Follow/unfollow error:', err);
     }
   };
 
+  const handleFriendAction = async () => {
+    if (!inferredPrincipal) return;
+    try {
+      if (friendshipStatus === FriendshipStatusEnum.notConnected || friendshipStatus == null) {
+        await sendFriendRequest.mutateAsync(inferredPrincipal);
+      } else if (friendshipStatus === FriendshipStatusEnum.pendingOutgoing) {
+        await cancelFriendRequest.mutateAsync(inferredPrincipal);
+      } else if (friendshipStatus === FriendshipStatusEnum.pendingIncoming) {
+        await respondToFriendRequest.mutateAsync({ senderStr: inferredPrincipal, accept: true });
+      }
+    } catch (err) {
+      console.error('Friend action error:', err);
+    }
+  };
+
+  const followerCount = followers?.length ?? 0;
+  const followingCount = following?.length ?? 0;
+  const postCount = posts?.length ?? 0;
+
   // ── Loading state ──────────────────────────────────────────────────────────
-  if (isLoading) {
+  if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground text-sm">Loading profile…</p>
+      <div className="min-h-screen bg-background pb-24">
+        <div className="max-w-lg mx-auto px-4 pt-6">
+          <div className="flex items-center gap-4 mb-6">
+            <Skeleton className="w-20 h-20 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+          <div className="flex gap-6 mb-6">
+            <Skeleton className="h-10 w-16" />
+            <Skeleton className="h-10 w-16" />
+            <Skeleton className="h-10 w-16" />
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square rounded-lg" />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── No user found ──────────────────────────────────────────────────────────
-  if (hasNoUser) {
+  // ── Error state ────────────────────────────────────────────────────────────
+  if (profileError) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6">
-        <div className="text-5xl">👤</div>
-        <h2 className="text-xl font-semibold text-foreground">User not found</h2>
-        <p className="text-muted-foreground text-sm text-center">
-          This user doesn't exist or may have deleted their account.
-        </p>
-        <button
-          onClick={() => navigate({ to: '/' })}
-          className="mt-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          Go Home
-        </button>
+      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
+        <div className="text-center px-4">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-foreground mb-2">Failed to load profile</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {(profileError as Error)?.message ?? 'An unexpected error occurred.'}
+          </p>
+          <Button onClick={() => refetchProfile()} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // ── No identifier at all ───────────────────────────────────────────────────
-  if (!targetPrincipal && !handleParam) {
+  // ── Not found state ────────────────────────────────────────────────────────
+  if (!profile && !profileLoading && !postsLoading && !inferredPrincipal) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6">
-        <div className="text-5xl">🔍</div>
-        <h2 className="text-xl font-semibold text-foreground">No user specified</h2>
-        <button
-          onClick={() => navigate({ to: '/' })}
-          className="mt-2 px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          Go Home
-        </button>
+      <div className="min-h-screen bg-background flex items-center justify-center pb-24">
+        <div className="text-center px-4">
+          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <h2 className="text-lg font-semibold text-foreground mb-2">User not found</h2>
+          <p className="text-sm text-muted-foreground">
+            This profile doesn't exist or may have been removed.
+          </p>
+        </div>
       </div>
     );
   }
 
-  // ── Profile view ───────────────────────────────────────────────────────────
+  // Synthesize display name from posts if no profile
+  const displayName =
+    profile?.displayName ??
+    (posts && posts.length > 0 ? posts[0].authorName : routeParam ?? 'Unknown User');
+  const handle = profile?.handle ?? routeParam ?? '';
+  const bio = profile?.bio ?? '';
+
+  const followPending = followUser.isPending || unfollowUser.isPending;
+  const friendPending =
+    sendFriendRequest.isPending ||
+    cancelFriendRequest.isPending ||
+    respondToFriendRequest.isPending;
+
+  const isFriends = friendshipStatus === FriendshipStatusEnum.friends;
+
+  const getFriendButtonLabel = () => {
+    if (friendPending) return 'Loading...';
+    switch (friendshipStatus) {
+      case FriendshipStatusEnum.pendingOutgoing: return 'Cancel Request';
+      case FriendshipStatusEnum.pendingIncoming: return 'Accept Request';
+      default: return 'Add Friend';
+    }
+  };
+
+  const getFriendButtonVariant = (): 'default' | 'outline' | 'secondary' => {
+    switch (friendshipStatus) {
+      case FriendshipStatusEnum.pendingOutgoing: return 'outline';
+      case FriendshipStatusEnum.pendingIncoming: return 'default';
+      default: return 'outline';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => navigate({ to: -1 as never })}
-          className="p-2 rounded-full hover:bg-surface-2 transition-colors"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-        </button>
-        <h1 className="font-semibold text-foreground truncate">
-          {displayName}
-        </h1>
-      </div>
-
-      {/* Profile Info */}
-      <div className="px-4 pt-6 pb-4">
-        <div className="flex items-start gap-4">
-          {/* Avatar */}
+      <div className="max-w-lg mx-auto px-4 pt-6">
+        {/* Profile header */}
+        <div className="flex items-start gap-4 mb-5">
           <AvatarPlaceholder
             name={displayName}
             profilePicture={profile?.profilePicture}
             size="xl"
           />
-
-          {/* Stats */}
-          <div className="flex-1 flex flex-col gap-3">
-            <div className="flex gap-6">
-              <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">
-                  {userPosts.length}
-                </p>
-                <p className="text-muted-foreground text-xs">Posts</p>
-              </div>
-              <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">
-                  {followers.length}
-                </p>
-                <p className="text-muted-foreground text-xs">Shadows</p>
-              </div>
-              <div className="text-center">
-                <p className="font-bold text-foreground text-lg leading-tight">
-                  {following.length}
-                </p>
-                <p className="text-muted-foreground text-xs">Following</p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            {!isOwnProfile && targetPrincipal && (
-              <div className="flex gap-2 flex-wrap">
-                {/* Follow button */}
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={
-                    followMutation.isPending || unfollowMutation.isPending
-                  }
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isFollowing
-                      ? 'bg-surface-2 text-foreground border border-border hover:bg-surface-3'
-                      : 'bg-primary text-primary-foreground hover:opacity-90'
-                  } disabled:opacity-50`}
-                >
-                  {followMutation.isPending || unfollowMutation.isPending ? (
-                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                  ) : null}
-                  {isFollowing ? 'Unfollow' : 'Follow'}
-                </button>
-
-                {/* Message button */}
-                <button
-                  onClick={() =>
-                    navigate({
-                      to: '/messages/$principalId',
-                      params: { principalId: targetPrincipal },
-                    })
-                  }
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors"
-                >
-                  <MessageCircle size={15} />
-                  Message
-                </button>
-
-                {/* Friend action */}
-                <FriendActionButton targetPrincipalStr={targetPrincipal} />
-              </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-display font-bold text-foreground truncate">
+              {displayName}
+            </h1>
+            {handle && (
+              <p className="text-sm text-accent-gold font-medium">@{handle}</p>
+            )}
+            {bio && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{bio}</p>
             )}
 
-            {isOwnProfile && (
-              <button
-                onClick={() => navigate({ to: '/profile' })}
-                className="px-4 py-2 rounded-lg bg-surface-2 text-foreground text-sm font-medium border border-border hover:bg-surface-3 transition-colors w-fit"
-              >
-                Edit Profile
-              </button>
+            {/* Action buttons for other users */}
+            {!isOwnProfile && identity && (
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {/* Follow button */}
+                <Button
+                  size="sm"
+                  variant={isFollowingTarget ? 'secondary' : 'default'}
+                  onClick={handleFollow}
+                  disabled={followPending}
+                  className="h-8 text-xs"
+                >
+                  {followPending ? (
+                    'Loading...'
+                  ) : isFollowingTarget ? (
+                    <>
+                      <UserCheck className="w-3 h-3 mr-1" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-3 h-3 mr-1" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+
+                {/* Friend button — show "Friends ✓" if already friends, otherwise show action */}
+                {isFriends ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled
+                    className="h-8 text-xs"
+                  >
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    Friends ✓
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant={getFriendButtonVariant()}
+                    onClick={handleFriendAction}
+                    disabled={friendPending}
+                    className="h-8 text-xs"
+                  >
+                    {friendPending ? (
+                      'Loading...'
+                    ) : (
+                      <>
+                        <UserPlus className="w-3 h-3 mr-1" />
+                        {getFriendButtonLabel()}
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Name & Bio */}
-        <div className="mt-4">
-          <p className="font-semibold text-foreground">{displayName}</p>
-          {handle && (
-            <p className="text-muted-foreground text-sm">@{handle}</p>
-          )}
-          {bio && (
-            <p className="text-foreground text-sm mt-1 whitespace-pre-wrap">
-              {bio}
-            </p>
-          )}
+        {/* Stats row */}
+        <div className="flex gap-6 mb-6 border-b border-border pb-5">
+          <div className="text-center">
+            <p className="text-lg font-bold text-foreground">{postCount}</p>
+            <p className="text-xs text-muted-foreground">Posts</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-foreground">{followerCount}</p>
+            <p className="text-xs text-muted-foreground">Shadows</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-foreground">{followingCount}</p>
+            <p className="text-xs text-muted-foreground">Following</p>
+          </div>
         </div>
-      </div>
 
-      {/* Posts Grid */}
-      <div className="px-1">
-        {loadingPosts ? (
-          <div className="grid grid-cols-3 gap-0.5">
+        {/* Posts grid */}
+        <div className="mb-4 flex items-center gap-2">
+          <Grid3X3 className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Posts</span>
+        </div>
+
+        {postsLoading ? (
+          <div className="grid grid-cols-3 gap-1">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-square bg-surface-2 animate-pulse"
-              />
+              <Skeleton key={i} className="aspect-square rounded-lg" />
             ))}
           </div>
-        ) : userPosts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="text-4xl">📸</div>
-            <p className="text-muted-foreground text-sm">No posts yet</p>
+        ) : postsError ? (
+          <div className="text-center py-8">
+            <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground mb-3">Failed to load posts</p>
+            <Button onClick={() => refetchPosts()} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        ) : posts && posts.length > 0 ? (
+          <div className="grid grid-cols-3 gap-1">
+            {posts.map((post) => (
+              <PostGridItem key={post.id.toString()} post={post} />
+            ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-0.5">
-            {userPosts.map((post) => (
-              <PostGridItem
-                key={post.id.toString()}
-                post={post}
-                onClick={() => {
-                  setSelectedPost(post);
-                  setCommentsOpen(true);
-                }}
-              />
-            ))}
+          <div className="text-center py-12">
+            <Grid3X3 className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="text-sm text-muted-foreground">No posts yet</p>
           </div>
         )}
       </div>
-
-      {/* Comments Sheet */}
-      {selectedPost && (
-        <CommentsSheet
-          post={selectedPost}
-          open={commentsOpen}
-          onOpenChange={(open) => {
-            setCommentsOpen(open);
-            if (!open) setSelectedPost(null);
-          }}
-        />
-      )}
     </div>
   );
 }

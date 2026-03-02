@@ -120,7 +120,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     cancelFriendRequest(receiver: Principal): Promise<void>;
     createOrUpdateProfile(profileData: UserProfileData): Promise<void>;
-    createPost(post: PostInput): Promise<bigint>;
+    createPost(postInput: PostInput): Promise<bigint>;
     followUser(target: Principal): Promise<void>;
     getAllPosts(): Promise<Array<Post>>;
     getCallerUserProfile(): Promise<UserProfileData | null>;
@@ -132,6 +132,7 @@ export interface backendInterface {
     getFriendsList(): Promise<Array<Principal>>;
     getFriendshipStatus(otherPrincipal: Principal): Promise<FriendshipStatusEnum>;
     getIncomingFriendRequests(): Promise<Array<FriendRequest>>;
+    getLikedPosts(): Promise<Array<Post>>;
     getMessages(otherParticipant: Principal): Promise<Array<Message>>;
     getNotifications(): Promise<Array<Notification>>;
     getOutgoingFriendRequests(): Promise<Array<FriendRequest>>;
@@ -154,4 +155,5 @@ export interface backendInterface {
     sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
     unfollowUser(target: Principal): Promise<void>;
     unfriend(friendPrincipal: Principal): Promise<void>;
+    unlikePost(postId: bigint): Promise<void>;
 }

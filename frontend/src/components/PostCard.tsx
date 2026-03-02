@@ -80,7 +80,8 @@ export default function PostCard({ post, onCommentClick }: PostCardProps) {
     }
   };
 
-  const isVideo = post.mediaType === 'video';
+  // Use startsWith to handle 'video/mp4', 'video/webm', etc.
+  const isVideo = post.mediaType?.startsWith('video');
 
   const formatTime = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1_000_000);

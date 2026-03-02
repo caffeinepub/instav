@@ -213,7 +213,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     cancelFriendRequest(receiver: Principal): Promise<void>;
     createOrUpdateProfile(profileData: UserProfileData): Promise<void>;
-    createPost(post: PostInput): Promise<bigint>;
+    createPost(postInput: PostInput): Promise<bigint>;
     followUser(target: Principal): Promise<void>;
     getAllPosts(): Promise<Array<Post>>;
     getCallerUserProfile(): Promise<UserProfileData | null>;
@@ -225,6 +225,7 @@ export interface backendInterface {
     getFriendsList(): Promise<Array<Principal>>;
     getFriendshipStatus(otherPrincipal: Principal): Promise<FriendshipStatusEnum>;
     getIncomingFriendRequests(): Promise<Array<FriendRequest>>;
+    getLikedPosts(): Promise<Array<Post>>;
     getMessages(otherParticipant: Principal): Promise<Array<Message>>;
     getNotifications(): Promise<Array<Notification>>;
     getOutgoingFriendRequests(): Promise<Array<FriendRequest>>;
@@ -247,6 +248,7 @@ export interface backendInterface {
     sendMessage(recipient: Principal, content: string, postId: bigint | null): Promise<void>;
     unfollowUser(target: Principal): Promise<void>;
     unfriend(friendPrincipal: Principal): Promise<void>;
+    unlikePost(postId: bigint): Promise<void>;
 }
 import type { CreatorRanking as _CreatorRanking, ExternalBlob as _ExternalBlob, FriendRequest as _FriendRequest, FriendRequestStatus as _FriendRequestStatus, FriendshipStatusEnum as _FriendshipStatusEnum, Message as _Message, Notification as _Notification, NotificationType as _NotificationType, Post as _Post, PostInput as _PostInput, UserIdentifier as _UserIdentifier, UserProfileData as _UserProfileData, UserProfileSummary as _UserProfileSummary, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -573,6 +575,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n27(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getLikedPosts(): Promise<Array<Post>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getLikedPosts();
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getLikedPosts();
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getMessages(arg0: Principal): Promise<Array<Message>> {
         if (this.processError) {
             try {
@@ -878,6 +894,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.unfriend(arg0);
+            return result;
+        }
+    }
+    async unlikePost(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.unlikePost(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.unlikePost(arg0);
             return result;
         }
     }

@@ -179,6 +179,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(FriendRequest)],
       ['query'],
     ),
+  'getLikedPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
   'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
   'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
   'getOutgoingFriendRequests' : IDL.Func(
@@ -221,6 +222,7 @@ export const idlService = IDL.Service({
   'sendMessage' : IDL.Func([IDL.Principal, IDL.Text, IDL.Opt(IDL.Nat)], [], []),
   'unfollowUser' : IDL.Func([IDL.Principal], [], []),
   'unfriend' : IDL.Func([IDL.Principal], [], []),
+  'unlikePost' : IDL.Func([IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
@@ -401,6 +403,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(FriendRequest)],
         ['query'],
       ),
+    'getLikedPosts' : IDL.Func([], [IDL.Vec(Post)], ['query']),
     'getMessages' : IDL.Func([IDL.Principal], [IDL.Vec(Message)], ['query']),
     'getNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
     'getOutgoingFriendRequests' : IDL.Func(
@@ -447,6 +450,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'unfollowUser' : IDL.Func([IDL.Principal], [], []),
     'unfriend' : IDL.Func([IDL.Principal], [], []),
+    'unlikePost' : IDL.Func([IDL.Nat], [], []),
   });
 };
 

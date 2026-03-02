@@ -1,40 +1,64 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Smileup — a social media app. Fixing two critical bugs: profile page stuck in skeleton/loading state never showing real user data, and post creation failing with 'Failed to create post' error for all content types.",
+  "summary": "Social media app with profiles, posts, photos, videos, and Snapchat-style content. User reported media and posts not visible across tabs and profile.",
   "architectural_notes": [],
   "known_issues": [
-    "Profile page stuck in skeleton/loading state — never loads real user data (avatar, name, posts)",
-    "Post creation fails with 'Failed to create post. Please try again' error for all content types (text, images, videos)"
+    "Videos, photos, Snapchat posts, and user posts are not visible on any tab or profile page"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-profilepage-so-it-correctly-fetches-and-displays-the-authenticated-user-s-real-data-avatar-display-name-bio-follower-following-counts-and-posts-grid-instead-of-remaining-stuck-in-the-skeleton-loading-placeholder-state-indefinitely",
-      "title": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
+      "id": "feature-fix-postcard-component-so-that-image-and-video-media-attached-to-posts-is-correctly-rendered-and-visible-ensure-the-media-url-blob-is-properly-resolved-and-passed-to-the-img-video-element-so-content-displays-for-all-posts-across-all-pages",
+      "title": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-fix-the-backend-query-mutation-wiring-in-profilepage-so-the-usegetmyprofile-or-equivalent-hook-properly-resolves-ensure-the-actor-is-initialized-before-the-query-runs-error-states-are-handled-gracefully-and-the-profile-data-is-correctly-mapped-from-the-backend-response-variant-to-the-ui-state",
-      "title": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
+      "id": "feature-fix-explorepage-so-that-posts-returned-by-usegetallposts-render-their-media-images-and-videos-correctly-applying-the-same-blob-resolution-fix-used-in-postcard",
+      "title": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
       "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-createpostpage-so-that-submitting-a-post-text-image-or-video-succeeds-instead-of-showing-failed-to-create-post-please-try-again-diagnose-and-repair-the-usecreatepost-mutation-ensure-media-blobs-are-correctly-encoded-and-passed-to-the-backend-the-actor-call-parameters-match-the-backend-s-expected-argument-types-and-success-error-states-are-handled-properly",
-      "title": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
-      "reqIds": [
-        "REQ-3"
+        "REQ-5"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-2",
+      "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    }
+  ],
   "gameProjectType": "none",
   "projectName": "Smileup",
   "clarification_mode": "instant",

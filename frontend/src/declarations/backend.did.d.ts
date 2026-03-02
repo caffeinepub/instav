@@ -143,6 +143,7 @@ export interface _SERVICE {
   'getFriendsList' : ActorMethod<[], Array<Principal>>,
   'getFriendshipStatus' : ActorMethod<[Principal], FriendshipStatusEnum>,
   'getIncomingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
+  'getLikedPosts' : ActorMethod<[], Array<Post>>,
   'getMessages' : ActorMethod<[Principal], Array<Message>>,
   'getNotifications' : ActorMethod<[], Array<Notification>>,
   'getOutgoingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
@@ -165,6 +166,7 @@ export interface _SERVICE {
   'sendMessage' : ActorMethod<[Principal, string, [] | [bigint]], undefined>,
   'unfollowUser' : ActorMethod<[Principal], undefined>,
   'unfriend' : ActorMethod<[Principal], undefined>,
+  'unlikePost' : ActorMethod<[bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

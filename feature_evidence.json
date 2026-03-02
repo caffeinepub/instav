@@ -2,11 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-profilepage-so-it-correctly-fetches-and-displays-the-authenticated-user-s-real-data-avatar-display-name-bio-follower-following-counts-and-posts-grid-instead-of-remaining-stuck-in-the-skeleton-loading-placeholder-state-indefinitely",
-      "featureTitle": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
+      "featureId": "feature-fix-postcard-component-so-that-image-and-video-media-attached-to-posts-is-correctly-rendered-and-visible-ensure-the-media-url-blob-is-properly-resolved-and-passed-to-the-img-video-element-so-content-displays-for-all-posts-across-all-pages",
+      "featureTitle": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/ProfilePage.tsx"
+        "frontend/src/components/PostCard.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -23,11 +22,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-the-backend-query-mutation-wiring-in-profilepage-so-the-usegetmyprofile-or-equivalent-hook-properly-resolves-ensure-the-actor-is-initialized-before-the-query-runs-error-states-are-handled-gracefully-and-the-profile-data-is-correctly-mapped-from-the-backend-response-variant-to-the-ui-state",
-      "featureTitle": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
+      "featureId": "feature-fix-explorepage-so-that-posts-returned-by-usegetallposts-render-their-media-images-and-videos-correctly-applying-the-same-blob-resolution-fix-used-in-postcard",
+      "featureTitle": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/ProfilePage.tsx"
+        "frontend/src/pages/ExplorePage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -39,28 +37,7 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-fix-the-createpostpage-so-that-submitting-a-post-text-image-or-video-succeeds-instead-of-showing-failed-to-create-post-please-try-again-diagnose-and-repair-the-usecreatepost-mutation-ensure-media-blobs-are-correctly-encoded-and-passed-to-the-backend-the-actor-call-parameters-match-the-backend-s-expected-argument-types-and-success-error-states-are-handled-properly",
-      "featureTitle": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/CreatePostPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-3"
+        "REQ-5"
       ],
       "confidence": "high"
     }

@@ -1,80 +1,126 @@
 {
   "kind": "build_request",
-  "title": "Fix profile page skeleton state and post creation failure",
+  "title": "Fix media visibility: videos, photos, and posts not rendering on feed, explore, and profile pages",
   "projectName": "Smileup",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
+      "text": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-profile-bug"
+          "msg-recent"
         ],
         "quotes": [
-          "Profile page is stuck in a skeleton/loading (blueprint) state — showing dark placeholder shapes instead of actual user data like avatar, name, and posts"
+          "I struggling to see videoes,photos,and snapchat and post by any user even in my profile so fix it"
         ]
       },
       "acceptanceCriteria": [
-        "Navigating to /profile displays the logged-in user's avatar, display name, and bio after data loads",
-        "Follower and following counts are shown with real values",
-        "The user's posts appear in the grid below the profile header",
-        "Skeleton placeholders are only shown during the initial data fetch, not indefinitely",
-        "If the user has no profile yet, a prompt to create one is displayed instead of an endless skeleton"
+        "Image posts display their image in PostCard on the feed, explore, and profile pages",
+        "Video posts display their video thumbnail and play correctly in PostCard",
+        "Posts with no media render cleanly without broken image/video placeholders"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
-      "target": "both",
+      "text": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-profile-bug"
+          "msg-recent"
         ],
         "quotes": [
-          "it just shown blueprint not the profile"
+          "even in my profile so fix it"
         ]
       },
       "acceptanceCriteria": [
-        "The profile query does not fire before the actor is ready",
-        "A backend #ok variant response is correctly unwrapped and applied to the UI",
-        "A backend #err variant response shows an appropriate error message rather than a permanent skeleton",
-        "Refreshing the profile page re-fetches and renders data correctly"
+        "Authenticated user's ProfilePage shows all their posts in the posts grid",
+        "Post thumbnails (images/videos) are visible in the profile grid",
+        "Liked posts tab also renders post media correctly"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
-      "target": "both",
+      "text": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-create-post-bug"
+          "msg-recent"
         ],
         "quotes": [
-          "Failed to create post. Please try again",
-          "when click share it show that failed to post"
+          "post by any user"
         ]
       },
       "acceptanceCriteria": [
-        "Submitting a text-only post succeeds and the new post appears in the feed",
-        "Submitting a post with an image file succeeds and the image is displayed on the post card",
-        "Submitting a post with a video file succeeds and the video is playable on the post card",
-        "On success, the user is navigated away from CreatePostPage (e.g., back to feed or profile)",
-        "On a genuine backend error, a descriptive error message is shown and the user can retry",
-        "The 'Failed to create post' error no longer appears for valid submissions"
+        "Visiting another user's profile shows all their posts with media visible",
+        "No broken image/video placeholders appear in the posts grid"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "I struggling to see videoes"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Short videos load and play in the ShortSportPage vertical feed",
+        "Video thumbnail/poster is visible before playback begins",
+        "Mute/unmute and play/pause controls work correctly"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "I struggling to see videoes,photos,and snapchat and post by any user"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Explore page post grid shows image and video content for all posts",
+        "No broken media placeholders appear on the explore page"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "I struggling to see videoes,photos,and snapchat and post by any user even in my profile"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Blobs fetched from the backend are converted to valid displayable URLs",
+        "Profile pictures, post images, and post videos all resolve correctly from blob data",
+        "No console errors related to invalid blob/object URLs"
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "All Motoko logic must remain in a single actor in backend/main.mo"
+    "Only change code strictly necessary to fix media and post visibility — do not refactor unrelated logic",
+    "Do not alter backend data models or canister API",
+    "Do not modify immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, components/ui"
   ],
   "nonGoals": [
-    "Adding new post types or media formats beyond what already exists",
-    "Redesigning the profile page UI/layout",
-    "Adding new profile fields not already in the backend schema",
-    "Real-time post feed updates"
+    "Adding new features or UI sections",
+    "Changing the visual design or layout",
+    "Modifying the messaging or notification systems",
+    "Refactoring working components that are unrelated to media rendering"
   ],
   "imageRequirements": {
     "required": [],

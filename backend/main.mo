@@ -14,8 +14,6 @@ import Set "mo:core/Set";
 import Int "mo:core/Int";
 import Order "mo:core/Order";
 
-
-
 actor {
   type Post = {
     id : Nat;
@@ -38,7 +36,7 @@ actor {
     timestamp : Int;
   };
 
-  type PostInput = {
+  public type PostInput = {
     authorName : Text;
     media : ?Storage.ExternalBlob;
     mediaType : Text;
@@ -112,6 +110,9 @@ actor {
 
   let followingMap = Map.empty<Principal, Set.Set<Principal>>();
   let followersMap = Map.empty<Principal, Set.Set<Principal>>();
+
+  // New data structure to track liked posts per user account
+  let likedPostsMap = Map.empty<Principal, Set.Set<Nat>>();
 
   type UserProfileSummary = {
     principal : Principal;
@@ -885,7 +886,7 @@ actor {
   };
 
   // Create a post (authenticated users only)
-  public shared ({ caller }) func createPost(post : PostInput) : async Nat {
+  public shared ({ caller }) func createPost(postInput : PostInput) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can create posts");
     };
@@ -893,10 +894,10 @@ actor {
     let newPost : Post = {
       id = postCounter;
       authorPrincipal = caller;
-      authorName = post.authorName;
-      media = post.media;
-      mediaType = post.mediaType;
-      caption = post.caption;
+      authorName = postInput.authorName;
+      media = postInput.media;
+      mediaType = postInput.mediaType;
+      caption = postInput.caption;
       timestamp = Time.now();
       likeCount = 0;
       viewCount = 0;
@@ -935,8 +936,73 @@ actor {
       case (?post) {
         let updatedPost = { post with likeCount = post.likeCount + 1 };
         postsMap.add(postId, updatedPost);
+        let callerLikes = switch (likedPostsMap.get(caller)) {
+          case (?likes) {
+            likes.add(postId);
+            likes;
+          };
+          case (null) {
+            let newLikes = Set.empty<Nat>();
+            newLikes.add(postId);
+            likedPostsMap.add(caller, newLikes);
+            newLikes;
+          };
+        };
       };
       case (null) { () };
+    };
+  };
+
+  // Get all liked posts for the authenticated caller only
+  public query ({ caller }) func getLikedPosts() : async [Post] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view their liked posts");
+    };
+    switch (likedPostsMap.get(caller)) {
+      case (?likes) {
+        let posts = List.empty<Post>();
+        for (postId in likes.values()) {
+          switch (postsMap.get(postId)) {
+            case (?post) {
+              posts.add(post);
+            };
+            case (null) {};
+          };
+        };
+        posts.toArray();
+      };
+      case (null) { [] };
+    };
+  };
+
+  // Unlike a post
+  public shared ({ caller }) func unlikePost(postId : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can unlike posts");
+    };
+    switch (postsMap.get(postId)) {
+      case (?post) {
+        if (post.likeCount > 0) {
+          let updatedPost = {
+            post with
+            likeCount = if (post.likeCount > 0) {
+              post.likeCount - 1;
+            } else { 0 };
+          };
+          postsMap.add(postId, updatedPost);
+
+          switch (likedPostsMap.get(caller)) {
+            case (?likes) {
+              likes.remove(postId);
+              if (likes.isEmpty()) {
+                likedPostsMap.remove(caller);
+              };
+            };
+            case (null) {};
+          };
+        };
+      };
+      case (null) {};
     };
   };
 

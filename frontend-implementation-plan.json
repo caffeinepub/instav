@@ -1,74 +1,104 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix profile page skeleton state and post creation failure",
+  "title": "Fix media visibility: videos, photos, and posts not rendering on feed, explore, and profile pages",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data instead of remaining stuck in the skeleton/loading placeholder state indefinitely",
+      "summary": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible",
       "acceptanceCriteria": [
-        "Navigating to /profile displays the logged-in user's avatar, display name, and bio after data loads",
-        "Follower and following counts are shown with real values",
-        "The user's posts appear in the grid below the profile header",
-        "Skeleton placeholders are only shown during the initial data fetch, not indefinitely",
-        "If the user has no profile yet, a prompt to create one is displayed instead of an endless skeleton"
+        "Image posts display their image in PostCard on the feed, explore, and profile pages",
+        "Video posts display their video thumbnail and play correctly in PostCard",
+        "Posts with no media render cleanly without broken image/video placeholders"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ProfilePage.tsx",
+          "path": "frontend/src/components/PostCard.tsx",
           "operation": "modify",
-          "description": "Fix the profile data fetching logic so the page correctly waits for both the actor and useGetMyProfile query to resolve before showing skeleton state. Ensure the skeleton only displays while loading (not indefinitely), and that profile data (avatar, displayName, bio, follower/following counts, posts) is correctly mapped from the backend response to the UI. Add proper error handling for failed profile queries and display an appropriate error message or profile creation prompt when the user has no profile yet."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Review and fix the useGetMyProfile hook to ensure it properly waits for the actor to be initialized before firing the query (enabled: !!actor && !actorFetching). Verify that the hook correctly unwraps the backend response variant (#ok vs #err) and returns the profile data or null. Ensure the isLoading state reflects both actor fetching and query loading, and that isFetched is only true when the actor is ready and the query has completed."
+          "description": "Fix media rendering by ensuring ExternalBlob instances are converted to displayable URLs using getDirectURL() method. For image posts (mediaType starts with 'image'), render an img element with src set to media.getDirectURL(). For video posts (mediaType starts with 'video'), render a video element with src set to media.getDirectURL(). Add null/undefined checks for media field and only render media elements when post.media exists and post.mediaType is truthy. Verify the blob-storage component's usage instructions before implementing."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile hook properly resolves, ensuring the actor is initialized before the query runs and error states are handled gracefully",
+      "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos",
       "acceptanceCriteria": [
-        "The profile query does not fire before the actor is ready",
-        "A backend #ok variant response is correctly unwrapped and applied to the UI",
-        "A backend #err variant response shows an appropriate error message rather than a permanent skeleton",
-        "Refreshing the profile page re-fetches and renders data correctly"
+        "Authenticated user's ProfilePage shows all their posts in the posts grid",
+        "Post thumbnails (images/videos) are visible in the profile grid",
+        "Liked posts tab also renders post media correctly"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/ProfilePage.tsx",
           "operation": "modify",
-          "description": "Ensure the ProfilePage component correctly checks the actor state from useActor before rendering skeleton or profile data. Update the conditional rendering logic to handle the case where the actor is not yet ready, and to properly display error messages when the profile query fails. Verify that the profile data state variables (displayName, bio, avatarUrl, etc.) are correctly populated from the useGetMyProfile result, and that the page re-fetches data on refresh."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Fix the useGetMyProfile hook to ensure the query's enabled flag correctly waits for both actor initialization and the absence of actor fetching. Verify that the queryFn properly calls actor.getCallerUserProfile() and handles the response variant correctly. Ensure the hook returns a custom isLoading state that combines actorFetching and query.isLoading, and that isFetched reflects the true completion state. Add retry: false to prevent infinite retries on auth errors."
+          "description": "Ensure the posts grid renders post media correctly by passing the post objects to PostCard or by rendering thumbnail images/videos directly. For the posts grid, if rendering thumbnails directly, use post.media?.getDirectURL() as the img or video src. Ensure both 'My Posts' and 'Liked Posts' tabs correctly display media thumbnails. Verify that useGetPostsByUser is called with the correct principal (identity.getPrincipal()) and that the resulting posts array includes media fields. Verify the blob-storage component's usage instructions before implementing."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.'",
+      "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos",
       "acceptanceCriteria": [
-        "Submitting a text-only post succeeds and the new post appears in the feed",
-        "Submitting a post with an image file succeeds and the image is displayed on the post card",
-        "Submitting a post with a video file succeeds and the video is playable on the post card",
-        "On success, the user is navigated away from CreatePostPage (e.g., back to feed or profile)",
-        "On a genuine backend error, a descriptive error message is shown and the user can retry",
-        "The 'Failed to create post' error no longer appears for valid submissions"
+        "Visiting another user's profile shows all their posts with media visible",
+        "No broken image/video placeholders appear in the posts grid"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/CreatePostPage.tsx",
+          "path": "frontend/src/pages/UserProfilePage.tsx",
           "operation": "modify",
-          "description": "Review and fix the post submission logic in CreatePostPage. Ensure that when the user submits a post, the file (if any) is correctly converted to an ExternalBlob using ExternalBlob.fromBytes() and that the media field is properly passed to useCreatePost. Verify that the mediaType field is correctly set based on the file MIME type. Ensure the mutation's onSuccess callback navigates the user back to the feed or profile page after successful post creation. Update error handling to display descriptive error messages from the backend response instead of the generic 'Failed to create post' message."
+          "description": "Ensure the posts grid fetches posts using either principalId or handle route parameters and renders post media correctly. When rendering post thumbnails, use post.media?.getDirectURL() as the img or video src. Verify that the route parameter extraction and profile/posts fetching logic correctly resolves the user by principal or handle. Ensure posts with media display their thumbnails in the grid. Verify the blob-storage component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Fix ShortSportPage so that video posts are fetched and rendered with working playback",
+      "acceptanceCriteria": [
+        "Short videos load and play in the ShortSportPage vertical feed",
+        "Video thumbnail/poster is visible before playback begins",
+        "Mute/unmute and play/pause controls work correctly"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ShortSportPage.tsx",
+          "operation": "modify",
+          "description": "Fix video rendering in the vertical feed by ensuring each video element's src attribute is set using post.media?.getDirectURL(). Ensure that video elements have proper controls (play/pause, mute/unmute) wired to state and that the video ref correctly points to the HTML video element. Add null checks for post.media before calling getDirectURL(). Verify that the intersection observer and auto-play logic work correctly with the fixed video sources. Verify the blob-storage component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Fix ExplorePage so that posts returned by useGetAllPosts render their media correctly",
+      "acceptanceCriteria": [
+        "Explore page post grid shows image and video content for all posts",
+        "No broken media placeholders appear on the explore page"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ExplorePage.tsx",
+          "operation": "modify",
+          "description": "Ensure that the posts grid on the 'Browse' tab renders media correctly by passing post objects to PostCard or by rendering thumbnails with post.media?.getDirectURL() as the src. Verify that useGetAllPosts is called and that the resulting posts array includes media fields. Ensure that media thumbnails are visible in the explore grid. Verify the blob-storage component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Audit and fix the ExternalBlob rendering utility to ensure binary blob data is correctly converted to displayable URLs",
+      "acceptanceCriteria": [
+        "Blobs fetched from the backend are converted to valid displayable URLs",
+        "Profile pictures, post images, and post videos all resolve correctly from blob data",
+        "No console errors related to invalid blob/object URLs"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AvatarPlaceholder.tsx",
+          "operation": "modify",
+          "description": "Ensure that when an ExternalBlob avatarUrl or profilePicture is present, it is rendered using avatarUrl.getDirectURL() as the img src attribute. Verify that the component correctly handles ExternalBlob instances and does not attempt to use them as strings directly. Add null/undefined checks before calling getDirectURL(). Verify the blob-storage component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/components/VideoCard.tsx",
           "operation": "modify",
-          "description": "Fix the useCreatePost mutation hook to ensure it correctly constructs the PostInput object with the media ExternalBlob, authorName, caption, and mediaType fields. Verify that the mutation's mutationFn calls actor.createPost() with the correct argument structure. Ensure the mutation properly handles both success and error responses from the backend, and that error messages are propagated to the UI. Add proper error handling for cases where the actor is not initialized or the user is not authenticated."
+          "description": "Fix video thumbnail and playback by ensuring the video src is set using post.media?.getDirectURL(). Add null checks for post.media before rendering the video element. Ensure that the video element correctly displays the thumbnail/poster and that play/pause controls work. Verify the blob-storage component's usage instructions before implementing."
         }
       ]
     }

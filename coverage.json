@@ -1,53 +1,73 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-01T13:54:38.209Z",
+  "generatedAt": "2026-03-02T07:04:10.798Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 6,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix the ProfilePage so it correctly fetches and displays the authenticated user's real data (avatar, display name, bio, follower/following counts, and posts grid) instead of remaining stuck in the skeleton/loading placeholder state indefinitely.",
+        "summary": "Fix PostCard component so that image and video media attached to posts is correctly rendered and visible. Ensure the media URL/blob is properly resolved and passed to the img/video element so content displays for all posts across all pages.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/PostCard.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/components/PostCard.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Fix the backend query/mutation wiring in ProfilePage so the useGetMyProfile (or equivalent) hook properly resolves — ensure the actor is initialized before the query runs, error states are handled gracefully, and the profile data is correctly mapped from the backend response variant to the UI state.",
-        "status": "implemented",
+        "summary": "Fix ProfilePage so that the current user's posts grid correctly fetches and displays all posts including those with images and videos. Ensure the posts query is called with the correct principal and that the resulting media blobs are rendered.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ProfilePage.tsx"
         ],
-        "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Fix the CreatePostPage so that submitting a post (text, image, or video) succeeds instead of showing 'Failed to create post. Please try again.' Diagnose and repair the useCreatePost mutation: ensure media blobs are correctly encoded and passed to the backend, the actor call parameters match the backend's expected argument types, and success/error states are handled properly.",
+        "summary": "Fix UserProfilePage so that any public user's posts grid fetches and displays all posts including those with images and videos, resolved by either principal ID or handle.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/pages/UserProfilePage.tsx"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Fix ShortSportPage (short video feed) so that video posts are fetched and rendered with working playback. Ensure video src is correctly set from the backend blob/URL data.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/pages/ShortSportPage.tsx"
+        ],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Fix ExplorePage so that posts returned by useGetAllPosts render their media (images and videos) correctly, applying the same blob resolution fix used in PostCard.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/CreatePostPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ExplorePage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/CreatePostPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ExplorePage.tsx"
         ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Audit and fix the ExternalBlob rendering utility (used in AvatarPlaceholder and PostCard) to ensure binary blob data returned from the backend is correctly converted to an object URL or data URL before being assigned to img/video src attributes.",
+        "status": "missing",
+        "plannedFiles": [
+          "frontend/src/components/AvatarPlaceholder.tsx",
+          "frontend/src/components/VideoCard.tsx"
+        ],
+        "matchedFiles": []
       }
     ]
   },
@@ -56,9 +76,8 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/CreatePostPage.tsx",
-    "frontend/src/pages/ProfilePage.tsx",
+    "frontend/src/components/PostCard.tsx",
+    "frontend/src/pages/ExplorePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

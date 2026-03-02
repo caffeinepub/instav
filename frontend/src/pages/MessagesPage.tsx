@@ -1,739 +1,535 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import React, { useState, useEffect, useRef } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import {
   useGetConversations,
   useGetMessages,
   useSendMessage,
   useMarkMessagesRead,
-  useProfileByPrincipal,
-  useGetIncomingFriendRequests,
+  useGetUserProfileByPrincipal,
   useGetFriendsList,
+  useGetIncomingFriendRequests,
   useRespondToFriendRequest,
+  useGetFollowing,
+  useGetFollowingProfiles,
 } from '../hooks/useQueries';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
-import PostPickerModal from '../components/PostPickerModal';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  Send,
-  MessageCircle,
-  Film,
-  ArrowLeft,
-  LogIn,
-  UserCheck,
-  UserX,
-  Users,
-  Heart,
-  Loader2,
-  Play,
-} from 'lucide-react';
-import type { Conversation, Message, FriendRequest } from '../backend';
-import { toast } from 'sonner';
-
-function timeAgo(timestamp: bigint): string {
-  const now = Date.now();
-  const ts = Number(timestamp) / 1_000_000;
-  const diff = Math.floor((now - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-// ─── Conversation Item ────────────────────────────────────────────────────────
-
-function ConversationItem({
-  conversation,
-  myPrincipal,
-  onClick,
-  isActive,
-}: {
-  conversation: Conversation;
-  myPrincipal: string;
-  onClick: () => void;
-  isActive: boolean;
-}) {
-  const otherPrincipal =
-    conversation.participants[0].toString() === myPrincipal
-      ? conversation.participants[1].toString()
-      : conversation.participants[0].toString();
-
-  const { data: profile } = useProfileByPrincipal(otherPrincipal);
-  const { data: messages } = useGetMessages(otherPrincipal);
-
-  const unreadCount =
-    messages?.filter((m) => m.sender.toString() !== myPrincipal && !m.read).length ?? 0;
-
-  const lastMessage = messages && messages.length > 0 ? messages[messages.length - 1] : null;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left ${
-        isActive ? 'bg-muted' : ''
-      }`}
-    >
-      <AvatarPlaceholder
-        name={profile?.displayName ?? otherPrincipal.slice(0, 8)}
-        profilePicture={profile?.profilePicture}
-        size="md"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-sm truncate">
-            {profile?.displayName ?? `@${otherPrincipal.slice(0, 8)}...`}
-          </span>
-          {lastMessage && (
-            <span className="text-xs text-muted-foreground ml-2 shrink-0">
-              {timeAgo(lastMessage.timestamp)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center justify-between mt-0.5">
-          <p className="text-xs text-muted-foreground truncate">
-            {lastMessage
-              ? lastMessage.postId !== undefined && lastMessage.postId !== null
-                ? '🎬 Shared a shortspot'
-                : lastMessage.content
-              : 'No messages yet'}
-          </p>
-          {unreadCount > 0 && (
-            <span className="ml-2 shrink-0 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-              {unreadCount}
-            </span>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ─── Message Bubble ───────────────────────────────────────────────────────────
-
-function MessageBubble({
-  message,
-  isMine,
-  onViewPost,
-}: {
-  message: Message;
-  isMine: boolean;
-  onViewPost?: (postId: bigint) => void;
-}) {
-  const hasPost = message.postId !== undefined && message.postId !== null;
-
-  return (
-    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`}>
-      <div
-        className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-          isMine
-            ? 'bg-primary text-primary-foreground rounded-br-sm'
-            : 'bg-muted text-foreground rounded-bl-sm'
-        }`}
-      >
-        {hasPost && (
-          <button
-            onClick={() => onViewPost?.(message.postId!)}
-            className={`flex items-center gap-2 mb-2 w-full rounded-xl overflow-hidden border transition-opacity hover:opacity-80 ${
-              isMine
-                ? 'border-primary-foreground/20 bg-primary-foreground/10'
-                : 'border-border bg-background/50'
-            }`}
-          >
-            <div className="flex items-center gap-2 px-3 py-2 w-full">
-              <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                  isMine ? 'bg-primary-foreground/20' : 'bg-primary/10'
-                }`}
-              >
-                <Play
-                  size={16}
-                  className={isMine ? 'text-primary-foreground' : 'text-primary'}
-                  fill="currentColor"
-                />
-              </div>
-              <div className="flex flex-col items-start min-w-0">
-                <span
-                  className={`text-xs font-semibold truncate ${
-                    isMine ? 'text-primary-foreground' : 'text-foreground'
-                  }`}
-                >
-                  ShortSport
-                </span>
-                <span
-                  className={`text-xs truncate ${
-                    isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                  }`}
-                >
-                  Tap to watch
-                </span>
-              </div>
-              <Film
-                size={14}
-                className={`ml-auto shrink-0 ${
-                  isMine ? 'text-primary-foreground/60' : 'text-muted-foreground'
-                }`}
-              />
-            </div>
-          </button>
-        )}
-        {message.content && (
-          <p className="text-sm leading-relaxed">{message.content}</p>
-        )}
-        <p
-          className={`text-xs mt-1 ${
-            isMine ? 'text-primary-foreground/60' : 'text-muted-foreground'
-          }`}
-        >
-          {timeAgo(message.timestamp)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Thread View ──────────────────────────────────────────────────────────────
-
-function ThreadView({
-  otherPrincipal,
-  myPrincipal,
-  onBack,
-}: {
-  otherPrincipal: string;
-  myPrincipal: string;
-  onBack: () => void;
-}) {
-  const navigate = useNavigate();
-  const [text, setText] = useState('');
-  const [showPostPicker, setShowPostPicker] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  const { data: profile } = useProfileByPrincipal(otherPrincipal);
-  const { data: messages, isLoading } = useGetMessages(otherPrincipal);
-  const sendMessage = useSendMessage();
-  const markRead = useMarkMessagesRead();
-
-  const messagesLength = messages?.length ?? 0;
-
-  useEffect(() => {
-    if (messagesLength > 0) {
-      markRead.mutate(otherPrincipal);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messagesLength, otherPrincipal]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesLength]);
-
-  const handleSend = () => {
-    if (!text.trim()) return;
-    sendMessage.mutate({ recipientStr: otherPrincipal, content: text.trim() });
-    setText('');
-  };
-
-  const handleSharePost = (postId: bigint) => {
-    sendMessage.mutate({
-      recipientStr: otherPrincipal,
-      content: 'Shared a shortspot with you',
-      postId,
-    });
-    setShowPostPicker(false);
-  };
-
-  const handleViewPost = (postId: bigint) => {
-    navigate({
-      to: '/shortsport',
-      search: { postId: postId.toString() },
-    });
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background/80 backdrop-blur-sm">
-        <button
-          onClick={onBack}
-          className="md:hidden p-1 rounded-full hover:bg-muted transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <AvatarPlaceholder
-          name={profile?.displayName ?? otherPrincipal.slice(0, 8)}
-          profilePicture={profile?.profilePicture}
-          size="sm"
-        />
-        <div>
-          <p className="font-semibold text-sm">
-            {profile?.displayName ?? `@${otherPrincipal.slice(0, 8)}...`}
-          </p>
-          {profile?.handle && (
-            <p className="text-xs text-muted-foreground">@{profile.handle}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Messages */}
-      <ScrollArea className="flex-1 px-4 py-4">
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}
-              >
-                <Skeleton className="h-12 w-48 rounded-2xl" />
-              </div>
-            ))}
-          </div>
-        ) : messages && messages.length > 0 ? (
-          <>
-            {messages.map((msg, idx) => (
-              <MessageBubble
-                key={idx}
-                message={msg}
-                isMine={msg.sender.toString() === myPrincipal}
-                onViewPost={handleViewPost}
-              />
-            ))}
-            <div ref={bottomRef} />
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-            <MessageCircle size={32} className="mb-2 opacity-40" />
-            <p className="text-sm">No messages yet. Say hello!</p>
-          </div>
-        )}
-      </ScrollArea>
-
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-border bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPostPicker(true)}
-            className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Share a Shortspot"
-          >
-            <Film size={20} />
-          </button>
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Type a message..."
-            className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1"
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!text.trim() || sendMessage.isPending}
-            className="rounded-full shrink-0"
-          >
-            <Send size={16} />
-          </Button>
-        </div>
-      </div>
-
-      {showPostPicker && (
-        <PostPickerModal
-          myPrincipal={myPrincipal}
-          onSelect={handleSharePost}
-          onClose={() => setShowPostPicker(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Friend Request Card ──────────────────────────────────────────────────────
-
-function FriendRequestCard({
-  request,
-  onAccept,
-  onDecline,
-  isResponding,
-}: {
-  request: FriendRequest;
-  onAccept: () => void;
-  onDecline: () => void;
-  isResponding: boolean;
-}) {
-  const senderStr = request.sender.toString();
-  const { data: profile } = useProfileByPrincipal(senderStr);
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0">
-      <AvatarPlaceholder
-        name={profile?.displayName ?? senderStr.slice(0, 8)}
-        profilePicture={profile?.profilePicture}
-        size="md"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate">
-          {profile?.displayName ?? `@${senderStr.slice(0, 8)}...`}
-        </p>
-        {profile?.handle && (
-          <p className="text-xs text-muted-foreground">@{profile.handle}</p>
-        )}
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Sent a friend request · {timeAgo(request.timestamp)}
-        </p>
-      </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Button
-          size="sm"
-          onClick={onAccept}
-          disabled={isResponding}
-          className="rounded-full h-8 px-3 text-xs gap-1"
-        >
-          {isResponding ? (
-            <Loader2 size={12} className="animate-spin" />
-          ) : (
-            <UserCheck size={12} />
-          )}
-          Accept
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onDecline}
-          disabled={isResponding}
-          className="rounded-full h-8 px-3 text-xs gap-1"
-        >
-          {isResponding ? (
-            <Loader2 size={12} className="animate-spin" />
-          ) : (
-            <UserX size={12} />
-          )}
-          Decline
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Social Tab ───────────────────────────────────────────────────────────────
-
-function SocialTab() {
-  const { data: incomingRequests, isLoading } = useGetIncomingFriendRequests();
-  const respondMutation = useRespondToFriendRequest();
-  const [respondingTo, setRespondingTo] = useState<string | null>(null);
-
-  const handleAccept = async (senderPrincipal: string) => {
-    setRespondingTo(senderPrincipal);
-    try {
-      await respondMutation.mutateAsync({ senderStr: senderPrincipal, accept: true });
-      toast.success('Friend request accepted! 🎉');
-    } catch {
-      toast.error('Failed to accept friend request.');
-    } finally {
-      setRespondingTo(null);
-    }
-  };
-
-  const handleDecline = async (senderPrincipal: string) => {
-    setRespondingTo(senderPrincipal);
-    try {
-      await respondMutation.mutateAsync({ senderStr: senderPrincipal, accept: false });
-      toast.success('Friend request declined.');
-    } catch {
-      toast.error('Failed to decline friend request.');
-    } finally {
-      setRespondingTo(null);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-1 p-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="w-10 h-10 rounded-full" />
-            <div className="flex-1 space-y-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className="h-8 w-20 rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (!incomingRequests || incomingRequests.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground px-4 text-center">
-        <Heart size={32} className="mb-2 opacity-40" />
-        <p className="text-sm font-medium">No friend requests</p>
-        <p className="text-xs mt-1 opacity-70">
-          When someone sends you a friend request, it will appear here.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="px-4 py-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-        Friend Requests · {incomingRequests.length}
-      </p>
-      {incomingRequests.map((req) => {
-        const senderStr = req.sender.toString();
-        return (
-          <FriendRequestCard
-            key={senderStr}
-            request={req}
-            onAccept={() => handleAccept(senderStr)}
-            onDecline={() => handleDecline(senderStr)}
-            isResponding={respondingTo === senderStr}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Friend Zone Item ─────────────────────────────────────────────────────────
-
-function FriendZoneItem({
-  principalStr,
-  onMessage,
-}: {
-  principalStr: string;
-  onMessage: () => void;
-}) {
-  const { data: profile } = useProfileByPrincipal(principalStr);
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0">
-      <AvatarPlaceholder
-        name={profile?.displayName ?? principalStr.slice(0, 8)}
-        profilePicture={profile?.profilePicture}
-        size="md"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate">
-          {profile?.displayName ?? `@${principalStr.slice(0, 8)}...`}
-        </p>
-        {profile?.handle && (
-          <p className="text-xs text-muted-foreground">@{profile.handle}</p>
-        )}
-      </div>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={onMessage}
-        className="rounded-full h-8 px-3 text-xs gap-1 shrink-0"
-      >
-        <MessageCircle size={12} />
-        Message
-      </Button>
-    </div>
-  );
-}
-
-// ─── Friend Zone Tab ──────────────────────────────────────────────────────────
-
-function FriendZoneTab({
-  onStartConversation,
-}: {
-  onStartConversation: (principal: string) => void;
-}) {
-  const { data: friends, isLoading } = useGetFriendsList();
-
-  // friends is Principal[] — convert to string[] for rendering
-  const friendStrings: string[] = friends?.map((p) => p.toString()) ?? [];
-
-  if (isLoading) {
-    return (
-      <div className="space-y-1 p-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="w-10 h-10 rounded-full" />
-            <div className="flex-1 space-y-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className="h-8 w-20 rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (friendStrings.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground px-4 text-center">
-        <Users size={32} className="mb-2 opacity-40" />
-        <p className="text-sm font-medium">No friends yet</p>
-        <p className="text-xs mt-1 opacity-70">
-          Send friend requests to connect with people.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="px-4 py-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-        Friends · {friendStrings.length}
-      </p>
-      {friendStrings.map((principalStr) => (
-        <FriendZoneItem
-          key={principalStr}
-          principalStr={principalStr}
-          onMessage={() => onStartConversation(principalStr)}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+import { Button } from '@/components/ui/button';
+import { Send, MessageCircle, Users, UserCheck, Star, ArrowLeft } from 'lucide-react';
+import type { Conversation } from '../backend';
 
 interface MessagesPageProps {
   initialPrincipal?: string;
 }
 
-export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
-  const { identity } = useInternetIdentity();
-  const myPrincipal = identity?.getPrincipal().toString() ?? '';
-
-  const [activeConversation, setActiveConversation] = useState<string | null>(
-    initialPrincipal ?? null
-  );
-
-  const { data: conversations, isLoading: loadingConversations } =
-    useGetConversations();
-
-  const handleStartConversation = (principal: string) => {
-    setActiveConversation(principal);
-  };
-
-  if (!identity) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-muted-foreground px-6 text-center">
-        <LogIn size={40} className="opacity-40" />
-        <p className="text-lg font-semibold text-foreground">Sign in to message</p>
-        <p className="text-sm">
-          You need to be signed in to send and receive messages.
-        </p>
-      </div>
-    );
-  }
+// Sub-component: conversation list item
+function ConversationItem({
+  principalStr,
+  isSelected,
+  onClick,
+}: {
+  principalStr: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] overflow-hidden">
-      {/* Sidebar — conversation list */}
-      <div
-        className={`flex flex-col border-r border-border bg-background ${
-          activeConversation ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'
-        }`}
-      >
-        <div className="px-4 py-3 border-b border-border">
-          <h1 className="font-bold text-lg">Messages</h1>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left ${
+        isSelected
+          ? 'bg-primary/10 border-l-2 border-primary'
+          : 'hover:bg-surface/60 border-l-2 border-transparent'
+      }`}
+    >
+      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">
+          {profile?.displayName || 'Unknown User'}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">@{profile?.handle || principalStr.slice(0, 12)}</p>
+      </div>
+    </button>
+  );
+}
+
+// Sub-component: message thread
+function MessageThread({
+  otherPrincipal,
+  currentPrincipal,
+  onBack,
+}: {
+  otherPrincipal: string;
+  currentPrincipal: string;
+  onBack?: () => void;
+}) {
+  const { data: messages, isLoading } = useGetMessages(otherPrincipal);
+  const { data: profile } = useGetUserProfileByPrincipal(otherPrincipal);
+  const sendMessage = useSendMessage();
+  const markRead = useMarkMessagesRead();
+  const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (otherPrincipal) {
+      markRead.mutate(otherPrincipal);
+    }
+  }, [otherPrincipal, messages?.length]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+    const recipientStr = otherPrincipal;
+    try {
+      await sendMessage.mutateAsync({ recipient: recipientStr, content: newMessage.trim() });
+      setNewMessage('');
+    } catch (err) {
+      console.error('Send message error:', err);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface/50">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="md:hidden mr-1 p-1 rounded-full hover:bg-surface transition-colors text-muted-foreground"
+            aria-label="Back to conversations"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+        <AvatarPlaceholder name={profile?.displayName || otherPrincipal.slice(0, 8)} size="sm" />
+        <div>
+          <p className="font-medium text-foreground">{profile?.displayName || 'Unknown User'}</p>
+          <p className="text-xs text-muted-foreground">@{profile?.handle || otherPrincipal.slice(0, 12)}</p>
         </div>
-
-        <Tabs defaultValue="inbox" className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="mx-4 mt-2 mb-1 grid grid-cols-3 h-9">
-            <TabsTrigger value="inbox" className="text-xs">
-              Inbox
-            </TabsTrigger>
-            <TabsTrigger value="social" className="text-xs">
-              Social
-            </TabsTrigger>
-            <TabsTrigger value="friends" className="text-xs">
-              Friends
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Inbox Tab */}
-          <TabsContent value="inbox" className="flex-1 overflow-y-auto mt-0">
-            {loadingConversations ? (
-              <div className="space-y-1 p-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3">
-                    <Skeleton className="w-10 h-10 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-48" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : !conversations || conversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-muted-foreground px-4 text-center">
-                <MessageCircle size={32} className="mb-2 opacity-40" />
-                <p className="text-sm font-medium">No conversations yet</p>
-                <p className="text-xs mt-1 opacity-70">
-                  Start a conversation from someone's profile.
-                </p>
-              </div>
-            ) : (
-              <div>
-                {conversations.map((conv, idx) => (
-                  <ConversationItem
-                    key={idx}
-                    conversation={conv}
-                    myPrincipal={myPrincipal}
-                    isActive={
-                      activeConversation ===
-                      (conv.participants[0].toString() === myPrincipal
-                        ? conv.participants[1].toString()
-                        : conv.participants[0].toString())
-                    }
-                    onClick={() => {
-                      const other =
-                        conv.participants[0].toString() === myPrincipal
-                          ? conv.participants[1].toString()
-                          : conv.participants[0].toString();
-                      setActiveConversation(other);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Social Tab */}
-          <TabsContent value="social" className="flex-1 overflow-y-auto mt-0">
-            <SocialTab />
-          </TabsContent>
-
-          {/* Friends Tab */}
-          <TabsContent value="friends" className="flex-1 overflow-y-auto mt-0">
-            <FriendZoneTab onStartConversation={handleStartConversation} />
-          </TabsContent>
-        </Tabs>
       </div>
 
-      {/* Thread view */}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                <Skeleton className="h-10 w-48 rounded-2xl" />
+              </div>
+            ))}
+          </div>
+        ) : messages?.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
+            <p className="text-sm">No messages yet. Say hello!</p>
+          </div>
+        ) : (
+          messages?.map((msg, idx) => {
+            const isOwn = msg.sender.toString() === currentPrincipal;
+            return (
+              <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[70%] px-4 py-2 rounded-2xl text-sm ${
+                    isOwn
+                      ? 'bg-primary text-primary-foreground rounded-br-sm'
+                      : 'bg-surface border border-border text-foreground rounded-bl-sm'
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-4 py-3 border-t border-border bg-surface/50">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={e => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            className="flex-1 px-4 py-2 rounded-full bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+          />
+          <Button
+            onClick={handleSend}
+            disabled={!newMessage.trim() || sendMessage.isPending}
+            size="icon"
+            className="rounded-full shrink-0"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sub-component: Friend Zone Tab
+function FriendZoneTab({ currentPrincipal, onStartChat }: { currentPrincipal: string; onStartChat: (p: string) => void }) {
+  const { data: friendsList, isLoading: friendsLoading } = useGetFriendsList();
+  const { data: incomingRequests, isLoading: requestsLoading } = useGetIncomingFriendRequests();
+  const respondMutation = useRespondToFriendRequest();
+
+  const handleRespond = async (senderStr: string, accept: boolean) => {
+    try {
+      await respondMutation.mutateAsync({ sender: senderStr, accept });
+    } catch (err) {
+      console.error('Respond to friend request error:', err);
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-6">
+      {/* Incoming Requests */}
+      {(incomingRequests?.length ?? 0) > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-primary" />
+            Friend Requests ({incomingRequests?.length})
+          </h3>
+          <div className="space-y-2">
+            {requestsLoading ? (
+              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)
+            ) : (
+              incomingRequests?.map((req) => {
+                const senderStr = req.sender.toString();
+                return (
+                  <FriendRequestItem
+                    key={senderStr}
+                    principalStr={senderStr}
+                    onAccept={() => handleRespond(senderStr, true)}
+                    onDecline={() => handleRespond(senderStr, false)}
+                    isLoading={respondMutation.isPending}
+                  />
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Friends List */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary" />
+          Friends ({friendsList?.length ?? 0})
+        </h3>
+        {friendsLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+          </div>
+        ) : (friendsList?.length ?? 0) === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No friends yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {friendsList?.map((friendPrincipal) => (
+              <FriendItem
+                key={friendPrincipal}
+                principalStr={friendPrincipal}
+                onChat={() => onStartChat(friendPrincipal)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FriendRequestItem({
+  principalStr,
+  onAccept,
+  onDecline,
+  isLoading,
+}: {
+  principalStr: string;
+  onAccept: () => void;
+  onDecline: () => void;
+  isLoading: boolean;
+}) {
+  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{profile?.displayName || 'Unknown'}</p>
+        <p className="text-xs text-muted-foreground">@{profile?.handle || principalStr.slice(0, 12)}</p>
+      </div>
+      <div className="flex gap-1">
+        <Button size="sm" onClick={onAccept} disabled={isLoading} className="h-7 px-2 text-xs">Accept</Button>
+        <Button size="sm" variant="outline" onClick={onDecline} disabled={isLoading} className="h-7 px-2 text-xs">Decline</Button>
+      </div>
+    </div>
+  );
+}
+
+function FriendItem({ principalStr, onChat }: { principalStr: string; onChat: () => void }) {
+  const { data: profile } = useGetUserProfileByPrincipal(principalStr);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
+      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{profile?.displayName || 'Unknown'}</p>
+        <p className="text-xs text-muted-foreground">@{profile?.handle || principalStr.slice(0, 12)}</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onChat} className="h-7 px-3 text-xs shrink-0">
+        <MessageCircle className="w-3 h-3 mr-1" />
+        Chat
+      </Button>
+    </div>
+  );
+}
+
+// Sub-component: Shadowing Tab
+function ShadowingTab({ currentPrincipal }: { currentPrincipal: string }) {
+  const { data: followingList, isLoading: followingLoading } = useGetFollowing(currentPrincipal);
+  const { data: followingProfiles, isLoading: profilesLoading } = useGetFollowingProfiles(currentPrincipal);
+
+  const isLoading = followingLoading || profilesLoading;
+  const followingCount = followingList?.length ?? 0;
+
+  return (
+    <div className="p-4">
+      {/* Gold Premium Header Card */}
+      <div className="relative mb-5 rounded-2xl overflow-hidden border border-amber-400/60 shadow-lg shadow-amber-400/20">
+        {/* Gold gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-yellow-900/30 to-amber-800/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/5 via-amber-300/10 to-yellow-400/5" />
+        {/* Shimmer line */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
+        <div className="relative px-5 py-4 flex items-center gap-4">
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-md shadow-amber-500/40">
+            <Star className="w-6 h-6 text-amber-900 fill-amber-900" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/80 mb-0.5">Shadowing</p>
+            <p className="text-2xl font-display font-bold bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+              {followingCount} {followingCount === 1 ? 'User' : 'Users'}
+            </p>
+            <p className="text-xs text-amber-400/60 mt-0.5">People you are shadowing</p>
+          </div>
+        </div>
+        {/* Bottom shimmer */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+      </div>
+
+      {/* Following List */}
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+      ) : followingCount === 0 ? (
+        <div className="text-center py-10 rounded-xl border border-amber-400/20 bg-amber-900/10">
+          <Star className="w-10 h-10 mx-auto mb-3 text-amber-400/40" />
+          <p className="text-amber-300/60 text-sm font-medium">Not shadowing anyone yet.</p>
+          <p className="text-amber-300/40 text-xs mt-1">Follow users to start shadowing them.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(followingProfiles ?? followingList?.map(p => ({ principal: p, profile: null })) ?? []).map((item) => (
+            <ShadowingUserItem
+              key={item.principal}
+              principalStr={item.principal}
+              profile={item.profile}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShadowingUserItem({
+  principalStr,
+  profile,
+}: {
+  principalStr: string;
+  profile: import('../backend').UserProfileData | null;
+}) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-900/20 to-yellow-900/10 border border-amber-400/25 hover:border-amber-400/50 transition-colors">
+      <div className="relative">
+        <AvatarPlaceholder
+          name={profile?.displayName || principalStr.slice(0, 8)}
+          profilePicture={profile?.profilePicture}
+          size="sm"
+        />
+        {/* Gold ring */}
+        <div className="absolute inset-0 rounded-full ring-1 ring-amber-400/40" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">
+          {profile?.displayName || 'Unknown User'}
+        </p>
+        <p className="text-xs text-amber-400/70 truncate">
+          @{profile?.handle || principalStr.slice(0, 12)}
+        </p>
+      </div>
+      <div className="shrink-0">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-medium">
+          <Star className="w-2.5 h-2.5 fill-amber-300" />
+          Shadow
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Main MessagesPage
+export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
+  const { identity } = useInternetIdentity();
+  const currentPrincipal = identity?.getPrincipal().toString() ?? '';
+
+  const { data: conversations, isLoading: convsLoading } = useGetConversations();
+  const [selectedPrincipal, setSelectedPrincipal] = useState<string | null>(initialPrincipal ?? null);
+  const [activeTab, setActiveTab] = useState<'inbox' | 'social' | 'friendzone' | 'shadowing'>('inbox');
+
+  useEffect(() => {
+    if (initialPrincipal) {
+      setSelectedPrincipal(initialPrincipal);
+      setActiveTab('inbox');
+    }
+  }, [initialPrincipal]);
+
+  const conversationPrincipals = (conversations ?? [])
+    .map((conv: Conversation) => {
+      const [p1, p2] = conv.participants;
+      return p1.toString() === currentPrincipal ? p2.toString() : p1.toString();
+    })
+    .filter((p, idx, arr) => arr.indexOf(p) === idx);
+
+  const handleSelectConversation = (p: string) => {
+    setSelectedPrincipal(p);
+    setActiveTab('inbox');
+  };
+
+  const handleBack = () => {
+    setSelectedPrincipal(null);
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-8rem)] max-w-4xl mx-auto">
+      {/* Left Panel — full width on mobile when no conversation selected, hidden on mobile when thread is open */}
       <div
-        className={`flex-1 overflow-hidden ${
-          activeConversation ? 'flex flex-col' : 'hidden md:flex md:flex-col'
-        }`}
+        className={`
+          flex flex-col bg-background border-r border-border
+          ${selectedPrincipal ? 'hidden md:flex md:w-80 md:shrink-0' : 'flex w-full md:w-80 md:shrink-0'}
+        `}
       >
-        {activeConversation ? (
-          <ThreadView
-            otherPrincipal={activeConversation}
-            myPrincipal={myPrincipal}
-            onBack={() => setActiveConversation(null)}
+        {/* Tabs */}
+        <div className="flex border-b border-border">
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`flex-1 py-3 text-xs font-medium transition-colors ${
+              activeTab === 'inbox' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Inbox
+          </button>
+          <button
+            onClick={() => setActiveTab('friendzone')}
+            className={`flex-1 py-3 text-xs font-medium transition-colors ${
+              activeTab === 'friendzone' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Friend Zone
+          </button>
+          <button
+            onClick={() => setActiveTab('shadowing')}
+            className={`flex-1 py-3 text-xs font-medium transition-colors relative ${
+              activeTab === 'shadowing'
+                ? 'border-b-2 border-amber-400'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            style={activeTab === 'shadowing' ? { color: '#fbbf24' } : {}}
+          >
+            <span className={activeTab === 'shadowing' ? 'bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent font-semibold' : ''}>
+              Shadowing
+            </span>
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'inbox' && (
+            <>
+              {convsLoading ? (
+                <div className="p-4 space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-14 rounded-xl" />
+                  ))}
+                </div>
+              ) : conversationPrincipals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">
+                  <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
+                  <p className="text-sm text-center">No conversations yet.</p>
+                </div>
+              ) : (
+                conversationPrincipals.map((p) => (
+                  <ConversationItem
+                    key={p}
+                    principalStr={p}
+                    isSelected={selectedPrincipal === p}
+                    onClick={() => handleSelectConversation(p)}
+                  />
+                ))
+              )}
+            </>
+          )}
+
+          {activeTab === 'friendzone' && (
+            <FriendZoneTab
+              currentPrincipal={currentPrincipal}
+              onStartChat={handleSelectConversation}
+            />
+          )}
+
+          {activeTab === 'shadowing' && (
+            <ShadowingTab currentPrincipal={currentPrincipal} />
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel — hidden on mobile when no conversation selected, full width on mobile when thread is open */}
+      <div
+        className={`
+          flex-1 flex flex-col bg-background
+          ${selectedPrincipal ? 'flex' : 'hidden md:flex'}
+        `}
+      >
+        {selectedPrincipal ? (
+          <MessageThread
+            otherPrincipal={selectedPrincipal}
+            currentPrincipal={currentPrincipal}
+            onBack={handleBack}
           />
         ) : (
+          /* Desktop-only empty state — hidden on mobile via parent */
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle size={48} className="mb-3 opacity-20" />
-            <p className="text-sm font-medium">Select a conversation</p>
-            <p className="text-xs mt-1 opacity-60">
-              Choose from your inbox or start a new one.
-            </p>
+            <MessageCircle className="w-16 h-16 mb-4 opacity-20" />
+            <p className="text-lg font-medium">Select a conversation</p>
+            <p className="text-sm mt-1">Choose from your inbox or start a new chat</p>
           </div>
         )}
       </div>

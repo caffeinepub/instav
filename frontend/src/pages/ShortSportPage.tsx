@@ -6,6 +6,9 @@ import {
   useLikePost,
   useRecordView,
   useGetCallerUserProfile,
+  useIsFollowing,
+  useFollowUser,
+  useUnfollowUser,
 } from '../hooks/useQueries';
 import { Post } from '../backend';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
@@ -20,7 +23,60 @@ import {
   VolumeX,
   Play,
   RefreshCw,
+  UserPlus,
+  UserCheck,
 } from 'lucide-react';
+
+// ─── Follow Button ─────────────────────────────────────────────────────────────
+
+interface FollowButtonProps {
+  authorPrincipalStr: string;
+  currentUserPrincipalStr?: string;
+}
+
+function FollowButton({ authorPrincipalStr, currentUserPrincipalStr }: FollowButtonProps) {
+  const isOwnPost = currentUserPrincipalStr === authorPrincipalStr;
+  // useIsFollowing expects string | null — use null (not undefined) when skipping
+  const { data: isFollowing, isLoading } = useIsFollowing(
+    isOwnPost ? null : authorPrincipalStr
+  );
+  const followMutation = useFollowUser();
+  const unfollowMutation = useUnfollowUser();
+
+  if (isOwnPost || !currentUserPrincipalStr) return null;
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isFollowing) {
+      unfollowMutation.mutate(authorPrincipalStr);
+    } else {
+      followMutation.mutate(authorPrincipalStr);
+    }
+  };
+
+  const isPending = followMutation.isPending || unfollowMutation.isPending || isLoading;
+
+  return (
+    <button
+      onClick={handleToggle}
+      disabled={isPending}
+      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${
+        isFollowing
+          ? 'bg-white/10 border-white/40 text-white/80 hover:bg-red-500/20 hover:border-red-400 hover:text-red-300'
+          : 'bg-white text-black border-white hover:bg-white/90'
+      } disabled:opacity-50`}
+    >
+      {isPending ? (
+        <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+      ) : isFollowing ? (
+        <UserCheck size={11} />
+      ) : (
+        <UserPlus size={11} />
+      )}
+      <span>{isFollowing ? 'Following' : 'Follow'}</span>
+    </button>
+  );
+}
 
 // ─── Video Item ───────────────────────────────────────────────────────────────
 
@@ -29,6 +85,7 @@ interface VideoItemProps {
   isActive: boolean;
   isMuted: boolean;
   autoScroll: boolean;
+  currentUserPrincipalStr?: string;
   onToggleMute: () => void;
   onLike: () => void;
   onComment: () => void;
@@ -43,6 +100,7 @@ function VideoItem({
   isActive,
   isMuted,
   autoScroll,
+  currentUserPrincipalStr,
   onToggleMute,
   onLike,
   onComment,
@@ -96,11 +154,12 @@ function VideoItem({
 
   const isVideo = post.mediaType?.startsWith('video');
   const mediaUrl = post.media?.getDirectURL();
+  const authorPrincipalStr = post.authorPrincipal?.toString();
 
   return (
-    <div className="relative w-full h-full bg-black flex flex-col overflow-hidden">
-      {/* ── Media area ── */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+    <div className="relative w-full h-full bg-black overflow-hidden">
+      {/* ── Media area (full screen) ── */}
+      <div className="absolute inset-0 flex items-center justify-center">
         {mediaUrl ? (
           isVideo ? (
             <video
@@ -140,107 +199,118 @@ function VideoItem({
             </div>
           </div>
         )}
-
-        {/* Left-side action buttons — all six controls */}
-        <div className="absolute left-3 bottom-4 flex flex-col items-center gap-4">
-          {/* Volume */}
-          <button
-            onClick={onToggleMute}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-              {isMuted ? (
-                <VolumeX size={18} className="text-white" />
-              ) : (
-                <Volume2 size={18} className="text-white" />
-              )}
-            </div>
-          </button>
-
-          {/* Like */}
-          <button
-            onClick={handleLike}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-              <Heart
-                size={20}
-                className={liked ? 'text-red-500 fill-red-500' : 'text-white'}
-              />
-            </div>
-            <span className="text-white text-xs drop-shadow">
-              {Number(post.likeCount) + (liked ? 1 : 0)}
-            </span>
-          </button>
-
-          {/* Bookmark */}
-          <button className="flex flex-col items-center gap-1">
-            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-              <Bookmark size={20} className="text-white" />
-            </div>
-          </button>
-
-          {/* Comment */}
-          <button
-            onClick={onComment}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-              <MessageCircle size={20} className="text-white" />
-            </div>
-            <span className="text-white text-xs drop-shadow">Comment</span>
-          </button>
-
-          {/* Auto-scroll toggle */}
-          <button
-            onClick={onToggleAutoScroll}
-            className="flex flex-col items-center gap-1"
-            title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
-          >
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                autoScroll ? 'bg-gold/80' : 'bg-black/50'
-              }`}
-            >
-              <RefreshCw size={18} className={autoScroll ? 'text-black' : 'text-white'} />
-            </div>
-            <span className={`text-xs drop-shadow ${autoScroll ? 'text-gold' : 'text-white'}`}>
-              Auto
-            </span>
-          </button>
-
-          {/* Share */}
-          <button
-            onClick={onShare}
-            className="flex flex-col items-center gap-1"
-          >
-            <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-              <Share2 size={20} className="text-white" />
-            </div>
-            <span className="text-white text-xs drop-shadow">Share</span>
-          </button>
-        </div>
       </div>
 
-      {/* ── Bottom info bar ── */}
-      <div className="flex-shrink-0 bg-black/80 px-4 pt-3 pb-4">
-        {/* Author row */}
-        <button
-          onClick={onProfileClick}
-          className="flex items-center gap-2 mb-1.5 group"
-        >
-          <AvatarPlaceholder name={post.authorName} size="sm" />
-          <span className="text-white font-semibold text-sm group-hover:underline">
-            {post.authorName}
-          </span>
-        </button>
+      {/* ── Bottom gradient overlay for readability ── */}
+      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+
+      {/* ── Bottom-left: Profile + Caption ── */}
+      <div className="absolute bottom-6 left-3 right-16 z-10">
+        {/* Author row with Follow button */}
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            onClick={onProfileClick}
+            className="flex items-center gap-2 group flex-shrink-0"
+          >
+            <AvatarPlaceholder name={post.authorName} size="sm" />
+            <span className="text-white font-semibold text-sm group-hover:underline drop-shadow">
+              {post.authorName}
+            </span>
+          </button>
+          {authorPrincipalStr && (
+            <FollowButton
+              authorPrincipalStr={authorPrincipalStr}
+              currentUserPrincipalStr={currentUserPrincipalStr}
+            />
+          )}
+        </div>
 
         {/* Caption */}
         {post.caption && (
-          <p className="text-white/85 text-sm line-clamp-2 leading-snug">
+          <p className="text-white/90 text-sm line-clamp-2 leading-snug drop-shadow">
             {post.caption}
           </p>
         )}
+      </div>
+
+      {/* ── Right-side action buttons ── */}
+      <div className="absolute right-3 bottom-6 flex flex-col items-center gap-4 z-10">
+        {/* Volume */}
+        <button
+          onClick={onToggleMute}
+          className="flex flex-col items-center gap-1"
+        >
+          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+            {isMuted ? (
+              <VolumeX size={18} className="text-white" />
+            ) : (
+              <Volume2 size={18} className="text-white" />
+            )}
+          </div>
+        </button>
+
+        {/* Like */}
+        <button
+          onClick={handleLike}
+          className="flex flex-col items-center gap-1"
+        >
+          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+            <Heart
+              size={20}
+              className={liked ? 'text-red-500 fill-red-500' : 'text-white'}
+            />
+          </div>
+          <span className="text-white text-xs drop-shadow">
+            {Number(post.likeCount) + (liked ? 1 : 0)}
+          </span>
+        </button>
+
+        {/* Bookmark */}
+        <button className="flex flex-col items-center gap-1">
+          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+            <Bookmark size={20} className="text-white" />
+          </div>
+        </button>
+
+        {/* Comment */}
+        <button
+          onClick={onComment}
+          className="flex flex-col items-center gap-1"
+        >
+          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+            <MessageCircle size={20} className="text-white" />
+          </div>
+          <span className="text-white text-xs drop-shadow">Comment</span>
+        </button>
+
+        {/* Auto-scroll toggle */}
+        <button
+          onClick={onToggleAutoScroll}
+          className="flex flex-col items-center gap-1"
+          title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+        >
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+              autoScroll ? 'bg-gold/80' : 'bg-black/50'
+            }`}
+          >
+            <RefreshCw size={18} className={autoScroll ? 'text-black' : 'text-white'} />
+          </div>
+          <span className={`text-xs drop-shadow ${autoScroll ? 'text-gold' : 'text-white'}`}>
+            Auto
+          </span>
+        </button>
+
+        {/* Share */}
+        <button
+          onClick={onShare}
+          className="flex flex-col items-center gap-1"
+        >
+          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+            <Share2 size={20} className="text-white" />
+          </div>
+          <span className="text-white text-xs drop-shadow">Share</span>
+        </button>
       </div>
     </div>
   );
@@ -258,6 +328,8 @@ export default function ShortSportPage() {
 
   const search = useSearch({ from: '/shortsport' }) as { postId?: string };
   const targetPostId = search?.postId;
+
+  const currentUserPrincipalStr = identity?.getPrincipal().toString();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -387,6 +459,7 @@ export default function ShortSportPage() {
               isActive={index === activeIndex}
               isMuted={isMuted}
               autoScroll={autoScroll}
+              currentUserPrincipalStr={currentUserPrincipalStr}
               onToggleMute={() => setIsMuted((m) => !m)}
               onLike={() => likeMutation.mutate(post.id)}
               onComment={() => {

@@ -1,329 +1,274 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Upload, Link, Image, Video, FileImage, Loader2, CheckCircle, Type } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { ExternalBlob } from '../backend';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useCreatePost, useGetCallerUserProfile } from '../hooks/useQueries';
+import { useGetCallerUserProfile, useCreatePost } from '../hooks/useQueries';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, Image, Video, FileText, Upload, X, Loader2 } from 'lucide-react';
+import { ExternalBlob } from '../backend';
+import { toast } from 'sonner';
 
-type MediaType = 'photo' | 'video' | 'GIF' | 'text';
-
-const mediaTypeOptions: { value: MediaType; label: string; icon: React.ReactNode }[] = [
-  { value: 'photo', label: 'Photo', icon: <Image className="w-4 h-4" /> },
-  { value: 'video', label: 'Video', icon: <Video className="w-4 h-4" /> },
-  { value: 'GIF', label: 'GIF', icon: <FileImage className="w-4 h-4" /> },
-  { value: 'text', label: 'Text', icon: <Type className="w-4 h-4" /> },
-];
+type PostType = 'image' | 'video' | 'text';
 
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { data: userProfile } = useGetCallerUserProfile();
+  const { data: profile } = useGetCallerUserProfile();
   const createPost = useCreatePost();
 
-  const [mediaUrl, setMediaUrl] = useState('');
-  const [mediaBlob, setMediaBlob] = useState<ExternalBlob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [mediaType, setMediaType] = useState<MediaType>('photo');
+  const [postType, setPostType] = useState<PostType>('text');
   const [caption, setCaption] = useState('');
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const authorName = profile?.displayName
+    || profile?.handle
+    || (identity ? identity.getPrincipal().toString().slice(0, 12) + '...' : 'Anonymous');
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Detect media type from file
-    if (file.type.startsWith('video/')) setMediaType('video');
-    else if (file.type === 'image/gif') setMediaType('GIF');
-    else setMediaType('photo');
+    setMediaFile(file);
+    setError('');
 
-    // Create a local object URL for preview
-    const localPreview = URL.createObjectURL(file);
-    setPreviewUrl(localPreview);
-    setMediaUrl(''); // clear URL input
+    const url = URL.createObjectURL(file);
+    setMediaPreview(url);
+  };
+
+  const clearMedia = () => {
+    setMediaFile(null);
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    setMediaPreview(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = async () => {
+    if (!identity) {
+      setError('You must be logged in to create a post.');
+      return;
+    }
+
+    if (postType !== 'text' && !mediaFile) {
+      setError('Please select a media file.');
+      return;
+    }
+
+    if (!caption.trim() && postType === 'text') {
+      setError('Please write something for your post.');
+      return;
+    }
+
+    setError('');
+    setIsUploading(true);
 
     try {
-      setIsUploading(true);
-      setUploadProgress(0);
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-        setUploadProgress(pct);
+      let mediaBlob: ExternalBlob | undefined = undefined;
+
+      if (mediaFile) {
+        const arrayBuffer = await mediaFile.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        mediaBlob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
+          setUploadProgress(pct);
+        });
+      }
+
+      const mediaType = mediaFile
+        ? mediaFile.type || (postType === 'video' ? 'video/mp4' : 'image/jpeg')
+        : 'text';
+
+      await createPost.mutateAsync({
+        authorName,
+        media: mediaBlob,
+        mediaType,
+        caption: caption.trim(),
       });
-      setMediaBlob(blob);
-      setUploadProgress(100);
-      toast.success('File ready to post!');
-    } catch (err) {
-      console.error('Upload error:', err);
-      toast.error('Failed to process file. Try using a URL instead.');
-      setUploadProgress(null);
-      setPreviewUrl('');
-      setMediaBlob(null);
+
+      toast.success('Post created successfully!');
+      navigate({ to: '/profile' });
+    } catch (err: any) {
+      const msg = err?.message ?? 'Failed to create post. Please try again.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsUploading(false);
-      e.target.value = '';
+      setUploadProgress(0);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!identity) {
-      toast.error('Please sign in to create a post');
-      return;
-    }
-
-    // For text posts, caption is required; for media posts, need media
-    const isTextPost = mediaType === 'text';
-    const hasMedia = mediaBlob !== null || mediaUrl.trim() !== '';
-
-    if (!isTextPost && !hasMedia) {
-      toast.error('Please provide a media URL or upload a file, or switch to Text post type');
-      return;
-    }
-
-    if (!caption.trim() && isTextPost) {
-      toast.error('Please write something for your text post');
-      return;
-    }
-
-    const authorName = userProfile?.displayName || identity.getPrincipal().toString().slice(0, 8) + '...';
-
-    // Build the media ExternalBlob: prefer uploaded blob, fall back to URL
-    // For text posts, no media needed
-    const media: ExternalBlob | undefined = isTextPost
-      ? undefined
-      : mediaBlob
-      ? mediaBlob
-      : mediaUrl.trim()
-      ? ExternalBlob.fromURL(mediaUrl.trim())
-      : undefined;
-
-    createPost.mutate(
-      { authorName, media, mediaType, caption },
-      {
-        onSuccess: () => {
-          toast.success('Post created successfully!');
-          // Clean up preview URL
-          if (previewUrl) URL.revokeObjectURL(previewUrl);
-          navigate({ to: '/' });
-        },
-        onError: (err) => {
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          if (msg.includes('Unauthorized') || msg.includes('unauthorized')) {
-            toast.error('You need to be signed in with a verified account to post. Please sign out and sign in again.');
-          } else {
-            toast.error(`Failed to create post: ${msg}`);
-          }
-          console.error('Create post error:', err);
-        },
-      }
-    );
-  };
-
-  // Determine what to show in preview
-  const displayPreview = previewUrl || mediaUrl;
-  const isTextPost = mediaType === 'text';
-
-  // Can submit: text post with caption, or media post with media
-  const canSubmit = isTextPost ? caption.trim().length > 0 : (mediaBlob !== null || mediaUrl.trim() !== '');
-
-  if (!identity) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 pb-24">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          <Upload className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Sign in to post</h2>
-        <p className="text-muted-foreground text-sm text-center">
-          You need to be signed in to share photos, videos, and more.
-        </p>
-      </div>
-    );
-  }
+  const canSubmit = (() => {
+    if (isUploading || createPost.isPending) return false;
+    if (postType === 'text') return caption.trim().length > 0;
+    return !!mediaFile && caption.trim().length > 0 || !!mediaFile;
+  })();
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <h1 className="font-bold text-lg text-foreground">New Post</h1>
+      <div className="max-w-lg mx-auto px-4 pt-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-display font-bold text-foreground">Create Post</h1>
           <Button
-            onClick={handleSubmit}
-            disabled={createPost.isPending || isUploading || !canSubmit}
+            variant="ghost"
             size="sm"
-            className="rounded-full"
+            onClick={() => navigate({ to: '/' })}
+            className="text-muted-foreground"
           >
-            {createPost.isPending ? (
-              <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Posting...</>
-            ) : 'Share'}
+            <X className="w-4 h-4" />
           </Button>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* Author info */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Posting as</span>
-          <span className="font-medium text-foreground">
-            {userProfile?.displayName || 'Anonymous'}
-          </span>
-          {!userProfile && (
-            <span className="text-xs text-amber-500">(Set up your profile for a better experience)</span>
-          )}
-        </div>
-
-        {/* Media Type Selector */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Post Type</label>
-          <div className="grid grid-cols-4 gap-2">
-            {mediaTypeOptions.map((opt) => (
+        {/* Post type selector */}
+        <div className="flex gap-2 mb-6">
+          {(['text', 'image', 'video'] as PostType[]).map((type) => {
+            const icons = { text: FileText, image: Image, video: Video };
+            const Icon = icons[type];
+            const labels = { text: 'Text', image: 'Photo', video: 'Video' };
+            return (
               <button
-                key={opt.value}
-                type="button"
+                key={type}
                 onClick={() => {
-                  setMediaType(opt.value);
-                  // Clear media when switching to text
-                  if (opt.value === 'text') {
-                    setMediaBlob(null);
-                    setPreviewUrl('');
-                    setMediaUrl('');
-                    setUploadProgress(null);
-                  }
+                  setPostType(type);
+                  clearMedia();
+                  setError('');
                 }}
-                className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-xs font-medium ${
-                  mediaType === opt.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/50'
+                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all duration-200 ${
+                  postType === type
+                    ? 'border-accent-gold bg-accent-gold/10 text-accent-gold'
+                    : 'border-border bg-surface-1 text-muted-foreground hover:border-accent-gold/50'
                 }`}
               >
-                {opt.icon}
-                {opt.label}
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{labels[type]}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {/* Media inputs — hidden for text posts */}
-        {!isTextPost && (
-          <>
-            {/* Media URL */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                <Link className="w-4 h-4 inline mr-1" />
-                Media URL
-              </label>
-              <input
-                type="url"
-                value={mediaUrl}
-                onChange={(e) => {
-                  setMediaUrl(e.target.value);
-                  // Clear file blob if user types a URL
-                  if (e.target.value) {
-                    setMediaBlob(null);
-                    setPreviewUrl('');
-                    setUploadProgress(null);
-                  }
-                }}
-                placeholder="https://example.com/image.jpg"
-                className="w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
-
-            {/* File Upload */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                <Upload className="w-4 h-4 inline mr-1" />
-                Or Upload File
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploading ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
+        {/* Media upload area */}
+        {postType !== 'text' && (
+          <div className="mb-5">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
+              {postType === 'image' ? 'Photo' : 'Video'}
+            </Label>
+            {mediaPreview ? (
+              <div className="relative rounded-xl overflow-hidden bg-surface-2">
+                {postType === 'image' ? (
+                  <img
+                    src={mediaPreview}
+                    alt="Preview"
+                    className="w-full max-h-64 object-cover"
+                  />
                 ) : (
-                  <Upload className="w-6 h-6" />
+                  <video
+                    src={mediaPreview}
+                    className="w-full max-h-64 object-cover"
+                    controls
+                  />
                 )}
-                <span className="text-sm">
-                  {isUploading ? 'Processing...' : 'Click to upload photo or video'}
-                </span>
-                <span className="text-xs opacity-60">JPG, PNG, GIF, MP4, etc.</span>
-              </button>
-
-              {uploadProgress !== null && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span>{uploadProgress < 100 ? 'Processing...' : 'Ready!'}</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div
-                      className="bg-primary h-1.5 rounded-full transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                  {uploadProgress === 100 && (
-                    <div className="flex items-center gap-1 text-xs text-green-500 mt-1">
-                      <CheckCircle className="w-3 h-3" />
-                      File ready — click Share to post
+                <button
+                  onClick={clearMedia}
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {isUploading && uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-2">
+                    <div className="w-full bg-white/20 rounded-full h-1.5">
+                      <div
+                        className="bg-accent-gold h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Preview */}
-            {displayPreview && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Preview</label>
-                <div className="rounded-xl overflow-hidden bg-black max-h-64 flex items-center justify-center">
-                  {mediaType === 'video' ? (
-                    <video src={displayPreview} controls className="max-h-64 w-full object-contain" />
-                  ) : (
-                    <img src={displayPreview} alt="Preview" className="max-h-64 w-full object-contain" />
-                  )}
-                </div>
+                    <p className="text-white text-xs mt-1 text-center">{uploadProgress}%</p>
+                  </div>
+                )}
               </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent-gold/50 transition-colors bg-surface-1"
+              >
+                <Upload className="w-8 h-8 text-muted-foreground" />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    Tap to upload {postType === 'image' ? 'photo' : 'video'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {postType === 'image' ? 'JPG, PNG, GIF, WebP' : 'MP4, MOV, WebM'}
+                  </p>
+                </div>
+              </button>
             )}
-          </>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={postType === 'image' ? 'image/*' : 'video/*'}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </div>
         )}
 
         {/* Caption */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            {isTextPost ? 'Your Post' : 'Caption'}
-          </label>
-          <textarea
+        <div className="mb-5">
+          <Label htmlFor="caption" className="text-sm font-medium text-foreground mb-2 block">
+            {postType === 'text' ? 'What\'s on your mind?' : 'Caption'}
+          </Label>
+          <Textarea
+            id="caption"
+            placeholder={
+              postType === 'text'
+                ? 'Share your thoughts...'
+                : 'Write a caption...'
+            }
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            placeholder={isTextPost ? "What's on your mind?" : 'Write a caption...'}
-            rows={isTextPost ? 5 : 3}
-            maxLength={500}
-            className="w-full bg-muted rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground resize-none"
+            className="resize-none min-h-[100px]"
+            rows={4}
           />
-          <p className="text-xs text-muted-foreground text-right mt-1">{caption.length}/500</p>
+          <p className="text-xs text-muted-foreground mt-1 text-right">
+            {caption.length}/500
+          </p>
         </div>
 
-        {/* Submit hint */}
-        {!canSubmit && (
-          <p className="text-xs text-muted-foreground text-center">
-            {isTextPost
-              ? 'Write something to share'
-              : 'Add a photo, video, or URL to share'}
-          </p>
+        {/* Author info */}
+        <div className="mb-5 p-3 bg-surface-1 rounded-xl border border-border">
+          <p className="text-xs text-muted-foreground">Posting as</p>
+          <p className="text-sm font-medium text-foreground">{authorName}</p>
+        </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
         )}
-      </form>
+
+        {/* Submit button */}
+        <Button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="w-full h-12 text-base font-semibold"
+        >
+          {isUploading || createPost.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              {isUploading && uploadProgress > 0 ? `Uploading ${uploadProgress}%...` : 'Posting...'}
+            </>
+          ) : (
+            'Share Post'
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

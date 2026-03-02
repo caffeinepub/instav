@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye, UserCheck } from 'lucide-react';
+import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye, UserCheck, Play } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useGetAllPosts, useSearchUsers } from '../hooks/useQueries';
 import type { Post, UserProfileSummary } from '../backend';
@@ -231,25 +231,38 @@ function UserResultCard({
 
 function PostThumbnail({ post }: { post: Post }) {
   const mediaUrl = post.media?.getDirectURL();
+  const isVideo = post.mediaType?.startsWith('video');
 
   return (
     <div className="relative aspect-square bg-muted rounded-lg overflow-hidden group">
-      {post.mediaType === 'video' ? (
-        <div className="w-full h-full flex items-center justify-center bg-black/80">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-            <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-0.5" />
+      {mediaUrl ? (
+        isVideo ? (
+          <div className="relative w-full h-full bg-black">
+            <video
+              src={mediaUrl}
+              className="w-full h-full object-cover"
+              muted
+              preload="metadata"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+              </div>
+            </div>
           </div>
-        </div>
-      ) : mediaUrl ? (
-        <img
-          src={mediaUrl}
-          alt={post.caption || 'Post'}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+        ) : (
+          <img
+            src={mediaUrl}
+            alt={post.caption || 'Post'}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        )
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted">
-          <span className="text-xs text-muted-foreground">No image</span>
+        <div className="w-full h-full flex items-center justify-center bg-muted p-2">
+          <span className="text-xs text-muted-foreground text-center line-clamp-3">
+            {post.caption || 'Post'}
+          </span>
         </div>
       )}
       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
