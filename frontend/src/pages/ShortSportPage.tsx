@@ -1,493 +1,291 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, ChevronUp, ChevronDown, UserPlus, UserCheck } from 'lucide-react';
+import { useGetAllPosts, useGetLikedPosts, useLikePost, useUnlikePost, useIsFollowing, useFollowUser, useUnfollowUser, Post } from '../hooks/useQueries';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import {
-  useGetAllPosts,
-  useLikePost,
-  useRecordView,
-  useGetCallerUserProfile,
-  useIsFollowing,
-  useFollowUser,
-  useUnfollowUser,
-} from '../hooks/useQueries';
-import { Post } from '../backend';
-import AvatarPlaceholder from '../components/AvatarPlaceholder';
 import CommentsSheet from '../components/CommentsSheet';
-import ShareModal from '../components/ShareModal';
-import {
-  Heart,
-  MessageCircle,
-  Share2,
-  Bookmark,
-  Volume2,
-  VolumeX,
-  Play,
-  RefreshCw,
-  UserPlus,
-  UserCheck,
-} from 'lucide-react';
-
-// ─── Follow Button ─────────────────────────────────────────────────────────────
+import { useSearch } from '@tanstack/react-router';
 
 interface FollowButtonProps {
   authorPrincipalStr: string;
-  currentUserPrincipalStr?: string;
 }
 
-function FollowButton({ authorPrincipalStr, currentUserPrincipalStr }: FollowButtonProps) {
-  const isOwnPost = currentUserPrincipalStr === authorPrincipalStr;
-  // Pass null (not string) when skipping — useIsFollowing accepts string | Principal | null
-  const { data: isFollowing, isLoading } = useIsFollowing(
-    isOwnPost ? null : authorPrincipalStr
-  );
+function FollowButton({ authorPrincipalStr }: FollowButtonProps) {
+  const { data: isFollowing } = useIsFollowing(authorPrincipalStr);
   const followMutation = useFollowUser();
   const unfollowMutation = useUnfollowUser();
 
-  if (isOwnPost || !currentUserPrincipalStr) return null;
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggle = () => {
     if (isFollowing) {
-      // useFollowUser/useUnfollowUser accept string | Principal
       unfollowMutation.mutate(authorPrincipalStr);
     } else {
       followMutation.mutate(authorPrincipalStr);
     }
   };
 
-  const isPending = followMutation.isPending || unfollowMutation.isPending || isLoading;
+  const isPending = followMutation.isPending || unfollowMutation.isPending;
 
   return (
     <button
       onClick={handleToggle}
       disabled={isPending}
-      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border ${
+      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors disabled:opacity-50 ${
         isFollowing
-          ? 'bg-white/10 border-white/40 text-white/80 hover:bg-red-500/20 hover:border-red-400 hover:text-red-300'
-          : 'bg-white text-black border-white hover:bg-white/90'
-      } disabled:opacity-50`}
+          ? 'bg-surface-2 border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40'
+          : 'bg-gold-500 hover:bg-gold-400 text-background shadow-gold-glow'
+      }`}
     >
       {isPending ? (
-        <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+        <span className="w-3 h-3 border border-current/40 border-t-current rounded-full animate-spin" />
       ) : isFollowing ? (
-        <UserCheck size={11} />
+        <UserCheck className="w-3 h-3" />
       ) : (
-        <UserPlus size={11} />
+        <UserPlus className="w-3 h-3" />
       )}
-      <span>{isFollowing ? 'Following' : 'Follow'}</span>
+      {isFollowing ? 'Shadowing' : 'Shadow'}
     </button>
   );
 }
 
-// ─── Video Item ───────────────────────────────────────────────────────────────
-
-interface VideoItemProps {
+interface ReelCardProps {
   post: Post;
   isActive: boolean;
-  isMuted: boolean;
-  autoScroll: boolean;
-  currentUserPrincipalStr?: string;
-  onToggleMute: () => void;
-  onLike: () => void;
-  onComment: () => void;
+  isLiked: boolean;
+  onLikeToggle: () => void;
+  onCommentOpen: () => void;
   onShare: () => void;
-  onProfileClick: () => void;
-  onToggleAutoScroll: () => void;
-  onVideoEnded: () => void;
 }
 
-function VideoItem({
-  post,
-  isActive,
-  isMuted,
-  autoScroll,
-  currentUserPrincipalStr,
-  onToggleMute,
-  onLike,
-  onComment,
-  onShare,
-  onProfileClick,
-  onToggleAutoScroll,
-  onVideoEnded,
-}: VideoItemProps) {
+function ReelCard({ post, isActive, isLiked, onLikeToggle, onCommentOpen, onShare }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const recordView = useRecordView();
+  const [muted, setMuted] = useState(true);
+  const [localLiked, setLocalLiked] = useState(isLiked);
+  const [localLikeCount, setLocalLikeCount] = useState(Number(post.likeCount));
+
+  const mediaUrl = post.media?.getDirectURL();
+  const isVideo = post.mediaType?.startsWith('video');
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (!videoRef.current) return;
     if (isActive) {
-      video.play().catch(() => {});
-      setIsPlaying(true);
-      recordView.mutate(post.id);
+      videoRef.current.play().catch(() => {});
     } else {
-      video.pause();
-      video.currentTime = 0;
-      setIsPlaying(false);
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
-
-  const handleVideoClick = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      video.play().catch(() => {});
-      setIsPlaying(true);
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  };
-
   const handleLike = () => {
-    setLiked((prev) => !prev);
-    onLike();
+    setLocalLiked((l) => !l);
+    setLocalLikeCount((c) => (localLiked ? c - 1 : c + 1));
+    onLikeToggle();
   };
-
-  const isVideo = post.mediaType?.startsWith('video');
-  const mediaUrl = post.media?.getDirectURL();
-  const authorPrincipalStr = post.authorPrincipal?.toString();
 
   return (
-    <div className="relative w-full h-full bg-black overflow-hidden">
-      {/* ── Media area (full screen) ── */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {mediaUrl ? (
-          isVideo ? (
-            <video
-              ref={videoRef}
-              src={mediaUrl}
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-              loop={!autoScroll}
-              playsInline
-              muted={isMuted}
-              onClick={handleVideoClick}
-              onEnded={autoScroll ? onVideoEnded : undefined}
-            />
-          ) : (
-            <img
-              src={mediaUrl}
-              alt={post.caption}
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-              onClick={handleVideoClick}
-            />
-          )
-        ) : (
-          <div
-            className="w-full h-full flex items-center justify-center bg-surface-2 cursor-pointer"
-            onClick={handleVideoClick}
-          >
-            <div className="text-center px-8">
-              <p className="text-foreground text-lg font-medium">{post.caption}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Play/Pause overlay */}
-        {!isPlaying && isVideo && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center">
-              <Play size={28} className="text-white ml-1" />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Bottom gradient overlay for readability ── */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-
-      {/* ── Bottom-left: Profile + Caption ── */}
-      <div className="absolute bottom-6 left-3 right-16 z-10">
-        {/* Author row with Follow button */}
-        <div className="flex items-center gap-2 mb-2">
-          <button
-            onClick={onProfileClick}
-            className="flex items-center gap-2 group flex-shrink-0"
-          >
-            <AvatarPlaceholder name={post.authorName} size="sm" />
-            <span className="text-white font-semibold text-sm group-hover:underline drop-shadow">
-              {post.authorName}
-            </span>
-          </button>
-          {authorPrincipalStr && (
-            <FollowButton
-              authorPrincipalStr={authorPrincipalStr}
-              currentUserPrincipalStr={currentUserPrincipalStr}
-            />
-          )}
+    <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+      {/* Media */}
+      {mediaUrl && isVideo ? (
+        <video
+          ref={videoRef}
+          src={mediaUrl}
+          className="w-full h-full object-cover"
+          loop
+          muted={muted}
+          playsInline
+          preload="auto"
+        />
+      ) : mediaUrl ? (
+        <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+          <p className="text-white/60 text-center px-8 text-sm">{post.caption}</p>
         </div>
+      )}
 
-        {/* Caption */}
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+
+      {/* Author info */}
+      <div className="absolute bottom-20 left-4 right-16 z-10">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-white font-semibold text-sm">{post.authorName}</span>
+          <FollowButton authorPrincipalStr={post.authorPrincipal.toString()} />
+        </div>
         {post.caption && (
-          <p className="text-white/90 text-sm line-clamp-2 leading-snug drop-shadow">
-            {post.caption}
-          </p>
+          <p className="text-white/80 text-xs leading-relaxed line-clamp-2">{post.caption}</p>
         )}
       </div>
 
-      {/* ── Right-side action buttons ── */}
-      <div className="absolute right-3 bottom-6 flex flex-col items-center gap-4 z-10">
-        {/* Volume */}
-        <button onClick={onToggleMute} className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-            {isMuted ? (
-              <VolumeX size={18} className="text-white" />
-            ) : (
-              <Volume2 size={18} className="text-white" />
-            )}
-          </div>
-        </button>
-
+      {/* Right actions */}
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 z-10">
         {/* Like */}
         <button onClick={handleLike} className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              localLiked ? 'bg-coral-500/30' : 'bg-black/40'
+            }`}
+          >
             <Heart
-              size={20}
-              className={liked ? 'text-red-500 fill-red-500' : 'text-white'}
+              className={`w-5 h-5 transition-all ${
+                localLiked ? 'fill-coral-400 text-coral-400 scale-110' : 'text-white'
+              }`}
             />
           </div>
-          <span className="text-white text-xs drop-shadow">
-            {Number(post.likeCount) + (liked ? 1 : 0)}
-          </span>
-        </button>
-
-        {/* Bookmark */}
-        <button className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-            <Bookmark size={20} className="text-white" />
-          </div>
+          <span className="text-white text-xs font-medium">{localLikeCount}</span>
         </button>
 
         {/* Comment */}
-        <button onClick={onComment} className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-            <MessageCircle size={20} className="text-white" />
+        <button onClick={onCommentOpen} className="flex flex-col items-center gap-1">
+          <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
           </div>
-          <span className="text-white text-xs drop-shadow">Comment</span>
-        </button>
-
-        {/* Auto-scroll toggle */}
-        <button
-          onClick={onToggleAutoScroll}
-          className="flex flex-col items-center gap-1"
-          title={autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
-        >
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-              autoScroll ? 'bg-gold/80' : 'bg-black/50'
-            }`}
-          >
-            <RefreshCw size={18} className={autoScroll ? 'text-black' : 'text-white'} />
-          </div>
-          <span className={`text-xs drop-shadow ${autoScroll ? 'text-gold' : 'text-white'}`}>
-            Auto
-          </span>
         </button>
 
         {/* Share */}
         <button onClick={onShare} className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-            <Share2 size={20} className="text-white" />
+          <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+            <Share2 className="w-5 h-5 text-white" />
           </div>
-          <span className="text-white text-xs drop-shadow">Share</span>
         </button>
+
+        {/* Mute (video only) */}
+        {isVideo && (
+          <button onClick={() => setMuted((m) => !m)} className="flex flex-col items-center gap-1">
+            <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+              {muted ? (
+                <VolumeX className="w-5 h-5 text-white" />
+              ) : (
+                <Volume2 className="w-5 h-5 text-white" />
+              )}
+            </div>
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function ShortSportPage() {
-  const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { data: posts = [], isLoading } = useGetAllPosts();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { data: _callerProfile } = useGetCallerUserProfile();
-  const likeMutation = useLikePost();
+  const search = useSearch({ from: '/shortsport' });
+  const initialPostId = (search as { postId?: string }).postId;
 
-  const search = useSearch({ from: '/shortsport' }) as { postId?: string };
-  const targetPostId = search?.postId;
+  const { data: allPosts = [], isLoading } = useGetAllPosts();
+  const { data: likedPosts = [] } = useGetLikedPosts();
+  const likePost = useLikePost();
+  const unlikePost = useUnlikePost();
 
-  const currentUserPrincipalStr = identity?.getPrincipal().toString();
-
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true);
-  const [autoScroll, setAutoScroll] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [sharePost, setSharePost] = useState<Post | null>(null);
-  const [shareOpen, setShareOpen] = useState(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  // Sort newest first; move target post to front if specified
-  const feedPosts = React.useMemo(() => {
-    const sorted = [...posts].sort(
-      (a, b) => Number(b.timestamp) - Number(a.timestamp)
-    );
-    if (!targetPostId) return sorted;
-    const idx = sorted.findIndex((p) => p.id.toString() === targetPostId);
-    if (idx <= 0) return sorted;
-    const target = sorted.splice(idx, 1)[0];
-    return [target, ...sorted];
-  }, [posts, targetPostId]);
-
-  // Scroll to top when target post is set
-  useEffect(() => {
-    if (targetPostId && feedPosts.length > 0) {
-      setActiveIndex(0);
-      if (containerRef.current) {
-        containerRef.current.scrollTop = 0;
-      }
-    }
-  }, [targetPostId, feedPosts.length]);
-
-  // Intersection observer to track active video
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = itemRefs.current.findIndex(
-              (ref) => ref === entry.target
-            );
-            if (index !== -1) setActiveIndex(index);
-          }
-        });
-      },
-      { root: container, threshold: 0.6 }
-    );
-
-    itemRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
-
-    return () => observer.disconnect();
-  }, [feedPosts.length]);
-
-  // Auto-scroll to next video when current video ends
-  const handleVideoEnded = useCallback(() => {
-    if (!autoScroll) return;
-    const nextIndex = activeIndex + 1;
-    if (nextIndex < feedPosts.length) {
-      const nextEl = itemRefs.current[nextIndex];
-      if (nextEl) {
-        nextEl.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  }, [autoScroll, activeIndex, feedPosts.length]);
-
-  const handleProfileClick = useCallback(
-    (post: Post) => {
-      const principalStr = post.authorPrincipal?.toString();
-      if (!principalStr) return;
-      navigate({
-        to: '/user/$principal',
-        params: { principal: principalStr },
-      });
-    },
-    [navigate]
+  const videoPosts = allPosts.filter(
+    (p: Post) => p.mediaType?.startsWith('video') || p.media
   );
+
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (initialPostId) {
+      const idx = videoPosts.findIndex((p: Post) => p.id.toString() === initialPostId);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  });
+
+  const [commentsPostId, setCommentsPostId] = useState<bigint | undefined>(undefined);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const likedPostIds = new Set(likedPosts.map((p: Post) => p.id.toString()));
+
+  const handleLikeToggle = useCallback(
+    (post: Post) => {
+      if (likedPostIds.has(post.id.toString())) {
+        unlikePost.mutate(post.id);
+      } else {
+        likePost.mutate(post.id);
+      }
+    },
+    [likedPostIds, likePost, unlikePost]
+  );
+
+  const goNext = () => setCurrentIndex((i) => Math.min(i + 1, videoPosts.length - 1));
+  const goPrev = () => setCurrentIndex((i) => Math.max(i - 1, 0));
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') goNext();
+      if (e.key === 'ArrowUp') goPrev();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [videoPosts.length]);
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold-500/40 border-t-gold-500 rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (feedPosts.length === 0) {
+  if (videoPosts.length === 0) {
     return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center gap-4 text-white">
-        <div className="text-5xl">🎬</div>
-        <p className="text-lg font-medium">No posts yet</p>
-        <p className="text-white/60 text-sm">Be the first to share something!</p>
-        <button
-          onClick={() => navigate({ to: '/create' })}
-          className="mt-2 px-6 py-2.5 rounded-full bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors"
-        >
-          Create Post
-        </button>
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center text-center px-8">
+        <Heart className="w-12 h-12 text-white/20 mb-4" />
+        <p className="text-white/60 text-sm">No ShortSport videos yet</p>
+        <p className="text-white/40 text-xs mt-1">Be the first to share a video!</p>
       </div>
     );
   }
+
+  const currentPost = videoPosts[currentIndex];
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden">
-      {/* Scrollable feed */}
-      <div
-        ref={containerRef}
-        className="h-full overflow-y-scroll snap-y snap-mandatory"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {feedPosts.map((post, index) => (
+    <div ref={containerRef} className="fixed inset-0 bg-black overflow-hidden">
+      {/* Reel */}
+      <ReelCard
+        key={currentPost.id.toString()}
+        post={currentPost}
+        isActive={true}
+        isLiked={likedPostIds.has(currentPost.id.toString())}
+        onLikeToggle={() => handleLikeToggle(currentPost)}
+        onCommentOpen={() => setCommentsPostId(currentPost.id)}
+        onShare={() => {
+          if (navigator.share) {
+            navigator.share({ url: `${window.location.origin}/shortsport?postId=${currentPost.id}` });
+          }
+        }}
+      />
+
+      {/* Navigation arrows */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
+        <button
+          onClick={goPrev}
+          disabled={currentIndex === 0}
+          className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
+        >
+          <ChevronUp className="w-4 h-4" />
+        </button>
+        <button
+          onClick={goNext}
+          disabled={currentIndex === videoPosts.length - 1}
+          className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Progress dots */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+        {videoPosts.slice(0, 10).map((_: Post, i: number) => (
           <div
-            key={post.id.toString()}
-            ref={(el) => {
-              itemRefs.current[index] = el;
-            }}
-            className="h-screen w-full snap-start snap-always flex-shrink-0"
-          >
-            <VideoItem
-              post={post}
-              isActive={index === activeIndex}
-              isMuted={isMuted}
-              autoScroll={autoScroll}
-              currentUserPrincipalStr={currentUserPrincipalStr}
-              onToggleMute={() => setIsMuted((m) => !m)}
-              onLike={() => likeMutation.mutate(post.id)}
-              onComment={() => {
-                setSelectedPost(post);
-                setCommentsOpen(true);
-              }}
-              onShare={() => {
-                setSharePost(post);
-                setShareOpen(true);
-              }}
-              onProfileClick={() => handleProfileClick(post)}
-              onToggleAutoScroll={() => setAutoScroll((a) => !a)}
-              onVideoEnded={handleVideoEnded}
-            />
-          </div>
+            key={i}
+            className={`h-1 rounded-full transition-all ${
+              i === currentIndex ? 'w-4 bg-white' : 'w-1 bg-white/40'
+            }`}
+          />
         ))}
       </div>
 
-      {/* Comments Sheet */}
-      {selectedPost && (
-        <CommentsSheet
-          post={selectedPost}
-          open={commentsOpen}
-          onOpenChange={(open) => {
-            setCommentsOpen(open);
-            if (!open) setSelectedPost(null);
-          }}
-        />
-      )}
-
-      {/* Share Modal */}
-      <ShareModal
-        open={shareOpen}
-        onOpenChange={(open) => {
-          setShareOpen(open);
-          if (!open) setSharePost(null);
-        }}
-        postId={sharePost?.id ?? null}
-        postCaption={sharePost?.caption}
+      {/* Comments sheet */}
+      <CommentsSheet
+        postId={commentsPostId}
+        isOpen={commentsPostId !== undefined}
+        onClose={() => setCommentsPostId(undefined)}
       />
     </div>
   );

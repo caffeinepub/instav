@@ -10,94 +10,26 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Comment {
-  'id' : bigint,
-  'text' : string,
-  'authorName' : string,
-  'timestamp' : bigint,
-  'authorPrincipal' : Principal,
-  'postId' : bigint,
-}
-export interface Conversation {
-  'participants' : [Principal, Principal],
-  'lastUpdated' : bigint,
-}
-export interface CreatorRanking {
-  'principal' : Principal,
-  'username' : string,
-  'profilePicBlob' : [] | [ExternalBlob],
-  'followerCount' : bigint,
-  'bannerImage' : [] | [ExternalBlob],
-}
 export type ExternalBlob = Uint8Array;
-export interface FriendRequest {
-  'status' : FriendRequestStatus,
-  'recipient' : Principal,
-  'sender' : Principal,
-  'timestamp' : bigint,
-}
-export type FriendRequestStatus = { 'pending' : null } |
-  { 'accepted' : null } |
-  { 'declined' : null };
-export type FriendshipStatusEnum = { 'notConnected' : null } |
-  { 'pendingOutgoing' : null } |
-  { 'friends' : null } |
-  { 'pendingIncoming' : null };
-export interface Message {
-  'content' : string,
-  'read' : boolean,
-  'recipient' : Principal,
-  'sender' : Principal,
-  'timestamp' : bigint,
-  'postId' : [] | [bigint],
-}
-export interface Notification {
-  'id' : bigint,
-  'notificationType' : NotificationType,
-  'read' : boolean,
-  'fromPrincipal' : Principal,
-  'timestamp' : bigint,
-  'postId' : [] | [bigint],
-}
-export type NotificationType = { 'comment' : null } |
-  { 'message' : null } |
-  { 'new_shadow' : null };
-export interface Post {
-  'id' : bigint,
-  'media' : [] | [ExternalBlob],
-  'likeCount' : bigint,
-  'authorName' : string,
-  'viewCount' : bigint,
-  'timestamp' : bigint,
-  'caption' : string,
-  'mediaType' : string,
-  'authorPrincipal' : Principal,
-}
-export interface PostInput {
-  'media' : [] | [ExternalBlob],
-  'authorName' : string,
-  'caption' : string,
-  'mediaType' : string,
-}
 export type UserIdentifier = { 'principal' : Principal } |
   { 'handle' : string };
-export interface UserProfileData {
+export interface UserProfile {
   'bio' : string,
-  'displayName' : string,
+  'username' : string,
+  'name' : string,
   'profilePhoto' : [] | [ExternalBlob],
   'bannerImage' : [] | [ExternalBlob],
   'handle' : string,
+  'location' : string,
 }
-export interface UserProfileSummary {
+export interface UserProfileInput {
   'bio' : string,
-  'postCount' : bigint,
-  'principal' : Principal,
-  'displayName' : string,
-  'avatarUrl' : [] | [ExternalBlob],
-  'followerCount' : bigint,
+  'username' : string,
+  'name' : string,
+  'profilePhoto' : [] | [ExternalBlob],
   'bannerImage' : [] | [ExternalBlob],
   'handle' : string,
-  'followingCount' : bigint,
+  'location' : string,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -130,54 +62,19 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addComment' : ActorMethod<[bigint, string, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'cancelFriendRequest' : ActorMethod<[Principal], undefined>,
-  'createOrUpdateProfile' : ActorMethod<[UserProfileData], undefined>,
-  'createPost' : ActorMethod<[PostInput], bigint>,
-  'followUser' : ActorMethod<[Principal], undefined>,
-  'getAllPosts' : ActorMethod<[], Array<Post>>,
-  'getBannerImage' : ActorMethod<[], [] | [ExternalBlob]>,
-  'getBannerImageForUser' : ActorMethod<[Principal], [] | [ExternalBlob]>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfileData]>,
+  'deleteHandle' : ActorMethod<[string], undefined>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getComments' : ActorMethod<[bigint], Array<Comment>>,
-  'getConversations' : ActorMethod<[], Array<Conversation>>,
-  'getFollowerCount' : ActorMethod<[Principal], bigint>,
-  'getFollowers' : ActorMethod<[Principal], Array<Principal>>,
-  'getFollowing' : ActorMethod<[Principal], Array<Principal>>,
-  'getFriendsList' : ActorMethod<[], Array<Principal>>,
-  'getFriendshipStatus' : ActorMethod<[Principal], FriendshipStatusEnum>,
-  'getIncomingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
-  'getLikedPosts' : ActorMethod<[], Array<Post>>,
-  'getMessages' : ActorMethod<[Principal], Array<Message>>,
-  'getMyFollowerCount' : ActorMethod<[], bigint>,
-  'getNotifications' : ActorMethod<[], Array<Notification>>,
-  'getOutgoingFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
-  'getPostsByUser' : ActorMethod<[Principal], Array<Post>>,
-  'getProfileByHandle' : ActorMethod<[string], [] | [UserProfileData]>,
-  'getProfileByPrincipal' : ActorMethod<[Principal], [] | [UserProfileData]>,
-  'getProfilePhotoForUser' : ActorMethod<[Principal], [] | [ExternalBlob]>,
-  'getTopCreatorsByShadows' : ActorMethod<[bigint], Array<CreatorRanking>>,
-  'getUserBanner' : ActorMethod<[Principal], [] | [ExternalBlob]>,
-  'getUserProfile' : ActorMethod<[UserIdentifier], [] | [UserProfileData]>,
+  'getMyProfile' : ActorMethod<[], UserProfileInput>,
+  'getProfile' : ActorMethod<[UserIdentifier], [] | [UserProfileInput]>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'isFollowing' : ActorMethod<[Principal], boolean>,
-  'likePost' : ActorMethod<[bigint], undefined>,
-  'markMessagesRead' : ActorMethod<[Principal], undefined>,
-  'markNotificationRead' : ActorMethod<[bigint], undefined>,
-  'recordView' : ActorMethod<[bigint], undefined>,
-  'respondToFriendRequest' : ActorMethod<[Principal, boolean], undefined>,
-  'saveCallerUserProfile' : ActorMethod<[UserProfileData], undefined>,
-  'searchHandles' : ActorMethod<[string], Array<string>>,
-  'searchUsers' : ActorMethod<[string], Array<UserProfileSummary>>,
-  'sendFriendRequest' : ActorMethod<[Principal], undefined>,
-  'sendMessage' : ActorMethod<[Principal, string, [] | [bigint]], undefined>,
-  'setBannerImage' : ActorMethod<[ExternalBlob], undefined>,
-  'unfollowUser' : ActorMethod<[Principal], undefined>,
-  'unfriend' : ActorMethod<[Principal], undefined>,
-  'unlikePost' : ActorMethod<[bigint], undefined>,
-  'updateProfilePhoto' : ActorMethod<[ExternalBlob], undefined>,
+  'lookupHandle' : ActorMethod<[Principal], [] | [string]>,
+  'lookupPrincipal' : ActorMethod<[string], [] | [Principal]>,
+  'registerHandle' : ActorMethod<[string], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfileInput], undefined>,
+  'updateProfile' : ActorMethod<[UserProfileInput], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

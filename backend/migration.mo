@@ -1,56 +1,39 @@
 import Map "mo:core/Map";
-import Principal "mo:core/Principal";
 import Storage "blob-storage/Storage";
+import Principal "mo:core/Principal";
 
 module {
-  // Old profile data type with profilePicture field
-  type OldUserProfileData = {
+  type OldUserProfileInput = {
+    name : Text;
+    username : Text;
     handle : Text;
-    displayName : Text;
     bio : Text;
-    bannerImage : ?Storage.ExternalBlob;
-    profilePicture : ?Storage.ExternalBlob;
-  };
-
-  type OldUserProfile = {
-    caller : Principal;
-    data : OldUserProfileData;
-  };
-
-  // Old actor type
-  type OldActor = {
-    userProfiles : Map.Map<Principal, OldUserProfile>;
-  };
-
-  // New profile data type with profilePhoto field
-  type NewUserProfileData = {
-    handle : Text;
-    displayName : Text;
-    bio : Text;
-    bannerImage : ?Storage.ExternalBlob;
+    location : Text;
     profilePhoto : ?Storage.ExternalBlob;
   };
 
-  type NewUserProfile = {
-    caller : Principal;
-    data : NewUserProfileData;
+  type OldActor = {
+    userProfiles : Map.Map<Principal, OldUserProfileInput>;
   };
 
-  // New actor type
+  type NewUserProfileInput = {
+    name : Text;
+    username : Text;
+    handle : Text;
+    bio : Text;
+    location : Text;
+    profilePhoto : ?Storage.ExternalBlob;
+    bannerImage : ?Storage.ExternalBlob;
+  };
+
   type NewActor = {
-    userProfiles : Map.Map<Principal, NewUserProfile>;
+    userProfiles : Map.Map<Principal, NewUserProfileInput>;
   };
 
   public func run(old : OldActor) : NewActor {
-    let newProfiles = old.userProfiles.map<Principal, OldUserProfile, NewUserProfile>(
+    let newProfiles = old.userProfiles.map<Principal, OldUserProfileInput, NewUserProfileInput>(
       func(_principal, oldProfile) {
-        {
-          oldProfile with
-          data = {
-            oldProfile.data with
-            profilePhoto = oldProfile.data.profilePicture
-          }
-        };
+        { oldProfile with bannerImage = null };
       }
     );
     { userProfiles = newProfiles };

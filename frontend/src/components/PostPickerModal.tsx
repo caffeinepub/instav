@@ -1,96 +1,97 @@
-import React from 'react';
-import { useGetPostsByUser } from '../hooks/useQueries';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Film, ImageIcon } from 'lucide-react';
-import type { Post } from '../backend';
+import { Post } from '../hooks/useQueries';
+import { Grid, Video, Image } from 'lucide-react';
 
 interface PostPickerModalProps {
-  myPrincipal: string;
-  onSelect: (postId: bigint) => void;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  posts: Post[];
+  onSelect: (post: Post) => void;
+  title?: string;
 }
 
-function PostThumbnail({ post }: { post: Post }) {
-  const isVideo = post.mediaType === 'video';
-  const mediaUrl = post.media?.getDirectURL();
+export default function PostPickerModal({
+  open,
+  onOpenChange,
+  posts,
+  onSelect,
+  title = 'Select a Post',
+}: PostPickerModalProps) {
+  const [selected, setSelected] = useState<Post | null>(null);
+
+  const handleSelect = (post: Post) => {
+    setSelected(post);
+    onSelect(post);
+    onOpenChange(false);
+  };
 
   return (
-    <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
-      {mediaUrl ? (
-        isVideo ? (
-          <video
-            src={mediaUrl}
-            className="w-full h-full object-cover"
-            muted
-            preload="metadata"
-          />
-        ) : (
-          <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
-        )
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-          {isVideo ? <Film size={24} /> : <ImageIcon size={24} />}
-        </div>
-      )}
-      {isVideo && (
-        <div className="absolute top-1 right-1 bg-black/60 rounded p-0.5">
-          <Film size={10} className="text-white" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function PostPickerModal({ myPrincipal, onSelect, onClose }: PostPickerModalProps) {
-  const { data: posts, isLoading } = useGetPostsByUser(myPrincipal);
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm w-full">
-        <DialogHeader>
-          <DialogTitle>Share a Shortspot</DialogTitle>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-surface-1 border border-border rounded-2xl max-w-sm w-full p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-4 pb-3 border-b border-border">
+          <DialogTitle className="text-foreground text-base font-semibold flex items-center gap-2">
+            <Grid className="w-4 h-4 text-gold-400" />
+            {title}
+          </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-96">
-          {isLoading ? (
-            <div className="grid grid-cols-3 gap-2 p-1">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="aspect-square rounded-lg" />
-              ))}
-            </div>
-          ) : posts && posts.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2 p-1">
-              {posts.map((post) => (
-                <button
-                  key={post.id.toString()}
-                  onClick={() => onSelect(post.id)}
-                  className="group relative rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                  title={post.caption}
-                >
-                  <PostThumbnail post={post} />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                  {post.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                      <p className="text-white text-xs truncate">{post.caption}</p>
-                    </div>
-                  )}
-                </button>
-              ))}
+
+        <div className="p-3 max-h-96 overflow-y-auto">
+          {posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Grid className="w-8 h-8 text-muted-foreground/30 mb-2" />
+              <p className="text-muted-foreground text-sm">No posts available</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Film size={32} className="mb-2 opacity-40" />
-              <p className="text-sm">No posts to share yet.</p>
-              <p className="text-xs mt-1">Create a post first!</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {posts.map((post) => {
+                const mediaUrl = post.media?.getDirectURL();
+                const isVideo = post.mediaType?.startsWith('video');
+                return (
+                  <button
+                    key={post.id.toString()}
+                    onClick={() => handleSelect(post)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      selected?.id === post.id
+                        ? 'border-gold-500 shadow-gold-glow'
+                        : 'border-transparent hover:border-gold-500/50'
+                    }`}
+                  >
+                    {mediaUrl ? (
+                      isVideo ? (
+                        <video
+                          src={mediaUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <div className="w-full h-full bg-surface-2 flex items-center justify-center">
+                        <span className="text-muted-foreground text-xs text-center px-1 line-clamp-2">
+                          {post.caption}
+                        </span>
+                      </div>
+                    )}
+                    {isVideo && (
+                      <div className="absolute top-1 right-1 bg-black/60 rounded p-0.5">
+                        <Video className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

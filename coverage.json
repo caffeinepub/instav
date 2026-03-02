@@ -1,52 +1,36 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-03-02T17:08:51.899Z",
+  "generatedAt": "2026-03-02T19:14:49.062Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
+        "summary": "Fix the 'failed to update profile' error that occurs when a user taps the Save button in the Edit Profile modal. The backend profile update call must succeed and persist changes (name, handle, bio, location, profile photo) correctly.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/pages/ProfilePage.tsx",
           "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ProfilePage.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
+        "summary": "Fix the banner upload/change button on the profile page so it is fully functional. Users must be able to tap the banner button, select an image, and have it displayed as the profile banner.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ProfilePage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/ProfilePage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/pages/ProfilePage.tsx"
         ]
       }
     ]
@@ -60,15 +44,9 @@
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/NotificationsPanel.tsx",
-    "frontend/src/components/PostCard.tsx",
-    "frontend/src/components/ShareModal.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/MessagesPage.tsx",
     "frontend/src/pages/ProfilePage.tsx",
-    "frontend/src/pages/UserProfilePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

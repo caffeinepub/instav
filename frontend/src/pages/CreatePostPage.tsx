@@ -27,9 +27,10 @@ export default function CreatePostPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const authorName = profile?.displayName
-    || profile?.handle
-    || (identity ? identity.getPrincipal().toString().slice(0, 12) + '...' : 'Anonymous');
+  const authorName =
+    profile?.name ||
+    profile?.handle ||
+    (identity ? identity.getPrincipal().toString().slice(0, 12) + '...' : 'Anonymous');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,7 +107,7 @@ export default function CreatePostPage() {
   const canSubmit = (() => {
     if (isUploading || createPost.isPending) return false;
     if (postType === 'text') return caption.trim().length > 0;
-    return !!mediaFile && caption.trim().length > 0 || !!mediaFile;
+    return !!mediaFile;
   })();
 
   return (
@@ -141,8 +142,8 @@ export default function CreatePostPage() {
                 }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all duration-200 ${
                   postType === type
-                    ? 'border-accent-gold bg-accent-gold/10 text-accent-gold'
-                    : 'border-border bg-surface-1 text-muted-foreground hover:border-accent-gold/50'
+                    ? 'border-gold-500 bg-gold-500/10 text-gold-400'
+                    : 'border-border bg-surface-1 text-muted-foreground hover:border-gold-500/50'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -183,7 +184,7 @@ export default function CreatePostPage() {
                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-2">
                     <div className="w-full bg-white/20 rounded-full h-1.5">
                       <div
-                        className="bg-accent-gold h-1.5 rounded-full transition-all duration-300"
+                        className="bg-gold-500 h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
@@ -194,7 +195,7 @@ export default function CreatePostPage() {
             ) : (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-accent-gold/50 transition-colors bg-surface-1"
+                className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-gold-500/50 transition-colors bg-surface-1"
               >
                 <Upload className="w-8 h-8 text-muted-foreground" />
                 <div className="text-center">
@@ -220,19 +221,18 @@ export default function CreatePostPage() {
         {/* Caption */}
         <div className="mb-5">
           <Label htmlFor="caption" className="text-sm font-medium text-foreground mb-2 block">
-            {postType === 'text' ? 'What\'s on your mind?' : 'Caption'}
+            {postType === 'text' ? "What's on your mind?" : 'Caption'}
           </Label>
           <Textarea
             id="caption"
             placeholder={
-              postType === 'text'
-                ? 'Share your thoughts...'
-                : 'Write a caption...'
+              postType === 'text' ? 'Share your thoughts...' : 'Write a caption...'
             }
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             className="resize-none min-h-[100px]"
             rows={4}
+            maxLength={500}
           />
           <p className="text-xs text-muted-foreground mt-1 text-right">
             {caption.length}/500
@@ -257,13 +257,13 @@ export default function CreatePostPage() {
         <Button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="w-full h-12 text-base font-semibold"
+          className="w-full bg-gold-500 hover:bg-gold-400 text-background font-semibold rounded-xl py-3 shadow-gold-glow disabled:opacity-50"
         >
           {isUploading || createPost.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              {isUploading && uploadProgress > 0 ? `Uploading ${uploadProgress}%...` : 'Posting...'}
-            </>
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {isUploading ? `Uploading… ${uploadProgress}%` : 'Creating post…'}
+            </span>
           ) : (
             'Share Post'
           )}

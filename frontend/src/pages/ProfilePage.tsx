@@ -1,451 +1,331 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import {
-  useGetCallerUserProfile,
-  useSaveCallerUserProfile,
-  useGetPostsByUser,
-  useGetLikedPosts,
-  useGetBannerImage,
-  useSetBannerImage,
-  useGetMyFollowerCount,
-  useGetFollowing,
-  useUpdateProfilePhoto,
-} from '../hooks/useQueries';
-import { ExternalBlob } from '../backend';
+import { useGetCallerUserProfile, useSaveCallerUserProfile } from '../hooks/useQueries';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
-import { Camera, Edit2, Save, X, Heart, Grid, Users, UserCheck } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Camera, Edit3, MapPin, Grid3X3, Heart, Check, Loader2 } from 'lucide-react';
+import { ExternalBlob } from '../backend';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
-interface PostGridItemProps {
-  post: {
-    id: bigint;
-    media?: ExternalBlob;
-    mediaType: string;
-    caption: string;
-    likeCount: bigint;
-    viewCount: bigint;
-  };
-}
-
-function PostGridItem({ post }: PostGridItemProps) {
-  const isVideo = post.mediaType?.startsWith('video');
-  const mediaUrl = post.media?.getDirectURL();
-
-  return (
-    <div className="relative aspect-square bg-surface-2 rounded-lg overflow-hidden group cursor-pointer">
-      {mediaUrl ? (
-        isVideo ? (
-          <video
-            src={mediaUrl}
-            className="w-full h-full object-cover"
-            muted
-            playsInline
-            preload="metadata"
-          />
-        ) : (
-          <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
-        )
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-surface-2">
-          <span className="text-muted-foreground text-xs text-center px-2 line-clamp-3">
-            {post.caption}
-          </span>
-        </div>
-      )}
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-        <span className="text-white text-sm font-semibold flex items-center gap-1">
-          <Heart className="w-4 h-4 fill-white" />
-          {post.likeCount.toString()}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 export default function ProfilePage() {
   const { identity } = useInternetIdentity();
-  const principalId = identity?.getPrincipal().toString();
-
-  const { data: profile, isLoading: profileLoading } = useGetCallerUserProfile();
-  const { data: posts, isLoading: postsLoading } = useGetPostsByUser(principalId);
-  const { data: likedPosts, isLoading: likedLoading } = useGetLikedPosts();
-  const { data: bannerBlob, isLoading: bannerLoading } = useGetBannerImage();
-  const { data: followerCount, isLoading: followerCountLoading } = useGetMyFollowerCount();
-  const { data: followingList, isLoading: followingLoading } = useGetFollowing(principalId);
-
+  const { data: userProfile, isLoading: profileLoading } = useGetCallerUserProfile();
   const saveProfile = useSaveCallerUserProfile();
-  const setBannerImage = useSetBannerImage();
-  const updateProfilePhoto = useUpdateProfilePhoto();
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'liked'>('posts');
-  const [editForm, setEditForm] = useState({
-    displayName: '',
-    handle: '',
-    bio: '',
-  });
-  const [bannerUploadProgress, setBannerUploadProgress] = useState<number | null>(null);
-  const [avatarUploadProgress, setAvatarUploadProgress] = useState<number | null>(null);
-  const [previewBannerUrl, setPreviewBannerUrl] = useState<string | null>(null);
-  const [previewAvatarBlob, setPreviewAvatarBlob] = useState<ExternalBlob | null>(null);
 
+  // Banner state — tracks the ExternalBlob and a local preview URL
+  const [bannerPhoto, setBannerPhoto] = useState<ExternalBlob | undefined>(undefined);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const bannerUrl = previewBannerUrl ?? bannerBlob?.getDirectURL();
+  // Edit form state
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editHandle, setEditHandle] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editProfilePhoto, setEditProfilePhoto] = useState<ExternalBlob | undefined>(undefined);
+  const [editProfilePhotoPreview, setEditProfilePhotoPreview] = useState<string | null>(null);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleEditStart = () => {
-    setEditForm({
-      displayName: profile?.displayName ?? '',
-      handle: profile?.handle ?? '',
-      bio: profile?.bio ?? '',
-    });
-    setIsEditing(true);
+  // Sync banner from profile when profile loads
+  useEffect(() => {
+    if (userProfile?.bannerImage && !bannerPhoto) {
+      setBannerPhoto(userProfile.bannerImage);
+    }
+  }, [userProfile]);
+
+  const openEditModal = () => {
+    setEditName(userProfile?.name || '');
+    setEditUsername(userProfile?.username || '');
+    setEditHandle(userProfile?.handle || '');
+    setEditBio(userProfile?.bio || '');
+    setEditLocation(userProfile?.location || '');
+    setEditProfilePhoto(userProfile?.profilePhoto);
+    setEditProfilePhotoPreview(null);
+    setIsEditModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!profile) return;
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setBannerPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Convert to ExternalBlob and save to profile right away
+    file.arrayBuffer().then(async (buf) => {
+      const blob = ExternalBlob.fromBytes(new Uint8Array(buf));
+      setBannerPhoto(blob);
+
+      // Persist banner immediately using current profile data
+      try {
+        const currentProfile = userProfile;
+        await saveProfile.mutateAsync({
+          name: currentProfile?.name || '',
+          username: currentProfile?.username || '',
+          handle: currentProfile?.handle || '',
+          bio: currentProfile?.bio || '',
+          location: currentProfile?.location || '',
+          profilePhoto: currentProfile?.profilePhoto,
+          bannerImage: blob,
+        });
+        toast.success('Banner updated!');
+      } catch {
+        toast.error('Failed to save banner. Please try again.');
+      }
+    });
+  };
+
+  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setEditProfilePhotoPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    file.arrayBuffer().then((buf) => {
+      const blob = ExternalBlob.fromBytes(new Uint8Array(buf));
+      setEditProfilePhoto(blob);
+    });
+  };
+
+  const handleSaveProfile = async () => {
     try {
+      // Include bannerImage — use the current bannerPhoto state (new upload or existing from profile)
+      const currentBanner = bannerPhoto ?? userProfile?.bannerImage;
+
       await saveProfile.mutateAsync({
-        displayName: editForm.displayName,
-        handle: editForm.handle,
-        bio: editForm.bio,
-        profilePhoto: profile.profilePhoto,
-        bannerImage: profile.bannerImage,
+        name: editName,
+        username: editUsername,
+        handle: editHandle,
+        bio: editBio,
+        location: editLocation,
+        profilePhoto: editProfilePhoto,
+        bannerImage: currentBanner,
       });
-      setIsEditing(false);
-      toast.success('Profile saved!');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save profile');
+      toast.success('Profile updated successfully!');
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error('Profile save error:', err);
+      toast.error('Failed to update profile. Please try again.');
     }
   };
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const principalId = identity?.getPrincipal().toString() || '';
+  const displayName = userProfile?.name || 'Anonymous';
+  const handle = userProfile?.handle || userProfile?.username || '';
+  const bio = userProfile?.bio || '';
+  const location = userProfile?.location || '';
 
-    // Optimistic preview
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewBannerUrl(objectUrl);
-
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-      setBannerUploadProgress(pct);
-    });
-    try {
-      await setBannerImage.mutateAsync(blob);
-      toast.success('Banner updated!');
-    } catch (err: unknown) {
-      setPreviewBannerUrl(null);
-      toast.error(err instanceof Error ? err.message : 'Failed to update banner');
-    } finally {
-      setBannerUploadProgress(null);
-    }
-  };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-      setAvatarUploadProgress(pct);
-    });
-
-    // Optimistic preview
-    setPreviewAvatarBlob(ExternalBlob.fromBytes(bytes));
-
-    try {
-      await updateProfilePhoto.mutateAsync(blob);
-      toast.success('Profile photo updated!');
-    } catch (err: unknown) {
-      setPreviewAvatarBlob(null);
-      toast.error(err instanceof Error ? err.message : 'Failed to update photo');
-    } finally {
-      setAvatarUploadProgress(null);
-    }
-  };
+  // Determine banner display: local preview > existing profile banner URL > gradient fallback
+  const bannerSrc = bannerPreview || (userProfile?.bannerImage ? userProfile.bannerImage.getDirectURL() : null);
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <Skeleton className="w-full h-52" />
-        <div className="px-4 pt-16 space-y-4">
-          <Skeleton className="w-32 h-7 rounded-2xl" />
-          <Skeleton className="w-24 h-4" />
-          <div className="flex gap-3">
-            <Skeleton className="w-28 h-14 rounded-2xl" />
-            <Skeleton className="w-24 h-14 rounded-2xl" />
-            <Skeleton className="w-24 h-14 rounded-2xl" />
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-gold-400" />
+          <p className="text-muted-foreground text-sm">Loading profile...</p>
         </div>
       </div>
     );
   }
 
-  const displayName = profile?.displayName ?? 'Anonymous';
-  const handle = profile?.handle ?? '';
-  const bio = profile?.bio ?? '';
-  const followerNum = followerCount !== undefined ? Number(followerCount) : 0;
-  const followingNum = followingList?.length ?? 0;
-  const postsNum = posts?.length ?? 0;
-  const currentAvatarBlob = previewAvatarBlob ?? profile?.profilePhoto ?? null;
-
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* ── Banner ── */}
-      <div className="relative w-full h-52 md:h-64 overflow-hidden">
-        {bannerLoading ? (
-          <Skeleton className="w-full h-full" />
-        ) : bannerUrl ? (
-          <img src={bannerUrl} alt="Profile banner" className="w-full h-full object-cover" />
+      {/* Banner */}
+      <div className="relative w-full h-48 overflow-hidden">
+        {bannerSrc ? (
+          <img src={bannerSrc} alt="Banner" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-            {/* Decorative gold shimmer lines */}
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-1/3 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500 to-transparent" />
-              <div className="absolute top-2/3 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-400 to-transparent" />
-            </div>
+          <div
+            className="w-full h-full"
+            style={{
+              background:
+                'linear-gradient(135deg, oklch(0.18 0.04 60) 0%, oklch(0.14 0.06 30) 40%, oklch(0.16 0.05 280) 100%)',
+            }}
+          >
+            {/* Decorative ambient glow */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(ellipse 80% 60% at 50% 120%, oklch(0.55 0.18 60 / 0.25) 0%, transparent 70%)',
+              }}
+            />
           </div>
         )}
-
-        {/* Dark gradient overlay at bottom for readability */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
-
-        {/* Upload progress overlay */}
-        {bannerUploadProgress !== null && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2">
-            <div className="w-48 h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gold-500 rounded-full transition-all duration-300"
-                style={{ width: `${bannerUploadProgress}%` }}
-              />
-            </div>
-            <span className="text-white text-xs font-medium">
-              Uploading banner… {bannerUploadProgress}%
-            </span>
-          </div>
-        )}
-
-        {/* Banner camera button */}
+        {/* Edit Banner button */}
         <button
+          type="button"
           onClick={() => bannerInputRef.current?.click()}
-          className="absolute bottom-4 right-4 flex items-center gap-1.5 bg-black/60 hover:bg-black/80 text-white text-xs font-medium rounded-full px-3 py-1.5 backdrop-blur-sm border border-white/20 transition-colors"
-          title="Change banner"
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 cursor-pointer"
+          style={{
+            background: 'oklch(0.15 0.02 60 / 0.8)',
+            border: '1px solid oklch(0.65 0.18 60 / 0.4)',
+            color: 'oklch(0.85 0.12 60)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 10,
+          }}
         >
-          <Camera className="w-3.5 h-3.5" />
-          Edit Banner
+          <Camera className="w-3 h-3" />
+          {saveProfile.isPending ? 'Saving...' : 'Edit Banner'}
         </button>
         <input
           ref={bannerInputRef}
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={handleBannerUpload}
+          onChange={handleBannerChange}
         />
       </div>
 
-      {/* ── Profile Header ── */}
-      <div className="relative px-4">
-        {/* Avatar — overlaps banner */}
-        <div className="flex items-end justify-between" style={{ marginTop: '-48px' }}>
+      {/* Profile Header */}
+      <div className="relative px-4 pb-4">
+        {/* Avatar — positioned to overlap the banner */}
+        <div className="relative -mt-16 mb-3 flex items-end justify-between">
           <div className="relative z-10">
-            {/* Avatar ring */}
-            <div className="w-24 h-24 rounded-full p-0.5 bg-gradient-to-br from-gold-500 to-coral-500 shadow-gold-glow">
-              <div
-                className="w-full h-full rounded-full border-2 border-background overflow-hidden cursor-pointer relative"
-                onClick={() => avatarInputRef.current?.click()}
-              >
-                <AvatarPlaceholder
-                  name={displayName}
-                  profilePicture={currentAvatarBlob}
-                  size="xl"
-                  className="w-full h-full"
-                />
-                {/* Avatar upload progress */}
-                {avatarUploadProgress !== null && (
-                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-full">
-                    <span className="text-white text-xs font-bold">{avatarUploadProgress}%</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Camera badge */}
-            <button
-              onClick={() => avatarInputRef.current?.click()}
-              className="absolute bottom-0 right-0 w-7 h-7 bg-gold-500 hover:bg-gold-400 text-background rounded-full flex items-center justify-center shadow-gold-glow transition-colors border-2 border-background"
-              title="Change profile photo"
-            >
-              <Camera className="w-3.5 h-3.5" />
-            </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
+            {/* Ambient glow behind avatar */}
+            <div
+              className="absolute inset-0 rounded-full blur-2xl opacity-60 scale-125"
+              style={{
+                background:
+                  'radial-gradient(circle, oklch(0.75 0.22 60 / 0.5) 0%, oklch(0.65 0.20 30 / 0.3) 60%, transparent 100%)',
+                zIndex: 0,
+              }}
             />
+            <div className="relative z-10">
+              <AvatarPlaceholder
+                name={displayName}
+                profilePhoto={userProfile?.profilePhoto}
+                size="2xl"
+                showGradientRing={true}
+              />
+            </div>
           </div>
 
-          {/* Edit / Save buttons */}
-          <div className="mb-2 flex gap-2">
-            {isEditing ? (
-              <>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-sm text-muted-foreground hover:bg-surface-2 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saveProfile.isPending}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gold-500 hover:bg-gold-400 text-background text-sm font-semibold shadow-gold-glow transition-colors disabled:opacity-50"
-                >
-                  {saveProfile.isPending ? (
-                    <span className="w-3.5 h-3.5 border-2 border-background/40 border-t-background rounded-full animate-spin" />
-                  ) : (
-                    <Save className="w-3.5 h-3.5" />
-                  )}
-                  Save
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleEditStart}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gold-500/60 text-gold-400 hover:bg-gold-500/10 text-sm font-medium transition-colors"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                Edit Profile
-              </button>
-            )}
+          {/* Edit Profile button */}
+          <div className="flex gap-2 pb-2 z-10">
+            <button
+              type="button"
+              onClick={openEditModal}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95 cursor-pointer"
+              style={{
+                background: 'oklch(0.15 0.02 60 / 0.85)',
+                border: '1px solid oklch(0.65 0.18 60 / 0.5)',
+                color: 'oklch(0.85 0.12 60)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                boxShadow: '0 0 12px oklch(0.65 0.18 60 / 0.15)',
+                position: 'relative',
+                zIndex: 20,
+              }}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              Edit Profile
+            </button>
           </div>
         </div>
 
-        {/* ── Profile Info ── */}
-        <div className="mt-3 space-y-2">
-          {isEditing ? (
-            <div className="space-y-3">
-              <input
-                value={editForm.displayName}
-                onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
-                placeholder="Display name"
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
-              />
-              <input
-                value={editForm.handle}
-                onChange={(e) => setEditForm((f) => ({ ...f, handle: e.target.value }))}
-                placeholder="@handle"
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold-500/50 text-sm"
-              />
-              <textarea
-                value={editForm.bio}
-                onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
-                placeholder="Bio"
-                rows={3}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold-500/50 text-sm resize-none"
-              />
-            </div>
-          ) : (
-            <>
-              {/* Name in golden-glow dark box */}
-              <div className="inline-block">
-                <div
-                  className="bg-gray-900/90 border border-gold-500/40 rounded-2xl px-5 py-2.5"
-                  style={{ boxShadow: '0 0 18px rgba(234,179,8,0.35), 0 2px 8px rgba(0,0,0,0.5)' }}
-                >
-                  <h1 className="text-xl font-bold text-foreground font-display tracking-tight">
-                    {displayName}
-                  </h1>
-                </div>
-              </div>
-
-              {/* Handle */}
-              {handle && (
-                <p className="text-muted-foreground text-sm ml-1">@{handle}</p>
-              )}
-
-              {/* Bio */}
-              {bio && (
-                <p className="text-foreground/75 text-sm leading-relaxed ml-1 max-w-sm">{bio}</p>
-              )}
-            </>
+        {/* Name & Handle */}
+        <div className="mb-3">
+          <h1
+            className="text-2xl font-bold font-display"
+            style={{
+              background: 'linear-gradient(90deg, oklch(0.85 0.18 60), oklch(0.75 0.20 30))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {displayName}
+          </h1>
+          {handle && (
+            <p className="text-sm text-muted-foreground mt-0.5">@{handle}</p>
           )}
         </div>
 
-        {/* ── Stats Row ── */}
-        {!isEditing && (
-          <div className="flex gap-3 mt-4 mb-6">
-            {/* Followers — golden box with glow */}
-            <div
-              className="flex flex-col items-center justify-center bg-gold-500/10 border border-gold-500/60 rounded-2xl px-4 py-3 min-w-[90px]"
-              style={{ boxShadow: '0 0 16px rgba(234,179,8,0.3), 0 2px 6px rgba(0,0,0,0.4)' }}
-            >
-              {followerCountLoading ? (
-                <Skeleton className="w-10 h-6 mb-1" />
-              ) : (
-                <span className="text-gold-300 font-bold text-xl leading-none">
-                  {followerNum.toLocaleString()}
-                </span>
-              )}
-              <span className="text-gold-500/80 text-[10px] font-semibold uppercase tracking-widest mt-1 flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                Shadows
-              </span>
-            </div>
+        {/* Bio */}
+        {bio && (
+          <p className="text-sm text-foreground/80 mb-3 leading-relaxed">{bio}</p>
+        )}
 
-            {/* Following */}
-            <div className="flex flex-col items-center justify-center bg-surface-2 border border-border rounded-2xl px-4 py-3 min-w-[80px]">
-              {followingLoading ? (
-                <Skeleton className="w-8 h-6 mb-1" />
-              ) : (
-                <span className="text-foreground font-bold text-xl leading-none">
-                  {followingNum.toLocaleString()}
-                </span>
-              )}
-              <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest mt-1 flex items-center gap-1">
-                <UserCheck className="w-3 h-3" />
-                Following
-              </span>
-            </div>
-
-            {/* Posts */}
-            <div className="flex flex-col items-center justify-center bg-surface-2 border border-border rounded-2xl px-4 py-3 min-w-[70px]">
-              {postsLoading ? (
-                <Skeleton className="w-8 h-6 mb-1" />
-              ) : (
-                <span className="text-foreground font-bold text-xl leading-none">
-                  {postsNum.toLocaleString()}
-                </span>
-              )}
-              <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest mt-1 flex items-center gap-1">
-                <Grid className="w-3 h-3" />
-                Posts
-              </span>
-            </div>
+        {/* Location */}
+        {location && (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>{location}</span>
           </div>
         )}
 
-        {/* ── Tabs ── */}
-        <div className="flex border-b border-border mb-4">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { label: 'Posts', value: '0' },
+            { label: 'Followers', value: '0' },
+            { label: 'Following', value: '0' },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-col items-center justify-center py-3 rounded-2xl"
+              style={{
+                background: 'oklch(0.14 0.02 60 / 0.6)',
+                border: '1px solid oklch(0.65 0.18 60 / 0.2)',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 0 12px oklch(0.65 0.18 60 / 0.08)',
+              }}
+            >
+              <span
+                className="text-xl font-bold font-display"
+                style={{
+                  background: 'linear-gradient(90deg, oklch(0.85 0.18 60), oklch(0.75 0.20 30))',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                {stat.value}
+              </span>
+              <span className="text-xs text-muted-foreground mt-0.5">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-border/30 mb-4">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               activeTab === 'posts'
-                ? 'border-gold-500 text-gold-400'
+                ? 'border-gold-400 text-gold-400'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Grid className="w-4 h-4" />
+            <Grid3X3 className="w-4 h-4" />
             Posts
           </button>
           <button
             onClick={() => setActiveTab('liked')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               activeTab === 'liked'
-                ? 'border-gold-500 text-gold-400'
+                ? 'border-gold-400 text-gold-400'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -454,54 +334,181 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* ── Posts Grid ── */}
-        {activeTab === 'posts' && (
-          <>
-            {postsLoading ? (
-              <div className="grid grid-cols-3 gap-1">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square rounded-lg" />
-                ))}
-              </div>
-            ) : posts && posts.length > 0 ? (
-              <div className="grid grid-cols-3 gap-1">
-                {posts.map((post) => (
-                  <PostGridItem key={post.id.toString()} post={post} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                <Grid className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No posts yet</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── Liked Posts Grid ── */}
-        {activeTab === 'liked' && (
-          <>
-            {likedLoading ? (
-              <div className="grid grid-cols-3 gap-1">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square rounded-lg" />
-                ))}
-              </div>
-            ) : likedPosts && likedPosts.length > 0 ? (
-              <div className="grid grid-cols-3 gap-1">
-                {likedPosts.map((post) => (
-                  <PostGridItem key={post.id.toString()} post={post} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                <Heart className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No liked posts yet</p>
-              </div>
-            )}
-          </>
-        )}
+        {/* Posts Grid Placeholder */}
+        <div className="grid grid-cols-3 gap-1">
+          {activeTab === 'posts' ? (
+            <div className="col-span-3 flex flex-col items-center justify-center py-16 text-center">
+              <Grid3X3 className="w-10 h-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No posts yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Share your first moment!</p>
+            </div>
+          ) : (
+            <div className="col-span-3 flex flex-col items-center justify-center py-16 text-center">
+              <Heart className="w-10 h-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No liked posts yet</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Posts you like will appear here</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent
+          className="max-w-md mx-auto"
+          style={{
+            background: 'oklch(0.13 0.02 60)',
+            border: '1px solid oklch(0.65 0.18 60 / 0.25)',
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle
+              className="text-lg font-bold font-display"
+              style={{
+                background: 'linear-gradient(90deg, oklch(0.85 0.18 60), oklch(0.75 0.20 30))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Edit Profile
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Profile Photo */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <AvatarPlaceholder
+                  name={editName || displayName}
+                  profilePhoto={editProfilePhoto}
+                  size="lg"
+                  showGradientRing={true}
+                />
+                {editProfilePhotoPreview && (
+                  <div className="absolute inset-0 rounded-full overflow-hidden">
+                    <img
+                      src={editProfilePhotoPreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => profilePhotoInputRef.current?.click()}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                style={{
+                  background: 'oklch(0.18 0.03 60 / 0.8)',
+                  border: '1px solid oklch(0.65 0.18 60 / 0.4)',
+                  color: 'oklch(0.85 0.12 60)',
+                }}
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Change Photo
+              </button>
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfilePhotoChange}
+              />
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Display Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Your name"
+                className="bg-background/50 border-border/40"
+              />
+            </div>
+
+            {/* Username */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Username</Label>
+              <Input
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                placeholder="username"
+                className="bg-background/50 border-border/40"
+              />
+            </div>
+
+            {/* Handle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Handle</Label>
+              <Input
+                value={editHandle}
+                onChange={(e) => setEditHandle(e.target.value)}
+                placeholder="@handle"
+                className="bg-background/50 border-border/40"
+              />
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Bio</Label>
+              <Textarea
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Tell the world about yourself..."
+                rows={3}
+                className="bg-background/50 border-border/40 resize-none"
+              />
+            </div>
+
+            {/* Location */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Location</Label>
+              <Input
+                value={editLocation}
+                onChange={(e) => setEditLocation(e.target.value)}
+                placeholder="City, Country"
+                className="bg-background/50 border-border/40"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={closeEditModal}
+                disabled={saveProfile.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveProfile}
+                disabled={saveProfile.isPending}
+                style={{
+                  background: 'linear-gradient(135deg, oklch(0.75 0.18 60), oklch(0.65 0.20 30))',
+                  color: 'oklch(0.1 0.02 60)',
+                  border: 'none',
+                }}
+              >
+                {saveProfile.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

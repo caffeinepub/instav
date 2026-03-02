@@ -1,81 +1,139 @@
-import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, Loader2, Users, AtSign, Heart, Eye, UserCheck, Play } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
-import { useGetAllPosts, useSearchUsers } from '../hooks/useQueries';
-import type { Post, UserProfileSummary } from '../backend';
+import React, { useState } from 'react';
+import { Search, Users, Grid, Video, Image } from 'lucide-react';
+import { useSearchUsers, Post } from '../hooks/useQueries';
+import { UserProfile } from '../backend';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from '@tanstack/react-router';
+
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+interface PostThumbnailProps {
+  post: Post;
+}
+
+function PostThumbnail({ post }: PostThumbnailProps) {
+  const mediaUrl = post.media?.getDirectURL();
+  const isVideo = post.mediaType?.startsWith('video');
+
+  return (
+    <div className="relative aspect-square bg-surface-2 rounded-lg overflow-hidden group cursor-pointer">
+      {mediaUrl ? (
+        isVideo ? (
+          <video
+            src={mediaUrl}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+          />
+        ) : (
+          <img src={mediaUrl} alt={post.caption} className="w-full h-full object-cover" />
+        )
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-surface-2 p-2">
+          <span className="text-muted-foreground text-xs text-center line-clamp-3">
+            {post.caption}
+          </span>
+        </div>
+      )}
+      {isVideo && (
+        <div className="absolute top-1.5 right-1.5 bg-black/60 rounded p-0.5">
+          <Video className="w-3 h-3 text-white" />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <span className="text-white text-xs font-semibold">❤️ {Number(post.likeCount)}</span>
+      </div>
+    </div>
+  );
+}
+
+interface UserResultCardProps {
+  user: UserProfile;
+}
+
+function UserResultCard({ user }: UserResultCardProps) {
+  const navigate = useNavigate();
+
+  return (
+    <div
+      className="flex items-center gap-3 p-3 bg-surface-1 border border-border rounded-2xl cursor-pointer hover:bg-surface-2 transition-colors"
+      onClick={() =>
+        navigate({ to: '/user/$principal', params: { principal: user.handle } })
+      }
+    >
+      <AvatarPlaceholder
+        name={user.name}
+        profilePicture={user.profilePhoto}
+        size="md"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-foreground font-semibold text-sm truncate">{user.name}</p>
+        {user.handle && (
+          <p className="text-muted-foreground text-xs truncate">@{user.handle}</p>
+        )}
+        {user.bio && (
+          <p className="text-muted-foreground/70 text-xs truncate mt-0.5">{user.bio}</p>
+        )}
+      </div>
+      <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+    </div>
+  );
+}
 
 export default function ExplorePage() {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
-  const { data: posts, isLoading: postsLoading } = useGetAllPosts();
+  const debouncedQuery = useDebounce(searchQuery, 400);
 
-  // Debounce search input (300ms)
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const { data: userResults = [], isLoading: usersLoading } = useSearchUsers(debouncedQuery);
 
-  // Use the new searchUsers hook for fuzzy + exact search
-  const { data: userResults, isLoading: usersLoading } = useSearchUsers(
-    activeTab === 'users' ? debouncedQuery : ''
-  );
-
-  const filteredPosts =
-    posts?.filter((post) => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        post.caption.toLowerCase().includes(q) ||
-        post.authorName.toLowerCase().includes(q) ||
-        post.mediaType.toLowerCase().includes(q)
-      );
-    }) ?? [];
-
-  const isSearching = searchQuery.trim().length > 0;
+  // Posts are not available in current backend
+  const posts: Post[] = [];
+  const postsLoading = false;
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Sticky header with search + tabs */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3 space-y-3">
-        <div className="max-w-lg mx-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={
-                activeTab === 'users'
-                  ? 'Search by name or handle...'
-                  : 'Search posts, users...'
-              }
-              className="w-full bg-muted rounded-full pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
-            />
-          </div>
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search users by handle…"
+            className="w-full bg-surface-2 border border-border rounded-full pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold-500/40"
+          />
         </div>
 
         {/* Tabs */}
-        <div className="max-w-lg mx-auto flex gap-1">
+        <div className="flex gap-1 mt-3">
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeTab === 'posts'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
+                ? 'bg-gold-500/20 text-gold-400 border border-gold-500/40'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5" />
+            <Grid className="w-3.5 h-3.5" />
             Posts
           </button>
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeTab === 'users'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
+                ? 'bg-gold-500/20 text-gold-400 border border-gold-500/40'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -84,196 +142,73 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4">
-        {activeTab === 'users' ? (
-          <UserSearchResults
-            query={debouncedQuery}
-            users={userResults ?? []}
-            isLoading={usersLoading}
-            onNavigate={(handle) =>
-              navigate({ to: '/profile/$handle', params: { handle } })
-            }
-          />
-        ) : (
+      <div className="px-4 py-4">
+        {activeTab === 'posts' && (
           <>
-            {!isSearching && (
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <h2 className="font-semibold text-foreground text-sm">All Posts</h2>
-              </div>
-            )}
-
             {postsLoading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="grid grid-cols-3 gap-1">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-lg" />
+                ))}
               </div>
-            ) : filteredPosts.length === 0 ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <Search className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">
-                  {isSearching ? 'No results found' : 'No posts yet'}
+            ) : posts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Image className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground text-sm">No posts to explore yet</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">
+                  Be the first to share something!
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-1">
-                {filteredPosts.map((post) => (
+                {posts.map((post) => (
                   <PostThumbnail key={post.id.toString()} post={post} />
                 ))}
               </div>
             )}
           </>
         )}
-      </div>
-    </div>
-  );
-}
 
-// ── User Search Results ──────────────────────────────────────────────────────
-
-function UserSearchResults({
-  query,
-  users,
-  isLoading,
-  onNavigate,
-}: {
-  query: string;
-  users: UserProfileSummary[];
-  isLoading: boolean;
-  onNavigate: (handle: string) => void;
-}) {
-  if (!query.trim()) {
-    return (
-      <div className="text-center py-20 text-muted-foreground">
-        <AtSign className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm font-medium">Find people on Smileup</p>
-        <p className="text-xs mt-1 opacity-70">Search by name or @handle</p>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (users.length === 0) {
-    return (
-      <div className="text-center py-20 text-muted-foreground">
-        <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm font-medium">No users found</p>
-        <p className="text-xs mt-1 opacity-70">
-          No results for &ldquo;{query}&rdquo;
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground mb-3">
-        {users.length} result{users.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
-      </p>
-      {users.map((user) => (
-        <UserResultCard
-          key={user.principal.toString()}
-          user={user}
-          onNavigate={onNavigate}
-        />
-      ))}
-    </div>
-  );
-}
-
-function UserResultCard({
-  user,
-  onNavigate,
-}: {
-  user: UserProfileSummary;
-  onNavigate: (handle: string) => void;
-}) {
-  return (
-    <button
-      onClick={() => onNavigate(user.handle)}
-      className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors text-left"
-    >
-      <AvatarPlaceholder
-        name={user.displayName || user.handle}
-        profilePicture={user.avatarUrl ?? null}
-        size="md"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-foreground truncate">
-          {user.displayName || user.handle}
-        </p>
-        <p className="text-xs text-primary truncate">@{user.handle}</p>
-        {user.bio && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{user.bio}</p>
-        )}
-      </div>
-      <div className="flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <UserCheck className="w-3 h-3" />
-          {Number(user.followerCount)}
-        </span>
-        <span className="flex items-center gap-1">
-          <TrendingUp className="w-3 h-3" />
-          {Number(user.postCount)}
-        </span>
-      </div>
-    </button>
-  );
-}
-
-// ── Post Thumbnail ───────────────────────────────────────────────────────────
-
-function PostThumbnail({ post }: { post: Post }) {
-  const mediaUrl = post.media?.getDirectURL();
-  const isVideo = post.mediaType?.startsWith('video');
-
-  return (
-    <div className="relative aspect-square bg-muted rounded-lg overflow-hidden group">
-      {mediaUrl ? (
-        isVideo ? (
-          <div className="relative w-full h-full bg-black">
-            <video
-              src={mediaUrl}
-              className="w-full h-full object-cover"
-              muted
-              preload="metadata"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+        {activeTab === 'users' && (
+          <>
+            {usersLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 p-3 bg-surface-1 border border-border rounded-2xl"
+                  >
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="w-28 h-4 rounded" />
+                      <Skeleton className="w-20 h-3 rounded" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
-        ) : (
-          <img
-            src={mediaUrl}
-            alt={post.caption || 'Post'}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        )
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted p-2">
-          <span className="text-xs text-muted-foreground text-center line-clamp-3">
-            {post.caption || 'Post'}
-          </span>
-        </div>
-      )}
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-        <div className="flex items-center gap-1 text-white text-xs">
-          <Heart className="w-3 h-3" />
-          {Number(post.likeCount)}
-        </div>
-        <div className="flex items-center gap-1 text-white text-xs">
-          <Eye className="w-3 h-3" />
-          {Number(post.viewCount)}
-        </div>
+            ) : debouncedQuery && userResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Users className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground text-sm">No users found</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">Try searching by handle</p>
+              </div>
+            ) : !debouncedQuery ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Search className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground text-sm">Search for users</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">
+                  Enter a handle to find people
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {userResults.map((user: UserProfile) => (
+                  <UserResultCard key={user.handle} user={user} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

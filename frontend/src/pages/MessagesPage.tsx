@@ -1,94 +1,162 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, MessageCircle, Users, UserPlus, ArrowLeft, Search } from 'lucide-react';
 import {
   useGetConversations,
   useGetMessages,
   useSendMessage,
   useMarkMessagesRead,
-  useGetUserProfile,
   useGetFriendsList,
-  useGetIncomingFriendRequests,
-  useRespondToFriendRequest,
   useGetFollowing,
-  useGetFollowingProfiles,
+  useGetCallerUserProfile,
+  useGetUserProfile,
+  Conversation,
+  Message,
 } from '../hooks/useQueries';
+import { UserProfile } from '../backend';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import AvatarPlaceholder from '../components/AvatarPlaceholder';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Send, MessageCircle, Users, UserCheck, Star, ArrowLeft } from 'lucide-react';
-import type { Conversation } from '../backend';
+import { Principal } from '@dfinity/principal';
 
-interface MessagesPageProps {
-  initialPrincipal?: string;
+interface ShadowingUserItemProps {
+  principalStr: string;
+  onClick: () => void;
 }
 
-// Sub-component: conversation list item
-function ConversationItem({
-  principalStr,
-  isSelected,
-  onClick,
-}: {
-  principalStr: string;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
+function ShadowingUserItem({ principalStr, onClick }: ShadowingUserItemProps) {
   const { data: profile } = useGetUserProfile(principalStr);
 
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left ${
-        isSelected
-          ? 'bg-primary/10 border-l-2 border-primary'
-          : 'hover:bg-surface/60 border-l-2 border-transparent'
-      }`}
+      className="flex items-center gap-3 w-full px-4 py-3 hover:bg-surface-2 transition-colors text-left"
     >
-      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
+      <AvatarPlaceholder
+        name={profile?.name ?? principalStr.slice(0, 8)}
+        profilePicture={profile?.profilePhoto}
+        size="md"
+      />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {profile?.displayName || 'Unknown User'}
+        <p className="text-foreground font-medium text-sm truncate">
+          {profile?.name ?? principalStr.slice(0, 8) + '…'}
         </p>
-        <p className="text-xs text-muted-foreground truncate">@{profile?.handle || principalStr.slice(0, 12)}</p>
+        {profile?.handle && (
+          <p className="text-muted-foreground text-xs truncate">@{profile.handle}</p>
+        )}
       </div>
     </button>
   );
 }
 
-// Sub-component: message thread
-function MessageThread({
-  otherPrincipal,
-  currentPrincipal,
-  onBack,
-}: {
-  otherPrincipal: string;
+interface MessageBubbleProps {
+  message: Message;
+  isOwn: boolean;
+}
+
+function MessageBubble({ message, isOwn }: MessageBubbleProps) {
+  const timeStr = new Date(Number(message.timestamp) / 1_000_000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}>
+      <div
+        className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+          isOwn
+            ? 'bg-gold-500/20 border border-gold-500/40 text-foreground rounded-br-sm'
+            : 'bg-surface-2 border border-border text-foreground rounded-bl-sm'
+        }`}
+      >
+        <p className="text-sm leading-relaxed break-words">{message.content}</p>
+        <p className={`text-[10px] mt-1 ${isOwn ? 'text-gold-400/70' : 'text-muted-foreground'}`}>
+          {timeStr}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface ConversationItemProps {
+  conversation: Conversation;
+  isActive: boolean;
+  onClick: () => void;
   currentPrincipal: string;
-  onBack?: () => void;
-}) {
-  const { data: messages, isLoading } = useGetMessages(otherPrincipal);
-  const { data: profile } = useGetUserProfile(otherPrincipal);
+}
+
+function ConversationItem({ conversation, isActive, onClick, currentPrincipal }: ConversationItemProps) {
+  const otherPrincipalStr = conversation.otherPrincipal.toString();
+  const { data: profile } = useGetUserProfile(otherPrincipalStr);
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 w-full px-4 py-3 transition-colors text-left ${
+        isActive ? 'bg-gold-500/10 border-r-2 border-gold-500' : 'hover:bg-surface-2'
+      }`}
+    >
+      <AvatarPlaceholder
+        name={profile?.name ?? otherPrincipalStr.slice(0, 8)}
+        profilePicture={profile?.profilePhoto}
+        size="md"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-foreground font-medium text-sm truncate">
+          {profile?.name ?? otherPrincipalStr.slice(0, 8) + '…'}
+        </p>
+        {profile?.handle && (
+          <p className="text-muted-foreground text-xs truncate">@{profile.handle}</p>
+        )}
+      </div>
+      {Number(conversation.unreadCount) > 0 && (
+        <span className="bg-coral-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
+          {Number(conversation.unreadCount)}
+        </span>
+      )}
+    </button>
+  );
+}
+
+interface MessagesPageProps {
+  initialPrincipal?: string | null;
+}
+
+export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
+  const { identity } = useInternetIdentity();
+  const myPrincipal = identity?.getPrincipal().toString();
+
+  const [activeTab, setActiveTab] = useState<'inbox' | 'friends' | 'shadowing'>('inbox');
+  const [activePrincipal, setActivePrincipal] = useState<string | null>(initialPrincipal ?? null);
+  const [messageText, setMessageText] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: conversations = [], isLoading: convsLoading } = useGetConversations();
+  const { data: messages = [], isLoading: msgsLoading } = useGetMessages(activePrincipal);
+  const { data: friendsList = [] } = useGetFriendsList();
+  const { data: followingList = [] } = useGetFollowing(myPrincipal);
+  const { data: callerProfile } = useGetCallerUserProfile();
+  const { data: activeProfile } = useGetUserProfile(activePrincipal);
+
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
-  const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (otherPrincipal) {
-      markRead.mutate(otherPrincipal);
+    if (activePrincipal) {
+      markRead.mutate(activePrincipal);
     }
-  }, [otherPrincipal, messages?.length]);
+  }, [activePrincipal]);
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
-    try {
-      await sendMessage.mutateAsync({ recipient: otherPrincipal, content: newMessage.trim() });
-      setNewMessage('');
-    } catch (err) {
-      console.error('Send message error:', err);
-    }
+    if (!messageText.trim() || !activePrincipal) return;
+    const text = messageText.trim();
+    setMessageText('');
+    await sendMessage.mutateAsync({ recipient: activePrincipal, content: text }).catch(() => {
+      setMessageText(text);
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -98,438 +166,188 @@ function MessageThread({
     }
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface/50">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="md:hidden mr-1 p-1 rounded-full hover:bg-surface transition-colors text-muted-foreground"
-            aria-label="Back to conversations"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-        )}
-        <AvatarPlaceholder name={profile?.displayName || otherPrincipal.slice(0, 8)} size="sm" />
-        <div>
-          <p className="font-medium text-foreground">{profile?.displayName || 'Unknown User'}</p>
-          <p className="text-xs text-muted-foreground">@{profile?.handle || otherPrincipal.slice(0, 12)}</p>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
-                <Skeleton className="h-10 w-48 rounded-2xl" />
-              </div>
-            ))}
-          </div>
-        ) : messages?.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
-            <p className="text-sm">No messages yet. Say hello!</p>
-          </div>
-        ) : (
-          messages?.map((msg, idx) => {
-            const isOwn = msg.sender.toString() === currentPrincipal;
-            return (
-              <div key={idx} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[70%] px-4 py-2 rounded-2xl text-sm ${
-                    isOwn
-                      ? 'bg-primary text-primary-foreground rounded-br-sm'
-                      : 'bg-surface border border-border text-foreground rounded-bl-sm'
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            );
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-border bg-surface/50">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 rounded-full bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!newMessage.trim() || sendMessage.isPending}
-            size="icon"
-            className="rounded-full shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Sub-component: Friend Zone Tab
-function FriendZoneTab({ currentPrincipal, onStartChat }: { currentPrincipal: string; onStartChat: (p: string) => void }) {
-  const { data: friendsList, isLoading: friendsLoading } = useGetFriendsList();
-  const { data: incomingRequests, isLoading: requestsLoading } = useGetIncomingFriendRequests();
-  const respondMutation = useRespondToFriendRequest();
-
-  const handleRespond = async (senderStr: string, accept: boolean) => {
-    try {
-      await respondMutation.mutateAsync({ sender: senderStr, accept });
-    } catch (err) {
-      console.error('Respond to friend request error:', err);
-    }
-  };
+  const showThread = !!activePrincipal;
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Incoming Requests */}
-      {(incomingRequests?.length ?? 0) > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-primary" />
-            Friend Requests ({incomingRequests?.length})
-          </h3>
-          <div className="space-y-2">
-            {requestsLoading ? (
-              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)
-            ) : (
-              incomingRequests?.map((req) => {
-                const senderStr = req.sender.toString();
-                return (
-                  <FriendRequestItem
-                    key={senderStr}
-                    principalStr={senderStr}
-                    onAccept={() => handleRespond(senderStr, true)}
-                    onDecline={() => handleRespond(senderStr, false)}
-                    isLoading={respondMutation.isPending}
-                  />
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Friends List */}
-      <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Users className="w-4 h-4 text-primary" />
-          Friends ({friendsList?.length ?? 0})
-        </h3>
-        {friendsLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
-          </div>
-        ) : (friendsList?.length ?? 0) === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No friends yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {friendsList?.map((friendPrincipalStr) => (
-              <FriendItem
-                key={friendPrincipalStr}
-                principalStr={friendPrincipalStr}
-                onChat={() => onStartChat(friendPrincipalStr)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FriendRequestItem({
-  principalStr,
-  onAccept,
-  onDecline,
-  isLoading,
-}: {
-  principalStr: string;
-  onAccept: () => void;
-  onDecline: () => void;
-  isLoading: boolean;
-}) {
-  const { data: profile } = useGetUserProfile(principalStr);
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
-      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{profile?.displayName || 'Unknown'}</p>
-        <p className="text-xs text-muted-foreground">@{profile?.handle || principalStr.slice(0, 12)}</p>
-      </div>
-      <div className="flex gap-1">
-        <Button size="sm" onClick={onAccept} disabled={isLoading} className="h-7 px-2 text-xs">Accept</Button>
-        <Button size="sm" variant="outline" onClick={onDecline} disabled={isLoading} className="h-7 px-2 text-xs">Decline</Button>
-      </div>
-    </div>
-  );
-}
-
-function FriendItem({ principalStr, onChat }: { principalStr: string; onChat: () => void }) {
-  const { data: profile } = useGetUserProfile(principalStr);
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-border">
-      <AvatarPlaceholder name={profile?.displayName || principalStr.slice(0, 8)} size="sm" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{profile?.displayName || 'Unknown'}</p>
-        <p className="text-xs text-muted-foreground">@{profile?.handle || principalStr.slice(0, 12)}</p>
-      </div>
-      <Button size="sm" variant="outline" onClick={onChat} className="h-7 px-3 text-xs shrink-0">
-        <MessageCircle className="w-3 h-3 mr-1" />
-        Chat
-      </Button>
-    </div>
-  );
-}
-
-// Sub-component: Shadowing Tab
-function ShadowingTab({ currentPrincipal }: { currentPrincipal: string }) {
-  const { data: followingList, isLoading: followingLoading } = useGetFollowing(currentPrincipal);
-  const { data: followingProfiles, isLoading: profilesLoading } = useGetFollowingProfiles(currentPrincipal);
-
-  const isLoading = followingLoading || profilesLoading;
-  const followingCount = followingList?.length ?? 0;
-
-  return (
-    <div className="p-4">
-      {/* Gold Premium Header Card */}
-      <div className="relative mb-5 rounded-2xl overflow-hidden border border-amber-400/60 shadow-lg shadow-amber-400/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-900/40 via-yellow-900/30 to-amber-800/40" />
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/5 via-amber-300/10 to-yellow-400/5" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
-        <div className="relative px-5 py-4 flex items-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-md shadow-amber-500/40">
-            <Star className="w-6 h-6 text-amber-900 fill-amber-900" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/80 mb-0.5">Shadowing</p>
-            <p className="text-2xl font-display font-bold bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
-              {followingCount} {followingCount === 1 ? 'User' : 'Users'}
-            </p>
-            <p className="text-xs text-amber-400/60 mt-0.5">People you are shadowing</p>
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
-      </div>
-
-      {/* Following List */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
-          ))}
-        </div>
-      ) : followingCount === 0 ? (
-        <div className="text-center py-10 rounded-xl border border-amber-400/20 bg-amber-900/10">
-          <Star className="w-10 h-10 mx-auto mb-3 text-amber-400/40" />
-          <p className="text-amber-300/60 text-sm font-medium">Not shadowing anyone yet.</p>
-          <p className="text-amber-300/40 text-xs mt-1">Follow users to start shadowing them.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {(followingProfiles ?? followingList?.map(p => ({ principal: p.toString(), profile: null })) ?? []).map((item) => (
-            <ShadowingUserItem
-              key={item.principal}
-              principalStr={item.principal}
-              profile={item.profile}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ShadowingUserItem({
-  principalStr,
-  profile,
-}: {
-  principalStr: string;
-  profile: import('../backend').UserProfileData | null;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-amber-900/20 to-yellow-900/10 border border-amber-400/25 hover:border-amber-400/50 transition-colors">
-      <div className="relative">
-        <AvatarPlaceholder
-          name={profile?.displayName || principalStr.slice(0, 8)}
-          profilePicture={profile?.profilePhoto}
-          size="sm"
-        />
-        <div className="absolute inset-0 rounded-full ring-1 ring-amber-400/40" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {profile?.displayName || 'Unknown User'}
-        </p>
-        <p className="text-xs text-amber-400/70 truncate">
-          @{profile?.handle || principalStr.slice(0, 12)}
-        </p>
-      </div>
-      <div className="shrink-0">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-medium">
-          <Star className="w-2.5 h-2.5 fill-amber-300" />
-          Shadow
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Main MessagesPage
-export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
-  const { identity } = useInternetIdentity();
-  const currentPrincipal = identity?.getPrincipal().toString() ?? '';
-
-  const { data: conversations, isLoading: convsLoading } = useGetConversations();
-  const [selectedPrincipal, setSelectedPrincipal] = useState<string | null>(initialPrincipal ?? null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'friendzone' | 'shadowing'>('inbox');
-
-  useEffect(() => {
-    if (initialPrincipal) {
-      setSelectedPrincipal(initialPrincipal);
-      setActiveTab('inbox');
-    }
-  }, [initialPrincipal]);
-
-  const conversationPrincipals = (conversations ?? [])
-    .map((conv: Conversation) => {
-      const [p1, p2] = conv.participants;
-      return p1.toString() === currentPrincipal ? p2.toString() : p1.toString();
-    })
-    .filter((p, idx, arr) => arr.indexOf(p) === idx);
-
-  const handleSelectConversation = (p: string) => {
-    setSelectedPrincipal(p);
-    setActiveTab('inbox');
-  };
-
-  const handleBack = () => {
-    setSelectedPrincipal(null);
-  };
-
-  return (
-    <div className="flex h-[calc(100vh-8rem)] max-w-4xl mx-auto">
-      {/* Left Panel */}
+    <div className="flex h-[calc(100vh-120px)] bg-background">
+      {/* Sidebar */}
       <div
-        className={`
-          flex flex-col bg-background border-r border-border
-          ${selectedPrincipal ? 'hidden md:flex md:w-80 md:shrink-0' : 'flex w-full md:w-80 md:shrink-0'}
-        `}
+        className={`${showThread ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 border-r border-border bg-surface-1`}
       >
         {/* Tabs */}
         <div className="flex border-b border-border">
-          <button
-            onClick={() => setActiveTab('inbox')}
-            className={`flex-1 py-3 text-xs font-medium transition-colors ${
-              activeTab === 'inbox' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Inbox
-          </button>
-          <button
-            onClick={() => setActiveTab('friendzone')}
-            className={`flex-1 py-3 text-xs font-medium transition-colors ${
-              activeTab === 'friendzone' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Friend Zone
-          </button>
-          <button
-            onClick={() => setActiveTab('shadowing')}
-            className={`flex-1 py-3 text-xs font-medium transition-colors relative ${
-              activeTab === 'shadowing'
-                ? 'border-b-2 border-amber-400'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            style={activeTab === 'shadowing' ? { color: '#fbbf24' } : {}}
-          >
-            <span className={activeTab === 'shadowing' ? 'bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent font-semibold' : ''}>
-              Shadowing
-            </span>
-          </button>
+          {(['inbox', 'friends', 'shadowing'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === tab
+                  ? 'text-gold-400 border-b-2 border-gold-500'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab === 'inbox' ? 'Inbox' : tab === 'friends' ? 'Friends' : 'Shadowing'}
+            </button>
+          ))}
         </div>
 
-        {/* Tab Content */}
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'inbox' && (
             <>
               {convsLoading ? (
-                <div className="space-y-1 p-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      <Skeleton className="w-8 h-8 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-3 w-32" />
-                        <Skeleton className="h-3 w-20" />
-                      </div>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="w-28 h-4 rounded" />
+                      <Skeleton className="w-20 h-3 rounded" />
                     </div>
-                  ))}
-                </div>
-              ) : conversationPrincipals.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
-                  <MessageCircle className="w-10 h-10 mb-3 opacity-30" />
-                  <p className="text-sm">No conversations yet</p>
+                  </div>
+                ))
+              ) : conversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <MessageCircle className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-muted-foreground text-sm">No conversations yet</p>
                 </div>
               ) : (
-                conversationPrincipals.map((p) => (
+                conversations.map((conv: Conversation) => (
                   <ConversationItem
-                    key={p}
-                    principalStr={p}
-                    isSelected={selectedPrincipal === p}
-                    onClick={() => handleSelectConversation(p)}
+                    key={conv.otherPrincipal.toString()}
+                    conversation={conv}
+                    isActive={activePrincipal === conv.otherPrincipal.toString()}
+                    onClick={() => setActivePrincipal(conv.otherPrincipal.toString())}
+                    currentPrincipal={myPrincipal ?? ''}
                   />
                 ))
               )}
             </>
           )}
-          {activeTab === 'friendzone' && (
-            <FriendZoneTab
-              currentPrincipal={currentPrincipal}
-              onStartChat={handleSelectConversation}
-            />
+
+          {activeTab === 'friends' && (
+            <>
+              {friendsList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <Users className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-muted-foreground text-sm">No friends yet</p>
+                </div>
+              ) : (
+                friendsList.map((principalStr: string) => (
+                  <ShadowingUserItem
+                    key={principalStr}
+                    principalStr={principalStr}
+                    onClick={() => setActivePrincipal(principalStr)}
+                  />
+                ))
+              )}
+            </>
           )}
+
           {activeTab === 'shadowing' && (
-            <ShadowingTab currentPrincipal={currentPrincipal} />
+            <>
+              {followingList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <UserPlus className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-muted-foreground text-sm">Not shadowing anyone yet</p>
+                </div>
+              ) : (
+                followingList.map((p: Principal) => (
+                  <ShadowingUserItem
+                    key={p.toString()}
+                    principalStr={p.toString()}
+                    onClick={() => setActivePrincipal(p.toString())}
+                  />
+                ))
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Right Panel — Message Thread */}
-      <div
-        className={`
-          flex-1 bg-background
-          ${selectedPrincipal ? 'flex flex-col' : 'hidden md:flex md:flex-col'}
-        `}
-      >
-        {selectedPrincipal ? (
-          <MessageThread
-            otherPrincipal={selectedPrincipal}
-            currentPrincipal={currentPrincipal}
-            onBack={handleBack}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle className="w-12 h-12 mb-3 opacity-30" />
-            <p className="text-sm">Select a conversation to start messaging</p>
+      {/* Thread */}
+      {showThread ? (
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Thread header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-surface-1">
+            <button
+              onClick={() => setActivePrincipal(null)}
+              className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <AvatarPlaceholder
+              name={activeProfile?.name ?? activePrincipal?.slice(0, 8) ?? '?'}
+              profilePicture={activeProfile?.profilePhoto}
+              size="sm"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-foreground font-semibold text-sm truncate">
+                {activeProfile?.name ?? activePrincipal?.slice(0, 8) + '…'}
+              </p>
+              {activeProfile?.handle && (
+                <p className="text-muted-foreground text-xs">@{activeProfile.handle}</p>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {msgsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border-2 border-gold-500/40 border-t-gold-500 rounded-full animate-spin" />
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <MessageCircle className="w-10 h-10 text-muted-foreground/30 mb-2" />
+                <p className="text-muted-foreground text-sm">No messages yet</p>
+                <p className="text-muted-foreground/60 text-xs mt-1">Say hello!</p>
+              </div>
+            ) : (
+              messages.map((msg: Message, i) => (
+                <MessageBubble
+                  key={i}
+                  message={msg}
+                  isOwn={msg.sender.toString() === myPrincipal}
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="px-4 py-3 border-t border-border bg-surface-1 flex items-center gap-3">
+            <AvatarPlaceholder
+              name={callerProfile?.name ?? 'Me'}
+              profilePicture={callerProfile?.profilePhoto}
+              size="sm"
+            />
+            <input
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message…"
+              className="flex-1 bg-surface-2 border border-border rounded-full px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold-500/40"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!messageText.trim() || sendMessage.isPending}
+              className="w-9 h-9 bg-gold-500 hover:bg-gold-400 text-background rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-50 transition-colors"
+            >
+              {sendMessage.isPending ? (
+                <span className="w-4 h-4 border-2 border-background/40 border-t-background rounded-full animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="hidden md:flex flex-1 items-center justify-center text-center">
+          <div>
+            <MessageCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">Select a conversation</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

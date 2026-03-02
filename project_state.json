@@ -1,63 +1,34 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Social app with a professional profile page upgrade being built in steps. Step 1: professional layout with uploadable banner/photo, golden followers box, stats. Step 2: Edit Profile flow with Save. Step 3: Follow system with real-time follower count updates.",
-  "architectural_notes": [
-    "Profile page has two views: own profile (Edit Profile button, no Follow button) and other user's profile (Follow button, no Edit)",
-    "Profile photo and banner are uploadable actual images; photo overlaps banner in Instagram-style layout"
-  ],
+  "summary": "Social app with user profiles, including profile photo, banner, and edit profile functionality.",
+  "architectural_notes": [],
   "known_issues": [
-    "Previous full-build attempts for profile upgrade failed twice; building in steps (1-by-1) to improve reliability"
+    "Save Profile throws 'failed to update profile' error — backend profile update call is failing",
+    "Banner upload/change button is non-functional"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-add-a-full-width-uploadable-banner-image-at-the-top-of-the-profile-page-profilepage-tsx-the-banner-area-should-be-approximately-180px-tall-display-the-uploaded-image-as-a-cover-and-fall-back-to-a-dark-gradient-when-no-image-is-set-include-a-camera-icon-overlay-button-on-the-banner-so-the-user-can-tap-to-upload-a-new-banner-image-store-the-banner-image-as-a-blob-in-the-backend-already-supported-via-existing-banner-blob-logic",
-      "title": "Add a full-width uploadable banner image at the top of the profile page (ProfilePage.tsx). The banner area should be approximately 180px tall, display the uploaded image as a cover, and fall back to a dark gradient when no image is set. Include a camera icon overlay button on the banner so the user can tap to upload a new banner image. Store the banner image as a blob in the backend (already supported via existing banner blob logic).",
+      "id": "feature-fix-the-failed-to-update-profile-error-that-occurs-when-a-user-taps-the-save-button-in-the-edit-profile-modal-the-backend-profile-update-call-must-succeed-and-persist-changes-name-handle-bio-location-profile-photo-correctly",
+      "title": "Fix the 'failed to update profile' error that occurs when a user taps the Save button in the Edit Profile modal. The backend profile update call must succeed and persist changes (name, handle, bio, location, profile photo) correctly.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-replace-the-orange-initials-avatar-avatarplaceholder-on-profilepage-tsx-with-an-uploadable-circular-profile-photo-the-profile-photo-should-overlap-the-bottom-edge-of-the-banner-positioned-absolutely-bottom-40px-from-banner-bottom-left-aligned-with-padding-show-a-small-camera-icon-overlay-on-the-avatar-circle-so-the-user-can-tap-to-upload-a-new-profile-photo-store-the-profile-photo-blob-in-the-backend-fall-back-to-the-existing-gradient-initials-avatar-if-no-photo-is-uploaded",
-      "title": "Replace the orange initials avatar (AvatarPlaceholder) on ProfilePage.tsx with an uploadable circular profile photo. The profile photo should overlap the bottom edge of the banner (positioned absolutely, bottom -40px from banner bottom, left-aligned with padding). Show a small camera icon overlay on the avatar circle so the user can tap to upload a new profile photo. Store the profile photo blob in the backend. Fall back to the existing gradient initials avatar if no photo is uploaded.",
+      "id": "feature-fix-the-banner-upload-change-button-on-the-profile-page-so-it-is-fully-functional-users-must-be-able-to-tap-the-banner-button-select-an-image-and-have-it-displayed-as-the-profile-banner",
+      "title": "Fix the banner upload/change button on the profile page so it is fully functional. Users must be able to tap the banner button, select an image, and have it displayed as the profile banner.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
-    },
-    {
-      "id": "feature-redesign-the-profile-info-section-below-the-banner-avatar-on-profilepage-tsx-with-a-professional-dark-theme-layout-1-display-the-user-s-display-name-inside-a-dark-rounded-pill-box-with-a-subtle-golden-glow-or-drop-shadow-2-show-the-user-s-handle-in-smaller-grey-text-below-the-name-3-show-the-followers-count-inside-a-dark-rounded-box-with-a-golden-border-and-golden-drop-shadow-existing-golden-followers-box-enhanced-4-show-following-count-as-a-stat-5-show-posts-count-as-a-stat-6-arrange-the-stats-followers-following-posts-in-a-horizontal-row-beneath-the-name-handle-keep-the-existing-edit-profile-button-aligned-to-the-right-side-of-the-profile-header-area",
-      "title": "Redesign the profile info section below the banner/avatar on ProfilePage.tsx with a professional dark-theme layout: (1) Display the user's display name inside a dark rounded pill/box with a subtle golden glow or drop-shadow. (2) Show the user's @handle in smaller grey text below the name. (3) Show the Followers count inside a dark rounded box with a golden border and golden drop-shadow (existing golden followers box, enhanced). (4) Show Following count as a stat. (5) Show Posts count as a stat. (6) Arrange the stats (Followers, Following, Posts) in a horizontal row beneath the name/handle. Keep the existing Edit Profile button aligned to the right side of the profile header area.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Step 1: Professional profile layout - uploadable banner, uploadable profile photo overlapping banner, name in styled dark box with golden glow, handle, followers in golden box with shadow, following count, posts count",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Step 2: Edit Profile flow with Save button - editable name, handle, bio, profile photo, and banner",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Step 3: Follow system - Follow button on other users' profiles (not own), real-time follower count updates when followed",
-      "reqIds": [],
-      "status": "pending"
-    }
-  ],
+  "new_feature_requests": [],
   "gameProjectType": "none",
-  "projectName": "Smileup",
+  "projectName": "Fix Save Profile error and banner button functionality",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

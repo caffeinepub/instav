@@ -42,8 +42,13 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5"
-      style={{ background: 'oklch(0.08 0.008 260 / 85%)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}
+    <header
+      className="sticky top-0 z-50 w-full border-b border-white/5"
+      style={{
+        background: 'oklch(0.08 0.008 260 / 85%)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+      }}
     >
       <div className="flex items-center px-4 h-14 max-w-2xl mx-auto relative">
 
@@ -64,11 +69,10 @@ export default function TopBar() {
                     </span>
                   )}
                 </button>
-                {showNotifications && (
-                  <div className="absolute left-0 top-full mt-2 z-50">
-                    <NotificationsPanel onClose={() => setShowNotifications(false)} />
-                  </div>
-                )}
+                <NotificationsPanel
+                  open={showNotifications}
+                  onClose={() => setShowNotifications(false)}
+                />
               </div>
 
               <button

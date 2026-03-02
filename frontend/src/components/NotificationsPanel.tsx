@@ -1,165 +1,133 @@
-import React from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import {
-  useGetNotifications,
-  useMarkNotificationRead,
-  useProfileByPrincipal,
-} from '../hooks/useQueries';
+import React, { useRef, useEffect } from 'react';
+import { Bell, Users, MessageCircle, Heart, X } from 'lucide-react';
+import { useGetNotifications, useMarkNotificationRead, Notification, NotificationType } from '../hooks/useQueries';
 import AvatarPlaceholder from './AvatarPlaceholder';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Bell, UserPlus, MessageCircle } from 'lucide-react';
-import type { Notification } from '../backend';
-import { NotificationType } from '../backend';
+
+interface NotificationsPanelProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function getNotificationIcon(type: NotificationType) {
+  if (type.__kind__ === 'new_shadow') return <Users className="w-4 h-4 text-gold-400" />;
+  if (type.__kind__ === 'message') return <MessageCircle className="w-4 h-4 text-coral-400" />;
+  if (type.__kind__ === 'comment') return <Heart className="w-4 h-4 text-pink-400" />;
+  return <Bell className="w-4 h-4 text-muted-foreground" />;
+}
+
+function getNotificationText(type: NotificationType): string {
+  if (type.__kind__ === 'new_shadow') return 'started shadowing you';
+  if (type.__kind__ === 'message') return 'sent you a message';
+  if (type.__kind__ === 'comment') return 'commented on your post';
+  return 'sent you a notification';
+}
 
 function timeAgo(timestamp: bigint): string {
   const now = Date.now();
   const ts = Number(timestamp) / 1_000_000;
   const diff = Math.floor((now - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }
 
-function NotificationItem({
-  notification,
-  onRead,
-}: {
-  notification: Notification;
-  onRead: () => void;
-}) {
-  const navigate = useNavigate();
-  const fromPrincipal = notification.fromPrincipal.toString();
-  const { data: profile } = useProfileByPrincipal(fromPrincipal);
-
-  const handleClick = () => {
-    onRead();
-    if (notification.notificationType === NotificationType.new_shadow) {
-      if (profile?.handle) {
-        navigate({ to: '/profile/$handle', params: { handle: profile.handle } });
-      }
-    } else if (notification.notificationType === NotificationType.message) {
-      navigate({ to: '/messages' });
-    }
-  };
-
-  const getIcon = () => {
-    switch (notification.notificationType) {
-      case NotificationType.new_shadow:
-        return <UserPlus size={12} className="text-primary" />;
-      case NotificationType.message:
-        return <MessageCircle size={12} className="text-blue-400" />;
-      default:
-        return <Bell size={12} className="text-muted-foreground" />;
-    }
-  };
-
-  const getText = () => {
-    const name = profile?.displayName ?? `@${fromPrincipal.slice(0, 8)}...`;
-    switch (notification.notificationType) {
-      case NotificationType.new_shadow:
-        return (
-          <>
-            <span className="font-semibold">{name}</span> started shadowing you
-          </>
-        );
-      case NotificationType.message:
-        return (
-          <>
-            <span className="font-semibold">{name}</span> sent you a message
-          </>
-        );
-      default:
-        return (
-          <>
-            <span className="font-semibold">{name}</span> interacted with you
-          </>
-        );
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left ${
-        !notification.read ? 'bg-primary/5' : ''
-      }`}
-    >
-      <div className="relative shrink-0">
-        <AvatarPlaceholder
-          name={profile?.displayName ?? fromPrincipal.slice(0, 8)}
-          profilePicture={profile?.profilePhoto}
-          size="sm"
-        />
-        <span className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-0.5 border border-border">
-          {getIcon()}
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm leading-snug">{getText()}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {timeAgo(notification.timestamp)}
-        </p>
-      </div>
-      {!notification.read && (
-        <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />
-      )}
-    </button>
-  );
-}
-
-interface NotificationsPanelProps {
-  onClose: () => void;
-}
-
-export default function NotificationsPanel({ onClose }: NotificationsPanelProps) {
-  const { data: notifications, isLoading } = useGetNotifications();
+export default function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { data: notifications = [], isLoading } = useGetNotifications();
   const markRead = useMarkNotificationRead();
 
-  const handleRead = (notificationId: bigint) => {
-    markRead.mutate(notificationId);
-    onClose();
-  };
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
   return (
-    <div className="w-80 max-h-[480px] flex flex-col bg-background border border-border rounded-xl shadow-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <h3 className="font-semibold text-sm">Notifications</h3>
-        {notifications && notifications.filter((n) => !n.read).length > 0 && (
-          <span className="text-xs text-muted-foreground">
-            {notifications.filter((n) => !n.read).length} unread
-          </span>
-        )}
+    <div
+      ref={panelRef}
+      className="absolute top-full right-0 mt-2 w-80 bg-surface-1 border border-border rounded-2xl shadow-card overflow-hidden z-50"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Bell className="w-4 h-4 text-gold-400" />
+          <span className="text-foreground font-semibold text-sm">Notifications</span>
+          {unreadCount > 0 && (
+            <span className="bg-coral-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+              {unreadCount}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
-      <ScrollArea className="flex-1">
+
+      {/* List */}
+      <div className="max-h-80 overflow-y-auto">
         {isLoading ? (
-          <div className="space-y-1 p-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <Skeleton className="w-8 h-8 rounded-full" />
-                <div className="flex-1 space-y-1">
-                  <Skeleton className="h-3 w-40" />
-                  <Skeleton className="h-3 w-24" />
+          <div className="flex items-center justify-center py-8">
+            <div className="w-5 h-5 border-2 border-gold-500/40 border-t-gold-500 rounded-full animate-spin" />
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+            <Bell className="w-8 h-8 text-muted-foreground/30 mb-2" />
+            <p className="text-muted-foreground text-sm">No notifications yet</p>
+          </div>
+        ) : (
+          notifications.map((notification: Notification) => (
+            <div
+              key={notification.id.toString()}
+              onClick={() => {
+                if (!notification.read) {
+                  markRead.mutate(notification.id);
+                }
+              }}
+              className={`flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-surface-2 ${
+                !notification.read ? 'bg-gold-500/5' : ''
+              }`}
+            >
+              <div className="relative flex-shrink-0">
+                <AvatarPlaceholder
+                  name={notification.fromPrincipal.toString().slice(0, 8)}
+                  size="sm"
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-surface-1 rounded-full flex items-center justify-center border border-border">
+                  {getNotificationIcon(notification.notificationType)}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : notifications && notifications.length > 0 ? (
-          notifications.map((notif) => (
-            <NotificationItem
-              key={notif.id.toString()}
-              notification={notif}
-              onRead={() => handleRead(notif.id)}
-            />
+              <div className="flex-1 min-w-0">
+                <p className="text-foreground text-xs leading-relaxed">
+                  <span className="font-semibold">
+                    {notification.fromPrincipal.toString().slice(0, 8)}…
+                  </span>{' '}
+                  {getNotificationText(notification.notificationType)}
+                </p>
+                <p className="text-muted-foreground text-xs mt-0.5">
+                  {timeAgo(notification.timestamp)} ago
+                </p>
+              </div>
+              {!notification.read && (
+                <div className="w-2 h-2 bg-gold-500 rounded-full flex-shrink-0 mt-1" />
+              )}
+            </div>
           ))
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <Bell size={28} className="mb-2 opacity-40" />
-            <p className="text-sm">No notifications yet</p>
-          </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   );
 }

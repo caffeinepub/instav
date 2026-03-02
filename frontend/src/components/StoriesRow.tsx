@@ -13,7 +13,7 @@ export default function StoriesRow() {
   const { data: userProfile } = useGetCallerUserProfile();
   const navigate = useNavigate();
 
-  const myDisplayName = userProfile?.displayName || 'You';
+  const myDisplayName = userProfile?.name || 'You';
 
   const handleViewMyPosts = () => {
     navigate({ to: '/profile' });
