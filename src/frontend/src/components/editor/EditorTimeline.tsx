@@ -1,5 +1,5 @@
+import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/utils";
 import type { Clip, EditorState } from "@/pages/EditorPage";
 import { Plus, Trash2, X } from "lucide-react";
 import { useRef } from "react";

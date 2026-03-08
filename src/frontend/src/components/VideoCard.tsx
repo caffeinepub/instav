@@ -1,6 +1,6 @@
+import { formatNumber, formatTime, timeAgo } from "@/lib/format";
 import type { Post } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
-import { formatNumber, formatTime, timeAgo } from "@/lib/utils";
 import {
   Bookmark,
   Heart,

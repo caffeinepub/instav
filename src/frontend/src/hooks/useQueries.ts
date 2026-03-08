@@ -1,7 +1,10 @@
 import { Principal } from "@dfinity/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ExternalBlob, UserProfile, UserProfileInput } from "../backend";
+import type { UserProfile, UserProfileInput } from "../backend";
+import { ExternalBlob } from "../backend";
+import * as localPosts from "../lib/localPosts";
 import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
 // ─── Local types (not exported by backend) ────────────────────────────────────
 
@@ -10,6 +13,7 @@ export type UserProfileData = UserProfile;
 export interface PostInput {
   authorName: string;
   media?: ExternalBlob;
+  mediaFile?: File;
   mediaType: string;
   caption: string;
 }
@@ -229,30 +233,80 @@ export function useUpdateProfilePhoto() {
   });
 }
 
-// ─── Posts (local mock — backend doesn't expose post methods) ─────────────────
+// ─── Posts (IndexedDB-backed) ─────────────────────────────────────────────────
+
+/** Convert a StoredPost to the public Post type */
+function storedToPost(sp: localPosts.StoredPost): Post {
+  return {
+    id: BigInt(sp.timestamp), // stable bigint from timestamp
+    authorPrincipal: (() => {
+      try {
+        return Principal.fromText(sp.authorPrincipal);
+      } catch {
+        return Principal.anonymous();
+      }
+    })(),
+    authorName: sp.authorName,
+    media: sp.mediaDataUrl ? ExternalBlob.fromURL(sp.mediaDataUrl) : undefined,
+    mediaType: sp.mediaType,
+    caption: sp.caption,
+    timestamp: BigInt(sp.timestamp),
+    likeCount: BigInt(sp.likeCount),
+    viewCount: BigInt(sp.viewCount),
+  };
+}
 
 export function useGetAllPosts() {
   return useQuery<Post[]>({
     queryKey: ["allPosts"],
-    queryFn: async () => [],
-    enabled: false,
+    queryFn: async () => {
+      const posts = await localPosts.getAllPostsAsync();
+      return posts.map(storedToPost);
+    },
+    enabled: true,
+    staleTime: 0,
   });
 }
 
-export function useGetPostsByUser(_authorPrincipal?: string | null) {
+export function useGetPostsByUser(authorPrincipal?: string | null) {
   return useQuery<Post[]>({
-    queryKey: ["postsByUser", _authorPrincipal],
-    queryFn: async () => [],
-    enabled: false,
+    queryKey: ["postsByUser", authorPrincipal],
+    queryFn: async () => {
+      if (!authorPrincipal) return [];
+      const posts = await localPosts.getPostsByUserAsync(authorPrincipal);
+      return posts.map(storedToPost);
+    },
+    enabled: !!authorPrincipal,
+    staleTime: 0,
   });
 }
 
 export function useCreatePost() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (_postInput: PostInput) => {
-      throw new Error("Post creation not available in current backend");
+    mutationFn: async (postInput: PostInput) => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+
+      let mediaDataUrl: string | null = null;
+
+      if (postInput.mediaFile) {
+        mediaDataUrl = await localPosts.fileToDataUrl(postInput.mediaFile);
+      }
+
+      return localPosts.createPostAsync({
+        authorPrincipal: callerPrincipal,
+        authorName: postInput.authorName,
+        mediaDataUrl,
+        mediaType: postInput.mediaType,
+        caption: postInput.caption,
+        timestamp: Date.now(),
+        likeCount: 0,
+        viewCount: 0,
+        likedBy: [],
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allPosts"] });
@@ -263,10 +317,16 @@ export function useCreatePost() {
 
 export function useLikePost() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (_postId: bigint) => {
-      throw new Error("Not available");
+    mutationFn: async (postId: bigint) => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      // Find the post by matching timestamp-based ID
+      const all = await localPosts.getAllPostsAsync();
+      const post = all.find((p) => BigInt(p.timestamp) === postId);
+      if (post) await localPosts.likePostAsync(post.id, callerPrincipal);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allPosts"] });
@@ -277,10 +337,15 @@ export function useLikePost() {
 
 export function useUnlikePost() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (_postId: bigint) => {
-      throw new Error("Not available");
+    mutationFn: async (postId: bigint) => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      const all = await localPosts.getAllPostsAsync();
+      const post = all.find((p) => BigInt(p.timestamp) === postId);
+      if (post) await localPosts.unlikePostAsync(post.id, callerPrincipal);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allPosts"] });
@@ -290,10 +355,20 @@ export function useUnlikePost() {
 }
 
 export function useGetLikedPosts() {
+  const { identity } = useInternetIdentity();
+
   return useQuery<Post[]>({
-    queryKey: ["likedPosts"],
-    queryFn: async () => [],
-    enabled: false,
+    queryKey: ["likedPosts", identity?.getPrincipal().toString()],
+    queryFn: async () => {
+      const principal = identity?.getPrincipal().toString() ?? "anonymous";
+      const likedIds = new Set(
+        await localPosts.getLikedPostIdsAsync(principal),
+      );
+      const all = await localPosts.getAllPostsAsync();
+      return all.filter((p) => likedIds.has(p.id)).map(storedToPost);
+    },
+    enabled: true,
+    staleTime: 0,
   });
 }
 
@@ -338,10 +413,14 @@ export function useAddComment() {
 
 export function useFollowUser() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (_target: string | Principal) => {
-      throw new Error("Not available");
+    mutationFn: async (target: string | Principal) => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      const targetStr = typeof target === "string" ? target : target.toString();
+      localPosts.followUser(callerPrincipal, targetStr);
     },
     onSuccess: (_, target) => {
       const targetStr = typeof target === "string" ? target : target.toString();
@@ -358,10 +437,14 @@ export function useFollowUser() {
 
 export function useUnfollowUser() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (_target: string | Principal) => {
-      throw new Error("Not available");
+    mutationFn: async (target: string | Principal) => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      const targetStr = typeof target === "string" ? target : target.toString();
+      localPosts.unfollowUser(callerPrincipal, targetStr);
     },
     onSuccess: (_, target) => {
       const targetStr = typeof target === "string" ? target : target.toString();
@@ -376,14 +459,22 @@ export function useUnfollowUser() {
   });
 }
 
-export function useIsFollowing(_target: string | Principal | null) {
+export function useIsFollowing(target: string | Principal | null) {
+  const { identity } = useInternetIdentity();
+  const targetStr =
+    typeof target === "string" ? target : (target?.toString() ?? null);
+
   return useQuery<boolean>({
-    queryKey: [
-      "isFollowing",
-      typeof _target === "string" ? _target : _target?.toString(),
-    ],
-    queryFn: async () => false,
-    enabled: false,
+    queryKey: ["isFollowing", targetStr],
+    queryFn: async () => {
+      if (!targetStr) return false;
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      const following = localPosts.getFollowing(callerPrincipal);
+      return following.includes(targetStr);
+    },
+    enabled: !!targetStr,
+    staleTime: 0,
   });
 }
 
@@ -395,11 +486,24 @@ export function useGetFollowers(_principalId?: string | null) {
   });
 }
 
-export function useGetFollowing(_principalId?: string | null) {
+export function useGetFollowing(principalId?: string | null) {
   return useQuery<Principal[]>({
-    queryKey: ["following", _principalId],
-    queryFn: async () => [],
-    enabled: false,
+    queryKey: ["following", principalId],
+    queryFn: async () => {
+      if (!principalId) return [];
+      return localPosts
+        .getFollowing(principalId)
+        .map((p) => {
+          try {
+            return Principal.fromText(p);
+          } catch {
+            return null;
+          }
+        })
+        .filter((p): p is Principal => p !== null);
+    },
+    enabled: !!principalId,
+    staleTime: 0,
   });
 }
 
@@ -414,18 +518,29 @@ export function useGetFollowingProfiles(_principalId?: string | null) {
 // ─── Follower Count ───────────────────────────────────────────────────────────
 
 export function useGetMyFollowerCount() {
+  const { identity } = useInternetIdentity();
+
   return useQuery<bigint>({
-    queryKey: ["myFollowerCount"],
-    queryFn: async () => BigInt(0),
-    enabled: false,
+    queryKey: ["myFollowerCount", identity?.getPrincipal().toString()],
+    queryFn: async () => {
+      const callerPrincipal =
+        identity?.getPrincipal().toString() ?? "anonymous";
+      return BigInt(localPosts.getFollowerCount(callerPrincipal));
+    },
+    enabled: true,
+    staleTime: 0,
   });
 }
 
-export function useGetFollowerCount(_principalId?: string | null) {
+export function useGetFollowerCount(principalId?: string | null) {
   return useQuery<bigint>({
-    queryKey: ["followerCount", _principalId],
-    queryFn: async () => BigInt(0),
-    enabled: false,
+    queryKey: ["followerCount", principalId],
+    queryFn: async () => {
+      if (!principalId) return BigInt(0);
+      return BigInt(localPosts.getFollowerCount(principalId));
+    },
+    enabled: !!principalId,
+    staleTime: 0,
   });
 }
 
@@ -613,10 +728,25 @@ export function useSearchUsers(_query: string) {
 
 // ─── Top Creators ─────────────────────────────────────────────────────────────
 
-export function useGetTopCreators(_limit = 10) {
+export function useGetTopCreators(limit = 10) {
   return useQuery<CreatorRanking[]>({
-    queryKey: ["topCreators", _limit],
-    queryFn: async () => [],
-    enabled: false,
+    queryKey: ["topCreators", limit],
+    queryFn: async () => {
+      const topCreators = localPosts.getTopCreatorPrincipals(limit);
+      return topCreators.map((c, i) => ({
+        principal: (() => {
+          try {
+            return Principal.fromText(c.principal);
+          } catch {
+            return Principal.anonymous();
+          }
+        })(),
+        profile: null,
+        followerCount: BigInt(c.followerCount),
+        rank: BigInt(i + 1),
+      }));
+    },
+    enabled: true,
+    staleTime: 0,
   });
 }

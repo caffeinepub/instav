@@ -4,6 +4,8 @@ import {
   ChevronUp,
   Heart,
   MessageCircle,
+  PauseCircle,
+  PlayCircle,
   Share2,
   UserCheck,
   UserPlus,
@@ -70,18 +72,22 @@ interface ReelCardProps {
   post: Post;
   isActive: boolean;
   isLiked: boolean;
+  autoScroll: boolean;
   onLikeToggle: () => void;
   onCommentOpen: () => void;
   onShare: () => void;
+  onVideoEnd: () => void;
 }
 
 function ReelCard({
   post,
   isActive,
   isLiked,
+  autoScroll,
   onLikeToggle,
   onCommentOpen,
   onShare,
+  onVideoEnd,
 }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
@@ -100,6 +106,15 @@ function ReelCard({
       videoRef.current.currentTime = 0;
     }
   }, [isActive]);
+
+  // When auto-scroll is on and video ends, notify parent to advance
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !autoScroll) return;
+    const handleEnded = () => onVideoEnd();
+    video.addEventListener("ended", handleEnded);
+    return () => video.removeEventListener("ended", handleEnded);
+  }, [autoScroll, onVideoEnd]);
 
   const handleLike = () => {
     setLocalLiked((l) => !l);
@@ -231,9 +246,7 @@ export default function ShortSportPage() {
   const likePost = useLikePost();
   const unlikePost = useUnlikePost();
 
-  const videoPosts = allPosts.filter(
-    (p: Post) => p.mediaType?.startsWith("video") || p.media,
-  );
+  const videoPosts = allPosts.filter((p: Post) => p.media || p.caption);
 
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (initialPostId) {
@@ -248,7 +261,19 @@ export default function ShortSportPage() {
   const [commentsPostId, setCommentsPostId] = useState<bigint | undefined>(
     undefined,
   );
+  const [autoScroll, setAutoScroll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Called by ReelCard when the video ends and auto-scroll is on
+  const handleVideoEnd = useCallback(() => {
+    setCurrentIndex((i) => {
+      if (i >= videoPosts.length - 1) {
+        setAutoScroll(false);
+        return i;
+      }
+      return i + 1;
+    });
+  }, [videoPosts.length]);
 
   const likedPostIds = new Set(likedPosts.map((p: Post) => p.id.toString()));
 
@@ -306,8 +331,10 @@ export default function ShortSportPage() {
         key={currentPost.id.toString()}
         post={currentPost}
         isActive={true}
+        autoScroll={autoScroll}
         isLiked={likedPostIds.has(currentPost.id.toString())}
         onLikeToggle={() => handleLikeToggle(currentPost)}
+        onVideoEnd={handleVideoEnd}
         onCommentOpen={() => setCommentsPostId(currentPost.id)}
         onShare={() => {
           if (navigator.share) {
@@ -318,36 +345,62 @@ export default function ShortSportPage() {
         }}
       />
 
-      {/* Navigation arrows */}
+      {/* Top dashboard bar: progress dots + auto-scroll toggle */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-3 pb-2 bg-gradient-to-b from-black/60 to-transparent">
+        {/* Progress dots */}
+        <div className="flex gap-1 flex-1">
+          {videoPosts.slice(0, 10).map((p: Post, i: number) => (
+            <div
+              key={p.id.toString()}
+              className={`h-1 rounded-full transition-all ${
+                i === currentIndex ? "w-4 bg-white" : "w-1 bg-white/40"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Auto-scroll toggle — fixed in the top-right of the dashboard */}
+        <button
+          type="button"
+          onClick={() => setAutoScroll((v) => !v)}
+          data-ocid="shortsport.autoscroll_toggle"
+          title={autoScroll ? "Stop auto-scroll" : "Auto-scroll"}
+          className={`ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            autoScroll
+              ? "bg-gold-500 text-black shadow-gold-glow"
+              : "bg-white/10 text-white border border-white/20"
+          }`}
+        >
+          {autoScroll ? (
+            <PauseCircle className="w-3.5 h-3.5" />
+          ) : (
+            <PlayCircle className="w-3.5 h-3.5" />
+          )}
+          {autoScroll ? "Auto ON" : "Auto"}
+        </button>
+      </div>
+
+      {/* Navigation arrows (right side, no auto-scroll toggle here anymore) */}
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
         <button
           type="button"
           onClick={goPrev}
           disabled={currentIndex === 0}
+          data-ocid="shortsport.prev_button"
           className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
         >
           <ChevronUp className="w-4 h-4" />
         </button>
+
         <button
           type="button"
           onClick={goNext}
           disabled={currentIndex === videoPosts.length - 1}
+          data-ocid="shortsport.next_button"
           className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
         >
           <ChevronDown className="w-4 h-4" />
         </button>
-      </div>
-
-      {/* Progress dots */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-20">
-        {videoPosts.slice(0, 10).map((p: Post, i: number) => (
-          <div
-            key={p.id.toString()}
-            className={`h-1 rounded-full transition-all ${
-              i === currentIndex ? "w-4 bg-white" : "w-1 bg-white/40"
-            }`}
-          />
-        ))}
       </div>
 
       {/* Comments sheet */}

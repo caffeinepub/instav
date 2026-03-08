@@ -1,6 +1,6 @@
 import { Slider } from "@/components/ui/slider";
+import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/utils";
 import type { AudioTrack, EditorState } from "@/pages/EditorPage";
 import { Mic, Plus, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useRef, useState } from "react";

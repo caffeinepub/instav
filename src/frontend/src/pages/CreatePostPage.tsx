@@ -106,12 +106,13 @@ export default function CreatePostPage() {
       await createPost.mutateAsync({
         authorName,
         media: mediaBlob,
+        mediaFile: mediaFile ?? undefined,
         mediaType,
         caption: caption.trim(),
       });
 
       toast.success("Post created successfully!");
-      navigate({ to: "/profile" });
+      navigate({ to: "/" });
     } catch (err: any) {
       const msg = err?.message ?? "Failed to create post. Please try again.";
       setError(msg);
@@ -323,23 +324,25 @@ export default function CreatePostPage() {
             <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
-        {/* Submit button — inline, always visible */}
-        <div className="pb-4">
+        {/* Submit button — large, always visible */}
+        <div className="pb-6 pt-2">
           <Button
             data-ocid="create_post.submit_button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full bg-gold-500 hover:bg-gold-400 text-background font-semibold rounded-xl py-3 shadow-gold-glow disabled:opacity-50"
+            size="lg"
+            className="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:from-pink-400 hover:via-purple-400 hover:to-blue-400 text-white font-bold rounded-2xl py-4 text-base shadow-lg shadow-purple-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isUploading || createPost.isPending ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {isUploading
-                  ? `Uploading… ${uploadProgress}%`
-                  : "Creating post…"}
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {isUploading ? `Uploading… ${uploadProgress}%` : "Posting…"}
               </span>
             ) : (
-              "Share Post"
+              <span className="flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Post to Feed &amp; ShortSport
+              </span>
             )}
           </Button>
         </div>
