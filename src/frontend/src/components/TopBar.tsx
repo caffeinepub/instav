@@ -115,7 +115,7 @@ export default function TopBar() {
             aria-label="Smileup Home"
           >
             <span
-              className="font-display font-extrabold text-2xl tracking-tight select-none"
+              className="font-display font-extrabold text-2xl tracking-normal whitespace-nowrap select-none"
               style={{
                 background:
                   "linear-gradient(135deg, #f5c842 0%, #e8a020 50%, #ff6b6b 100%)",

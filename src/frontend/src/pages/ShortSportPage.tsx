@@ -12,7 +12,8 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CommentsSheet from "../components/CommentsSheet";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -264,6 +265,65 @@ export default function ShortSportPage() {
   const [autoScroll, setAutoScroll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Swipe / drag state
+  const swipeStartX = useRef<number | null>(null);
+  const isDragging = useRef(false);
+  const [isGrabbing, setIsGrabbing] = useState(false);
+
+  const SWIPE_THRESHOLD = 50;
+
+  // Touch handlers (mobile)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (swipeStartX.current === null) return;
+      const deltaX = e.changedTouches[0].clientX - swipeStartX.current;
+      swipeStartX.current = null;
+      if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+      if (deltaX < 0) {
+        // swipe left → next
+        setCurrentIndex((i) => Math.min(i + 1, videoPosts.length - 1));
+      } else {
+        // swipe right → prev
+        setCurrentIndex((i) => Math.max(i - 1, 0));
+      }
+    },
+    [videoPosts.length],
+  );
+
+  // Mouse handlers (desktop drag)
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    swipeStartX.current = e.clientX;
+    isDragging.current = true;
+    setIsGrabbing(true);
+  }, []);
+
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isDragging.current || swipeStartX.current === null) return;
+      const deltaX = e.clientX - swipeStartX.current;
+      swipeStartX.current = null;
+      isDragging.current = false;
+      setIsGrabbing(false);
+      if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+      if (deltaX < 0) {
+        setCurrentIndex((i) => Math.min(i + 1, videoPosts.length - 1));
+      } else {
+        setCurrentIndex((i) => Math.max(i - 1, 0));
+      }
+    },
+    [videoPosts.length],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    isDragging.current = false;
+    swipeStartX.current = null;
+    setIsGrabbing(false);
+  }, []);
+
   // Called by ReelCard when the video ends and auto-scroll is on
   const handleVideoEnd = useCallback(() => {
     setCurrentIndex((i) => {
@@ -325,7 +385,17 @@ export default function ShortSportPage() {
   const currentPost = videoPosts[currentIndex];
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black overflow-hidden">
+    <div
+      ref={containerRef}
+      className={`fixed inset-0 bg-black overflow-hidden select-none ${
+        isGrabbing ? "cursor-grabbing" : "cursor-grab"
+      }`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Reel */}
       <ReelCard
         key={currentPost.id.toString()}
@@ -380,7 +450,7 @@ export default function ShortSportPage() {
         </button>
       </div>
 
-      {/* Navigation arrows (right side, no auto-scroll toggle here anymore) */}
+      {/* Navigation arrows (right side) */}
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
         <button
           type="button"

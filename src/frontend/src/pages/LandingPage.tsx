@@ -21,7 +21,7 @@ export default function LandingPage() {
         {/* Wordmark */}
         <div className="mb-8 flex flex-col items-center">
           <span
-            className="font-display font-extrabold text-6xl tracking-tight select-none"
+            className="font-display font-extrabold text-5xl tracking-normal whitespace-nowrap select-none"
             style={{
               background:
                 "linear-gradient(135deg, #C026D3 0%, #7C3AED 50%, #38BDF8 100%)",
