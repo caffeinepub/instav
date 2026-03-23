@@ -277,6 +277,31 @@ export function getTopCreatorPrincipals(
     .slice(0, limit);
 }
 
+// ─── Username map (localStorage, small data) ──────────────────────────────────
+
+const USER_NAMES_KEY = "smileup_usernames";
+
+function readUserNamesMap(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(USER_NAMES_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveUserName(principal: string, name: string): void {
+  if (!principal || !name || name === "Anonymous") return;
+  const map = readUserNamesMap();
+  map[principal] = name;
+  localStorage.setItem(USER_NAMES_KEY, JSON.stringify(map));
+}
+
+export function getUserName(principal: string): string | null {
+  const map = readUserNamesMap();
+  return map[principal] ?? null;
+}
+
 // ─── Legacy sync API (kept for backward compatibility, now async underneath) ──
 // These are used by existing code. They return empty/default values synchronously
 // and trigger async reads. Use the Async versions in new code.

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCreatePost, useGetCallerUserProfile } from "../hooks/useQueries";
+import * as localPosts from "../lib/localPosts";
 
 type PostType = "image" | "video" | "text" | "gif" | "poster";
 
@@ -38,9 +39,14 @@ export default function CreatePostPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const localName = identity
+    ? localPosts.getUserName(identity.getPrincipal().toString())
+    : null;
+
   const authorName =
     profile?.name ||
     profile?.handle ||
+    localName ||
     (identity
       ? `${identity.getPrincipal().toString().slice(0, 12)}...`
       : "Anonymous");

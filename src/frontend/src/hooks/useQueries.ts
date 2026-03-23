@@ -290,6 +290,11 @@ export function useCreatePost() {
       const callerPrincipal =
         identity?.getPrincipal().toString() ?? "anonymous";
 
+      // Persist the username so other sections can look it up
+      if (postInput.authorName && postInput.authorName !== "Anonymous") {
+        localPosts.saveUserName(callerPrincipal, postInput.authorName);
+      }
+
       let mediaDataUrl: string | null = null;
 
       if (postInput.mediaFile) {
@@ -741,7 +746,14 @@ export function useGetTopCreators(limit = 10) {
             return Principal.anonymous();
           }
         })(),
-        profile: null,
+        profile: {
+          name: localPosts.getUserName(c.principal) ?? c.principal.slice(0, 8),
+          handle: "",
+          profilePhoto: null,
+          bio: "",
+          location: "",
+          bannerImage: null,
+        } as any,
         followerCount: BigInt(c.followerCount),
         rank: BigInt(i + 1),
       }));
