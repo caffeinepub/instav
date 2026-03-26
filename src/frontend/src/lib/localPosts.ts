@@ -290,8 +290,15 @@ function readUserNamesMap(): Record<string, string> {
   }
 }
 
+/** Returns true if the string looks like a principal ID (e.g. "f6tf6-qg...") */
+function isPrincipalLike(s: string): boolean {
+  return /^[a-z0-9]{5,}-[a-z0-9]/.test(s);
+}
+
 export function saveUserName(principal: string, name: string): void {
   if (!principal || !name || name === "Anonymous") return;
+  // Don't save principal-looking strings as names
+  if (isPrincipalLike(name)) return;
   const map = readUserNamesMap();
   map[principal] = name;
   localStorage.setItem(USER_NAMES_KEY, JSON.stringify(map));

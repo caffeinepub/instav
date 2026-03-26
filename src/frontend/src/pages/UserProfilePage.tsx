@@ -170,9 +170,7 @@ export default function UserProfilePage() {
             className="w-full h-full object-cover"
           />
         ) : (
-          /* Premium dark banner — layered gradients + glow overlays */
           <div className="banner-premium w-full h-full">
-            {/* Animated shimmer sweep */}
             <div
               className="absolute inset-0 pointer-events-none overflow-hidden"
               aria-hidden="true"
@@ -185,7 +183,6 @@ export default function UserProfilePage() {
                 }}
               />
             </div>
-            {/* Subtle grid texture overlay */}
             <div
               className="absolute inset-0 pointer-events-none"
               aria-hidden="true"
@@ -211,7 +208,7 @@ export default function UserProfilePage() {
           >
             <div
               className="rounded-full p-0.5"
-              style={{ background: "oklch(0.07 0.006 265)" }}
+              style={{ background: "oklch(0.05 0.008 265)" }}
             >
               <AvatarPlaceholder
                 name={displayName}
@@ -226,8 +223,10 @@ export default function UserProfilePage() {
         {/* Action buttons */}
         {!isOwnProfile && (
           <div className="flex justify-end pt-3 pb-2 gap-2">
+            {/* Shadow (Follow) button — gold when not shadowing */}
             <button
               type="button"
+              data-ocid="user_profile.toggle"
               onClick={handleFollowToggle}
               disabled={followMutation.isPending || unfollowMutation.isPending}
               className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all disabled:opacity-60"
@@ -241,19 +240,20 @@ export default function UserProfilePage() {
                     }
                   : {
                       background: "linear-gradient(135deg, #f5c842, #e8a020)",
-                      color: "oklch(0.07 0.006 265)",
+                      color: "oklch(0.05 0.008 265)",
+                      boxShadow: "0 2px 16px oklch(0.78 0.16 75 / 0.35)",
                     }
               }
             >
               {isFollowing ? (
                 <>
                   <UserCheck className="w-3.5 h-3.5" />
-                  Following
+                  Shadowing
                 </>
               ) : (
                 <>
                   <UserPlus className="w-3.5 h-3.5" />
-                  Follow
+                  Shadow
                 </>
               )}
             </button>
@@ -314,19 +314,46 @@ export default function UserProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="flex gap-6 mt-4">
+        <div className="flex gap-4 mt-4 flex-wrap">
           <div className="text-center">
             <p className="text-foreground font-bold text-lg leading-tight">
               {postCount}
             </p>
             <p className="text-muted-foreground text-xs">Posts</p>
           </div>
-          <div className="text-center">
-            <p className="text-foreground font-bold text-lg leading-tight">
-              {followerNum}
+
+          {/* Shadows — gold box */}
+          <div
+            style={{
+              background: "oklch(0.78 0.16 75 / 12%)",
+              border: "1px solid oklch(0.78 0.16 75 / 40%)",
+              borderRadius: "12px",
+              padding: "8px 16px",
+              textAlign: "center",
+            }}
+          >
+            <p
+              style={{
+                color: "#f5c842",
+                fontWeight: 700,
+                fontSize: "1.25rem",
+                lineHeight: 1.2,
+              }}
+            >
+              {followerNum >= 1000
+                ? `${(followerNum / 1000).toFixed(1)}k`
+                : followerNum}
             </p>
-            <p className="text-muted-foreground text-xs">Followers</p>
+            <p
+              style={{
+                color: "oklch(0.78 0.16 75 / 70%)",
+                fontSize: "0.75rem",
+              }}
+            >
+              Shadows
+            </p>
           </div>
+
           <div className="text-center">
             <p className="text-foreground font-bold text-lg leading-tight">0</p>
             <p className="text-muted-foreground text-xs">Following</p>

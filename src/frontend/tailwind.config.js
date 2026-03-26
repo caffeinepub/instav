@@ -68,23 +68,35 @@ export default {
                 },
                 gold: {
                     DEFAULT: '#f5c842',
+                    400: '#f5c842',
+                    500: '#e8a020',
                     light: '#fde68a',
                     dark: '#e8a020',
                 },
                 coral: {
                     DEFAULT: '#ff6b6b',
+                    400: '#ff6b6b',
+                    500: '#ff6b6b',
                     light: '#ffa8a8',
                     dark: '#e85555',
                 },
+                cyan: {
+                    DEFAULT: '#06b6d4',
+                    400: '#22d3ee',
+                    500: '#06b6d4',
+                },
                 surface: {
-                    DEFAULT: 'oklch(0.11 0.009 265)',
+                    DEFAULT: 'oklch(0.10 0.010 265)',
+                    1: 'oklch(0.10 0.010 265)',
+                    2: 'oklch(0.13 0.011 265)',
                     elevated: 'oklch(0.15 0.011 265)',
                     overlay: 'oklch(0.19 0.013 265)',
                 }
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                display: ['Syne', 'Inter', 'system-ui', 'sans-serif'],
+                sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+                display: ['Playfair Display', 'Georgia', 'serif'],
+                body: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -100,6 +112,7 @@ export default {
                 'card-hover': '0 8px 40px -8px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.07)',
                 'gold-glow': '0 0 24px rgba(245,200,66,0.28), 0 0 8px rgba(245,200,66,0.15)',
                 'coral-glow': '0 0 24px rgba(255,107,107,0.28), 0 0 8px rgba(255,107,107,0.15)',
+                'cyan-glow': '0 0 24px rgba(6,182,212,0.25), 0 0 8px rgba(6,182,212,0.12)',
                 'indigo-glow': '0 0 32px rgba(99,102,241,0.20), 0 0 12px rgba(99,102,241,0.10)',
                 'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.07)',
                 'glass': '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',

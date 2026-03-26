@@ -22,27 +22,31 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
 import AvatarPlaceholder from "../components/AvatarPlaceholder";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useGetCallerUserProfile,
+  useGetFollowerCount,
   useSaveCallerUserProfile,
 } from "../hooks/useQueries";
 
 export default function ProfilePage() {
+  const { identity } = useInternetIdentity();
   const { data: userProfile, isLoading: profileLoading } =
     useGetCallerUserProfile();
   const saveProfile = useSaveCallerUserProfile();
 
+  const myPrincipalStr = identity?.getPrincipal().toString();
+  const { data: followerCount } = useGetFollowerCount(myPrincipalStr);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"posts" | "liked">("posts");
 
-  // Banner state — tracks the ExternalBlob and a local preview URL
   const [bannerPhoto, setBannerPhoto] = useState<ExternalBlob | undefined>(
     undefined,
   );
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  // Edit form state
   const [editName, setEditName] = useState("");
   const [editUsername, setEditUsername] = useState("");
   const [editHandle, setEditHandle] = useState("");
@@ -56,8 +60,7 @@ export default function ProfilePage() {
   >(null);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync banner from profile when profile loads
-  // biome-ignore lint/correctness/useExhaustiveDependencies: bannerPhoto intentionally excluded to avoid overwriting local edits
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bannerPhoto intentionally excluded
   useEffect(() => {
     if (userProfile?.bannerImage && !bannerPhoto) {
       setBannerPhoto(userProfile.bannerImage);
@@ -83,19 +86,16 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show local preview immediately
     const reader = new FileReader();
     reader.onload = (ev) => {
       setBannerPreview(ev.target?.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Convert to ExternalBlob and save to profile right away
     file.arrayBuffer().then(async (buf) => {
       const blob = ExternalBlob.fromBytes(new Uint8Array(buf));
       setBannerPhoto(blob);
 
-      // Persist banner immediately using current profile data
       try {
         const currentProfile = userProfile;
         await saveProfile.mutateAsync({
@@ -130,7 +130,6 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async () => {
     try {
-      // Include bannerImage — use the current bannerPhoto state (new upload or existing from profile)
       const currentBanner = bannerPhoto ?? userProfile?.bannerImage;
 
       await saveProfile.mutateAsync({
@@ -155,10 +154,11 @@ export default function ProfilePage() {
   const bio = userProfile?.bio || "";
   const location = userProfile?.location || "";
 
-  // Determine banner display: local preview > existing profile banner URL > premium gradient fallback
   const bannerSrc =
     bannerPreview ||
     (userProfile?.bannerImage ? userProfile.bannerImage.getDirectURL() : null);
+
+  const shadowCount = Number(followerCount ?? 0);
 
   if (profileLoading) {
     return (
@@ -182,9 +182,7 @@ export default function ProfilePage() {
             className="w-full h-full object-cover"
           />
         ) : (
-          /* Premium dark banner — layered gradients + glow overlays */
           <div className="banner-premium w-full h-full">
-            {/* Animated shimmer sweep */}
             <div
               className="absolute inset-0 pointer-events-none overflow-hidden"
               aria-hidden="true"
@@ -197,7 +195,6 @@ export default function ProfilePage() {
                 }}
               />
             </div>
-            {/* Subtle grid texture overlay */}
             <div
               className="absolute inset-0 pointer-events-none"
               aria-hidden="true"
@@ -246,7 +243,7 @@ export default function ProfilePage() {
           >
             <div
               className="rounded-full p-0.5"
-              style={{ background: "oklch(0.07 0.006 265)" }}
+              style={{ background: "oklch(0.05 0.008 265)" }}
             >
               <AvatarPlaceholder
                 name={displayName}
@@ -297,15 +294,44 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="flex gap-6 mt-4">
+        <div className="flex gap-4 mt-4 flex-wrap items-end">
           <div className="text-center">
             <p className="text-foreground font-bold text-lg leading-tight">0</p>
             <p className="text-muted-foreground text-xs">Posts</p>
           </div>
-          <div className="text-center">
-            <p className="text-foreground font-bold text-lg leading-tight">0</p>
-            <p className="text-muted-foreground text-xs">Followers</p>
+
+          {/* Shadows stat — gold box */}
+          <div
+            style={{
+              background: "oklch(0.78 0.16 75 / 12%)",
+              border: "1px solid oklch(0.78 0.16 75 / 40%)",
+              borderRadius: "12px",
+              padding: "8px 16px",
+              textAlign: "center",
+            }}
+          >
+            <p
+              style={{
+                color: "#f5c842",
+                fontWeight: 700,
+                fontSize: "1.25rem",
+                lineHeight: 1.2,
+              }}
+            >
+              {shadowCount >= 1000
+                ? `${(shadowCount / 1000).toFixed(1)}k`
+                : shadowCount}
+            </p>
+            <p
+              style={{
+                color: "oklch(0.78 0.16 75 / 70%)",
+                fontSize: "0.75rem",
+              }}
+            >
+              Shadows
+            </p>
           </div>
+
           <div className="text-center">
             <p className="text-foreground font-bold text-lg leading-tight">0</p>
             <p className="text-muted-foreground text-xs">Following</p>
@@ -407,7 +433,7 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={() => profilePhotoInputRef.current?.click()}
-                className="text-xs text-gold-DEFAULT font-medium"
+                className="text-xs font-medium"
                 style={{ color: "#f5c842" }}
               >
                 Change Photo

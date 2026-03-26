@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -45,14 +45,15 @@
     /* Premium accent tokens */
     --gold: 0.78 0.16 75;
     --coral: 0.68 0.22 25;
+    --cyan: 0.82 0.18 200;
     --surface-glass: 0.98 0 0 / 60%;
   }
 
   .dark {
-    /* Dark mode - ultra deep dark with warm gold accents */
-    --background: 0.07 0.006 265;
+    /* Dark mode - ultra deep dark with luxury gold + cyan accents */
+    --background: 0.05 0.008 265;
     --foreground: 0.96 0.008 60;
-    --card: 0.11 0.009 265;
+    --card: 0.1 0.01 265;
     --card-foreground: 0.96 0.008 60;
     --popover: 0.13 0.011 265;
     --popover-foreground: 0.96 0.008 60;
@@ -74,7 +75,7 @@
     --chart-3: 0.769 0.188 70.08;
     --chart-4: 0.627 0.265 303.9;
     --chart-5: 0.645 0.246 16.439;
-    --sidebar: 0.11 0.009 265;
+    --sidebar: 0.1 0.01 265;
     --sidebar-foreground: 0.96 0.008 60;
     --sidebar-primary: 0.78 0.16 75;
     --sidebar-primary-foreground: 0.07 0.006 265;
@@ -86,12 +87,14 @@
     /* Premium accent tokens */
     --gold: 0.78 0.16 75;
     --coral: 0.68 0.22 25;
-    --surface-glass: 0.11 0.009 265 / 72%;
+    --cyan: 0.82 0.18 200;
+    --surface-glass: 0.1 0.01 265 / 72%;
 
     /* Premium glow tokens */
     --glow-indigo: oklch(0.55 0.22 275 / 0.12);
     --glow-violet: oklch(0.52 0.24 300 / 0.1);
     --glow-gold: oklch(0.78 0.16 75 / 0.08);
+    --glow-cyan: oklch(0.82 0.18 200 / 0.1);
   }
 
   * {
@@ -100,14 +103,14 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   /* Premium dark background with layered depth */
   .dark body {
-    background-color: oklch(0.07 0.006 265);
+    background-color: oklch(0.05 0.008 265);
     background-image: radial-gradient(
         ellipse 80% 50% at 20% 0%,
         oklch(0.55 0.22 275 / 0.1) 0%,
@@ -125,7 +128,7 @@
       ),
       radial-gradient(
         ellipse 40% 30% at 10% 60%,
-        oklch(0.55 0.22 275 / 0.06) 0%,
+        oklch(0.82 0.18 200 / 0.05) 0%,
         transparent 50%
       );
     background-attachment: fixed;
@@ -146,7 +149,7 @@
   }
 
   .font-display {
-    font-family: "Syne", "Inter", system-ui, sans-serif;
+    font-family: "Playfair Display", Georgia, serif;
   }
 
   /* Glassmorphism card surface */
@@ -159,7 +162,7 @@
 
   /* Premium dark glass surface for cards/panels */
   .dark .glass-surface {
-    background: oklch(0.11 0.009 265 / 80%);
+    background: oklch(0.1 0.01 265 / 80%);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid oklch(1 0 0 / 8%);
@@ -253,10 +256,10 @@
   .banner-premium {
     background: linear-gradient(
       160deg,
-      oklch(0.1 0.025 275) 0%,
-      oklch(0.08 0.018 265) 35%,
-      oklch(0.09 0.022 295) 65%,
-      oklch(0.1 0.02 255) 100%
+      oklch(0.08 0.025 275) 0%,
+      oklch(0.06 0.018 265) 35%,
+      oklch(0.07 0.022 295) 65%,
+      oklch(0.08 0.02 255) 100%
     );
     position: relative;
     overflow: hidden;
@@ -291,8 +294,24 @@
     background: linear-gradient(
       180deg,
       transparent 40%,
-      oklch(0.07 0.006 265 / 0.6) 100%
+      oklch(0.05 0.008 265 / 0.6) 100%
     );
     pointer-events: none;
+  }
+
+  @keyframes float-orb {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(12px, -18px) scale(1.05);
+    }
+    66% {
+      transform: translate(-8px, 10px) scale(0.96);
+    }
+  }
+  .float-orb {
+    animation: float-orb 8s ease-in-out infinite;
   }
 }

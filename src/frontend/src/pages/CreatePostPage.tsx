@@ -23,6 +23,11 @@ import * as localPosts from "../lib/localPosts";
 
 type PostType = "image" | "video" | "text" | "gif" | "poster";
 
+/** Returns true if the string looks like a principal ID (e.g. "f6tf6-qg...") */
+function isPrincipalFormat(s: string | null | undefined): boolean {
+  return !s || /^[a-z0-9]{5,}-[a-z0-9]/.test(s);
+}
+
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
@@ -44,23 +49,17 @@ export default function CreatePostPage() {
     : null;
 
   const authorName =
+    (profile?.name && !isPrincipalFormat(profile.name) ? profile.name : null) ||
+    (profile?.handle && !isPrincipalFormat(profile.handle)
+      ? profile.handle
+      : null) ||
+    (!isPrincipalFormat(localName) ? localName : null) ||
     profile?.name ||
     profile?.handle ||
     localName ||
     (identity
-      ? `${identity.getPrincipal().toString().slice(0, 12)}...`
+      ? `User ${identity.getPrincipal().toString().slice(0, 6)}`
       : "Anonymous");
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setMediaFile(file);
-    setError("");
-
-    const url = URL.createObjectURL(file);
-    setMediaPreview(url);
-  };
 
   const clearMedia = () => {
     setMediaFile(null);
@@ -68,6 +67,49 @@ export default function CreatePostPage() {
     setMediaPreview(null);
     setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // ShortSport video validation
+    if (postType === "video") {
+      if (!file.type.startsWith("video/")) {
+        toast.error("ShortSport only accepts videos (no photos or GIFs)");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // Check duration — max 3 minutes (180 seconds)
+      const tempVideo = document.createElement("video");
+      const objectUrl = URL.createObjectURL(file);
+      tempVideo.src = objectUrl;
+      tempVideo.onloadedmetadata = () => {
+        URL.revokeObjectURL(objectUrl);
+        if (tempVideo.duration > 180) {
+          toast.error("Videos must be under 3 minutes for ShortSport");
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
+        }
+        // Valid video — set it
+        setMediaFile(file);
+        setError("");
+        const previewUrl = URL.createObjectURL(file);
+        setMediaPreview(previewUrl);
+      };
+      tempVideo.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        toast.error("Could not read video file. Please try another.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      return;
+    }
+
+    setMediaFile(file);
+    setError("");
+    const url = URL.createObjectURL(file);
+    setMediaPreview(url);
   };
 
   const handleSubmit = async () => {
@@ -203,7 +245,7 @@ export default function CreatePostPage() {
               {postType === "image"
                 ? "Photo"
                 : postType === "video"
-                  ? "Video"
+                  ? "Video (max 3 min)"
                   : postType === "gif"
                     ? "GIF"
                     : "Poster"}
@@ -267,7 +309,7 @@ export default function CreatePostPage() {
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {postType === "video"
-                      ? "MP4, MOV, WebM"
+                      ? "MP4, MOV, WebM · max 3 minutes"
                       : postType === "gif"
                         ? "GIF"
                         : "JPG, PNG, GIF, WebP"}
@@ -330,14 +372,24 @@ export default function CreatePostPage() {
             <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
-        {/* Submit button — large, always visible */}
+
+        {/* Submit button */}
         <div className="pb-6 pt-2">
           <Button
             data-ocid="create_post.submit_button"
             onClick={handleSubmit}
             disabled={!canSubmit}
             size="lg"
-            className="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:from-pink-400 hover:via-purple-400 hover:to-blue-400 text-white font-bold rounded-2xl py-4 text-base shadow-lg shadow-purple-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="w-full text-white font-bold rounded-2xl py-4 text-base shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            style={{
+              background: canSubmit
+                ? "linear-gradient(135deg, #f5c842 0%, #e8a020 45%, #06b6d4 100%)"
+                : undefined,
+              color: canSubmit ? "oklch(0.05 0.008 265)" : undefined,
+              boxShadow: canSubmit
+                ? "0 4px 24px oklch(0.78 0.16 75 / 0.30)"
+                : undefined,
+            }}
           >
             {isUploading || createPost.isPending ? (
               <span className="flex items-center gap-2">

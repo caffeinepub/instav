@@ -1,7 +1,5 @@
 import { useSearch } from "@tanstack/react-router";
 import {
-  ChevronDown,
-  ChevronUp,
   Heart,
   MessageCircle,
   PauseCircle,
@@ -20,6 +18,7 @@ import {
   type Post,
   useFollowUser,
   useGetAllPosts,
+  useGetFollowerCount,
   useGetLikedPosts,
   useIsFollowing,
   useLikePost,
@@ -69,6 +68,13 @@ function FollowButton({ authorPrincipalStr }: FollowButtonProps) {
   );
 }
 
+function ShadowCount({ principalStr }: { principalStr: string }) {
+  const { data: count } = useGetFollowerCount(principalStr);
+  const n = Number(count ?? 0);
+  const formatted = n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  return <span className="text-white/70 text-xs">{formatted} shadows</span>;
+}
+
 interface ReelCardProps {
   post: Post;
   isActive: boolean;
@@ -108,7 +114,6 @@ function ReelCard({
     }
   }, [isActive]);
 
-  // When auto-scroll is on and video ends, notify parent to advance
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !autoScroll) return;
@@ -125,22 +130,16 @@ function ReelCard({
 
   return (
     <div className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
-      {/* Media */}
+      {/* Media — video only */}
       {mediaUrl && isVideo ? (
         <video
           ref={videoRef}
           src={mediaUrl}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           loop
           muted={muted}
           playsInline
           preload="auto"
-        />
-      ) : mediaUrl ? (
-        <img
-          src={mediaUrl}
-          alt={post.caption}
-          className="w-full h-full object-cover"
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
@@ -153,22 +152,23 @@ function ReelCard({
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-      {/* Author info */}
-      <div className="absolute bottom-20 left-4 right-16 z-10">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-white font-semibold text-sm">
+      {/* Author info — bottom left */}
+      <div className="absolute bottom-20 left-4 right-20 z-10">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-white font-semibold text-sm drop-shadow-lg">
             {post.authorName}
           </span>
           <FollowButton authorPrincipalStr={post.authorPrincipal.toString()} />
         </div>
+        <ShadowCount principalStr={post.authorPrincipal.toString()} />
         {post.caption && (
-          <p className="text-white/80 text-xs leading-relaxed line-clamp-2">
+          <p className="text-white/80 text-xs leading-relaxed line-clamp-2 mt-1">
             {post.caption}
           </p>
         )}
       </div>
 
-      {/* Right actions */}
+      {/* Right-side action buttons */}
       <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 z-10">
         {/* Like */}
         <button
@@ -247,7 +247,10 @@ export default function ShortSportPage() {
   const likePost = useLikePost();
   const unlikePost = useUnlikePost();
 
-  const videoPosts = allPosts.filter((p: Post) => p.media || p.caption);
+  // Video-only filter — no photos or GIFs
+  const videoPosts = allPosts.filter(
+    (p: Post) => p.media && p.mediaType?.startsWith("video"),
+  );
 
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (initialPostId) {
@@ -272,7 +275,6 @@ export default function ShortSportPage() {
 
   const SWIPE_THRESHOLD = 50;
 
-  // Touch handlers (mobile)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     swipeStartX.current = e.touches[0].clientX;
   }, []);
@@ -284,17 +286,14 @@ export default function ShortSportPage() {
       swipeStartX.current = null;
       if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
       if (deltaX < 0) {
-        // swipe left → next
         setCurrentIndex((i) => Math.min(i + 1, videoPosts.length - 1));
       } else {
-        // swipe right → prev
         setCurrentIndex((i) => Math.max(i - 1, 0));
       }
     },
     [videoPosts.length],
   );
 
-  // Mouse handlers (desktop drag)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     swipeStartX.current = e.clientX;
     isDragging.current = true;
@@ -324,7 +323,6 @@ export default function ShortSportPage() {
     setIsGrabbing(false);
   }, []);
 
-  // Called by ReelCard when the video ends and auto-scroll is on
   const handleVideoEnd = useCallback(() => {
     setCurrentIndex((i) => {
       if (i >= videoPosts.length - 1) {
@@ -347,10 +345,6 @@ export default function ShortSportPage() {
     },
     [likedPostIds, likePost, unlikePost],
   );
-
-  const goNext = () =>
-    setCurrentIndex((i) => Math.min(i + 1, videoPosts.length - 1));
-  const goPrev = () => setCurrentIndex((i) => Math.max(i - 1, 0));
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -447,29 +441,6 @@ export default function ShortSportPage() {
             <PlayCircle className="w-3.5 h-3.5" />
           )}
           {autoScroll ? "Auto ON" : "Auto"}
-        </button>
-      </div>
-
-      {/* Navigation arrows (right side) */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-20">
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={currentIndex === 0}
-          data-ocid="shortsport.prev_button"
-          className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
-        >
-          <ChevronUp className="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={currentIndex === videoPosts.length - 1}
-          data-ocid="shortsport.next_button"
-          className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-30 transition-opacity"
-        >
-          <ChevronDown className="w-4 h-4" />
         </button>
       </div>
 

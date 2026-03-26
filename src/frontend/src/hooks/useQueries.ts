@@ -733,30 +733,56 @@ export function useSearchUsers(_query: string) {
 
 // ─── Top Creators ─────────────────────────────────────────────────────────────
 
+/** Returns true if the string looks like a principal ID (e.g. "f6tf6-qg...") */
+function isPrincipalFormat(s: string | null | undefined): boolean {
+  return !s || /^[a-z0-9]{5,}-[a-z0-9]/.test(s);
+}
+
 export function useGetTopCreators(limit = 10) {
   return useQuery<CreatorRanking[]>({
     queryKey: ["topCreators", limit],
     queryFn: async () => {
       const topCreators = localPosts.getTopCreatorPrincipals(limit);
-      return topCreators.map((c, i) => ({
-        principal: (() => {
-          try {
-            return Principal.fromText(c.principal);
-          } catch {
-            return Principal.anonymous();
-          }
-        })(),
-        profile: {
-          name: localPosts.getUserName(c.principal) ?? c.principal.slice(0, 8),
-          handle: "",
-          profilePhoto: null,
-          bio: "",
-          location: "",
-          bannerImage: null,
-        } as any,
-        followerCount: BigInt(c.followerCount),
-        rank: BigInt(i + 1),
-      }));
+
+      // Build a name lookup from posts authored by each principal
+      const allPosts = await localPosts.getAllPostsAsync();
+      const postNames: Record<string, string> = {};
+      for (const post of allPosts) {
+        const n = post.authorName;
+        if (n && n !== "Anonymous" && !postNames[post.authorPrincipal]) {
+          postNames[post.authorPrincipal] = n;
+        }
+      }
+
+      return topCreators.map((c, i) => {
+        const savedName = localPosts.getUserName(c.principal);
+        const postName = postNames[c.principal];
+        const name =
+          (!isPrincipalFormat(savedName) ? savedName : null) ??
+          (!isPrincipalFormat(postName) ? postName : null) ??
+          savedName ??
+          postName ??
+          `User ${c.principal.slice(0, 6)}`;
+        return {
+          principal: (() => {
+            try {
+              return Principal.fromText(c.principal);
+            } catch {
+              return Principal.anonymous();
+            }
+          })(),
+          profile: {
+            name,
+            handle: "",
+            profilePhoto: null,
+            bio: "",
+            location: "",
+            bannerImage: null,
+          } as any,
+          followerCount: BigInt(c.followerCount),
+          rank: BigInt(i + 1),
+        };
+      });
     },
     enabled: true,
     staleTime: 0,
