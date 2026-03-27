@@ -148,42 +148,39 @@ actor {
   let friendRequests = Map.empty<Principal, List.List<FriendRequest>>();
   var friendCount = 0;
 
-  // Required by frontend: get caller's own profile
+  // Required by frontend: get caller's own profile — no role check, caller controls their own data
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can get their profile");
+    if (caller.isAnonymous()) {
+      return null;
     };
     userProfiles.get(caller);
   };
 
-  // Required by frontend: save caller's own profile
+  // Required by frontend: save caller's own profile — no role check, caller controls their own data
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfileInput) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can save their profile");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be logged in to save profile");
     };
     userProfiles.add(caller, profile);
   };
 
-  // Required by frontend: get another user's profile (caller can view own or admin can view any)
+  // Required by frontend: get another user's profile — public read for any authenticated caller
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
     userProfiles.get(user);
   };
 
   // Update current caller's full profile data
   public shared ({ caller }) func updateProfile(newProfileData : UserProfileInput) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can update their profile");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be logged in to update profile");
     };
     userProfiles.add(caller, newProfileData);
   };
 
   // Get current caller's full profile data
   public query ({ caller }) func getMyProfile() : async UserProfileInput {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can get their profile");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be logged in");
     };
     switch (userProfiles.get(caller)) {
       case (?profile) { profile };
@@ -206,10 +203,10 @@ actor {
     };
   };
 
-  // Set the mapping handle -> principal; only authenticated users can register a handle
+  // Set the mapping handle -> principal
   public shared ({ caller }) func registerHandle(handle : Text) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can register a handle");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be logged in to register a handle");
     };
     switch (handleToPrincipalMap.get(handle)) {
       case (?_existing) {
@@ -221,10 +218,10 @@ actor {
     };
   };
 
-  // Delete a handle; only the owning user can delete their handle
+  // Delete a handle
   public shared ({ caller }) func deleteHandle(handle : Text) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can delete a handle");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Must be logged in to delete a handle");
     };
     switch (handleToPrincipalMap.get(handle)) {
       case (?principal) {

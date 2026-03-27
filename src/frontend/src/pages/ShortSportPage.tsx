@@ -136,7 +136,6 @@ function ReelCard({
           ref={videoRef}
           src={mediaUrl}
           className="w-full h-full object-contain"
-          loop
           muted={muted}
           playsInline
           preload="auto"
