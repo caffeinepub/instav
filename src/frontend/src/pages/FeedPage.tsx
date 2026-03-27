@@ -6,7 +6,7 @@ import StoriesRow from "../components/StoriesRow";
 import TrendingProfilesSection from "../components/TrendingProfilesSection";
 import {
   type Post,
-  useGetAllPosts,
+  useGetFeedPosts,
   useGetLikedPosts,
 } from "../hooks/useQueries";
 
@@ -34,7 +34,7 @@ function PostCardSkeleton() {
 }
 
 export default function FeedPage() {
-  const { data: posts = [], isLoading: postsLoading } = useGetAllPosts();
+  const { data: posts = [], isLoading: postsLoading } = useGetFeedPosts();
   const { data: likedPosts = [] } = useGetLikedPosts();
 
   const likedPostIds = new Set(likedPosts.map((p: Post) => p.id.toString()));

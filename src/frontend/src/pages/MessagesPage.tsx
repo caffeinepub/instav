@@ -18,7 +18,7 @@ import {
   type Message,
   useGetCallerUserProfile,
   useGetConversations,
-  useGetFollowing,
+  useGetFollowingList,
   useGetFriendsList,
   useGetMessages,
   useGetUserProfile,
@@ -199,7 +199,7 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
   const { data: messages = [], isLoading: msgsLoading } =
     useGetMessages(activePrincipal);
   const { data: friendsList = [] } = useGetFriendsList();
-  const { data: followingList = [] } = useGetFollowing(myPrincipal);
+  const { data: followingList = [] } = useGetFollowingList();
   const { data: callerProfile } = useGetCallerUserProfile();
   const { data: activeProfile } = useGetUserProfile(activePrincipal);
 
@@ -223,7 +223,7 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
     const text = messageText.trim();
     setMessageText("");
     await sendMessage
-      .mutateAsync({ recipient: activePrincipal, content: text })
+      .mutateAsync({ recipientStr: activePrincipal, content: text })
       .catch(() => {
         setMessageText(text);
       });
@@ -346,11 +346,11 @@ export default function MessagesPage({ initialPrincipal }: MessagesPageProps) {
                 </p>
               </div>
             ) : (
-              followingList.map((p: Principal) => (
+              followingList.map((p: string) => (
                 <ShadowingUserItem
-                  key={p.toString()}
-                  principalStr={p.toString()}
-                  onClick={() => setActivePrincipal(p.toString())}
+                  key={p}
+                  principalStr={p}
+                  onClick={() => setActivePrincipal(p)}
                 />
               ))
             ))}

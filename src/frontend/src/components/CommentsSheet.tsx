@@ -62,10 +62,9 @@ export default function CommentsSheet({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || resolvedPostId === undefined) return;
-    const authorName = callerProfile?.name ?? "Anonymous";
+    // authorName available for future use: callerProfile?.name
     await addComment.mutateAsync({
       postId: resolvedPostId,
-      authorName,
       text: commentText.trim(),
     });
     setCommentText("");

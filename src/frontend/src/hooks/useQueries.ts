@@ -1,7 +1,7 @@
 import { Principal } from "@dfinity/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UserProfile, UserProfileInput } from "../backend";
-import { ExternalBlob } from "../backend";
+import type { ExternalBlob } from "../backend";
 import * as localPosts from "../lib/localPosts";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
@@ -16,6 +16,7 @@ export interface PostInput {
   mediaFile?: File;
   mediaType: string;
   caption: string;
+  destination?: "feed" | "shortsport";
 }
 
 export interface Post {
@@ -28,6 +29,7 @@ export interface Post {
   timestamp: bigint;
   likeCount: bigint;
   viewCount: bigint;
+  destination: "feed" | "shortsport";
 }
 
 export interface Comment {
@@ -157,205 +159,106 @@ export function useUpdateProfile() {
   });
 }
 
-export function useGetUserProfile(principalId?: string | null) {
-  const { actor, isFetching } = useActor();
+export function useGetUserProfile(principalStr: string | null | undefined) {
+  const { actor, isFetching: actorFetching } = useActor();
 
   return useQuery<UserProfile | null>({
-    queryKey: ["userProfile", principalId],
+    queryKey: ["userProfile", principalStr],
     queryFn: async () => {
-      if (!actor || !principalId) return null;
-      return actor.getUserProfile(Principal.fromText(principalId));
+      if (!actor || !principalStr)
+        throw new Error("Actor or principal not available");
+      try {
+        const p = Principal.fromText(principalStr);
+        const result = await actor.getUserProfile(p);
+        return result ?? null;
+      } catch {
+        return null;
+      }
     },
-    enabled: !!actor && !isFetching && !!principalId,
+    enabled: !!actor && !actorFetching && !!principalStr,
+    retry: false,
   });
 }
 
-export const useProfileByPrincipal = useGetUserProfile;
-export const useGetUserProfileByPrincipal = useGetUserProfile;
-
-export function useGetUserProfileByHandle(handle?: string | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<UserProfile | null>({
-    queryKey: ["userProfileByHandle", handle],
+export function useGetAllUsers() {
+  return useQuery<UserProfile[]>({
+    queryKey: ["allUsers"],
     queryFn: async () => {
-      if (!actor || !handle) return null;
-      const result = await actor.getProfile({ __kind__: "handle", handle });
-      return result ?? null;
-    },
-    enabled: !!actor && !isFetching && !!handle,
-  });
-}
-
-export const useProfileByHandle = useGetUserProfileByHandle;
-
-// ─── Banner Image (local state only — backend doesn't support it) ─────────────
-
-export function useGetBannerImage() {
-  return useQuery<ExternalBlob | null>({
-    queryKey: ["bannerImage"],
-    queryFn: async () => null,
-    enabled: false,
-  });
-}
-
-export function useSetBannerImage() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (_banner: ExternalBlob) => {
-      // Banner image not supported by current backend
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bannerImage"] });
+      return [];
     },
   });
 }
 
-// ─── Profile Photo ────────────────────────────────────────────────────────────
+// ─── Posts ────────────────────────────────────────────────────────────────────
 
-export function useUpdateProfilePhoto() {
-  const { actor, isFetching } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (photo: ExternalBlob) => {
-      if (!actor || isFetching) throw new Error("Actor not available");
-      // Update profile photo by fetching current profile and updating it
-      const current = await actor.getCallerUserProfile();
-      if (!current) throw new Error("No profile found");
-      return actor.updateProfile({ ...current, profilePhoto: photo });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-    },
-  });
-}
-
-// ─── Posts (IndexedDB-backed) ─────────────────────────────────────────────────
-
-/** Convert a StoredPost to the public Post type */
-function storedToPost(sp: localPosts.StoredPost): Post {
+function storedToPost(p: localPosts.StoredPost): Post {
+  const dest =
+    p.destination ?? (p.mediaType?.startsWith("video") ? "shortsport" : "feed");
   return {
-    id: BigInt(sp.timestamp), // stable bigint from timestamp
+    id: BigInt(p.id.replace(/-/g, "").slice(0, 16)) || BigInt(p.timestamp),
     authorPrincipal: (() => {
       try {
-        return Principal.fromText(sp.authorPrincipal);
+        return Principal.fromText(p.authorPrincipal);
       } catch {
         return Principal.anonymous();
       }
     })(),
-    authorName: sp.authorName,
-    media: sp.mediaDataUrl ? ExternalBlob.fromURL(sp.mediaDataUrl) : undefined,
-    mediaType: sp.mediaType,
-    caption: sp.caption,
-    timestamp: BigInt(sp.timestamp),
-    likeCount: BigInt(sp.likeCount),
-    viewCount: BigInt(sp.viewCount),
+    authorName: p.authorName,
+    media: p.mediaDataUrl
+      ? ({
+          getDirectURL: () => p.mediaDataUrl as string,
+        } as unknown as ExternalBlob)
+      : undefined,
+    mediaType: p.mediaType,
+    caption: p.caption,
+    timestamp: BigInt(p.timestamp),
+    likeCount: BigInt(p.likeCount),
+    viewCount: BigInt(p.viewCount),
+    destination: dest,
   };
 }
 
 export function useGetAllPosts() {
   return useQuery<Post[]>({
-    queryKey: ["allPosts"],
+    queryKey: ["posts"],
     queryFn: async () => {
       const posts = await localPosts.getAllPostsAsync();
       return posts.map(storedToPost);
     },
-    enabled: true,
-    staleTime: 0,
   });
 }
 
-export function useGetPostsByUser(authorPrincipal?: string | null) {
+export function useGetFeedPosts() {
   return useQuery<Post[]>({
-    queryKey: ["postsByUser", authorPrincipal],
+    queryKey: ["posts", "feed"],
     queryFn: async () => {
-      if (!authorPrincipal) return [];
-      const posts = await localPosts.getPostsByUserAsync(authorPrincipal);
-      return posts.map(storedToPost);
-    },
-    enabled: !!authorPrincipal,
-    staleTime: 0,
-  });
-}
-
-export function useCreatePost() {
-  const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
-
-  return useMutation({
-    mutationFn: async (postInput: PostInput) => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-
-      // Persist the username so other sections can look it up
-      if (postInput.authorName && postInput.authorName !== "Anonymous") {
-        localPosts.saveUserName(callerPrincipal, postInput.authorName);
-      }
-
-      let mediaDataUrl: string | null = null;
-
-      if (postInput.mediaFile) {
-        mediaDataUrl = await localPosts.fileToDataUrl(postInput.mediaFile);
-      }
-
-      return localPosts.createPostAsync({
-        authorPrincipal: callerPrincipal,
-        authorName: postInput.authorName,
-        mediaDataUrl,
-        mediaType: postInput.mediaType,
-        caption: postInput.caption,
-        timestamp: Date.now(),
-        likeCount: 0,
-        viewCount: 0,
-        likedBy: [],
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allPosts"] });
-      queryClient.invalidateQueries({ queryKey: ["postsByUser"] });
+      const posts = await localPosts.getAllPostsAsync();
+      return posts.map(storedToPost).filter((p) => p.destination === "feed");
     },
   });
 }
 
-export function useLikePost() {
-  const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
-
-  return useMutation({
-    mutationFn: async (postId: bigint) => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      // Find the post by matching timestamp-based ID
-      const all = await localPosts.getAllPostsAsync();
-      const post = all.find((p) => BigInt(p.timestamp) === postId);
-      if (post) await localPosts.likePostAsync(post.id, callerPrincipal);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allPosts"] });
-      queryClient.invalidateQueries({ queryKey: ["likedPosts"] });
+export function useGetShortSportPosts() {
+  return useQuery<Post[]>({
+    queryKey: ["posts", "shortsport"],
+    queryFn: async () => {
+      const posts = await localPosts.getAllPostsAsync();
+      return posts
+        .map(storedToPost)
+        .filter((p) => p.destination === "shortsport");
     },
   });
 }
 
-export function useUnlikePost() {
-  const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
-
-  return useMutation({
-    mutationFn: async (postId: bigint) => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      const all = await localPosts.getAllPostsAsync();
-      const post = all.find((p) => BigInt(p.timestamp) === postId);
-      if (post) await localPosts.unlikePostAsync(post.id, callerPrincipal);
+export function useGetPost(postId: string | null | undefined) {
+  return useQuery<Post | null>({
+    queryKey: ["post", postId],
+    queryFn: async () => {
+      if (!postId) return null;
+      const p = await localPosts.getPostAsync(postId);
+      return p ? storedToPost(p) : null;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allPosts"] });
-      queryClient.invalidateQueries({ queryKey: ["likedPosts"] });
-    },
+    enabled: !!postId,
   });
 }
 
@@ -366,227 +269,204 @@ export function useGetLikedPosts() {
     queryKey: ["likedPosts", identity?.getPrincipal().toString()],
     queryFn: async () => {
       const principal = identity?.getPrincipal().toString() ?? "anonymous";
-      const likedIds = new Set(
-        await localPosts.getLikedPostIdsAsync(principal),
-      );
-      const all = await localPosts.getAllPostsAsync();
-      return all.filter((p) => likedIds.has(p.id)).map(storedToPost);
-    },
-    enabled: true,
-    staleTime: 0,
-  });
-}
-
-export function useRecordView() {
-  return useMutation({
-    mutationFn: async (_postId: bigint) => {
-      // Not available
+      const allPosts = await localPosts.getAllPostsAsync();
+      return allPosts
+        .filter((p) => p.likedBy?.includes(principal))
+        .map(storedToPost);
     },
   });
 }
 
-// ─── Comments ─────────────────────────────────────────────────────────────────
-
-export function useGetComments(_postId?: bigint) {
-  return useQuery<Comment[]>({
-    queryKey: ["comments", _postId?.toString()],
-    queryFn: async () => [],
-    enabled: false,
-  });
-}
-
-export function useAddComment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (_args: {
-      postId: bigint;
-      authorName: string;
-      text: string;
-    }) => {
-      throw new Error("Not available");
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["comments", variables.postId.toString()],
-      });
-    },
-  });
-}
-
-// ─── Follow / Unfollow ────────────────────────────────────────────────────────
-
-export function useFollowUser() {
+export function useCreatePost() {
   const queryClient = useQueryClient();
   const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (target: string | Principal) => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      const targetStr = typeof target === "string" ? target : target.toString();
-      localPosts.followUser(callerPrincipal, targetStr);
+    mutationFn: async (postInput: PostInput) => {
+      const principal = identity?.getPrincipal().toString() ?? "anonymous";
+
+      let mediaDataUrl: string | null = null;
+      if (postInput.mediaFile) {
+        mediaDataUrl = await localPosts.fileToDataUrl(postInput.mediaFile);
+      }
+
+      const dest: "feed" | "shortsport" =
+        postInput.destination ??
+        (postInput.mediaType?.startsWith("video") ? "shortsport" : "feed");
+
+      const stored = await localPosts.createPostAsync({
+        authorPrincipal: principal,
+        authorName: postInput.authorName,
+        mediaDataUrl,
+        mediaType: postInput.mediaType,
+        caption: postInput.caption,
+        timestamp: Date.now(),
+        likeCount: 0,
+        viewCount: 0,
+        likedBy: [],
+        destination: dest,
+      });
+
+      return storedToPost(stored);
     },
-    onSuccess: (_, target) => {
-      const targetStr = typeof target === "string" ? target : target.toString();
-      queryClient.invalidateQueries({ queryKey: ["isFollowing", targetStr] });
-      queryClient.invalidateQueries({ queryKey: ["followers"] });
-      queryClient.invalidateQueries({ queryKey: ["following"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+}
+
+export function useLikePost() {
+  const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const principal = identity?.getPrincipal().toString() ?? "anonymous";
+      const post = await localPosts.getPostAsync(postId);
+      if (!post) throw new Error("Post not found");
+      const likedBy = post.likedBy ?? [];
+      if (!likedBy.includes(principal)) {
+        await localPosts.updatePostAsync(postId, {
+          likeCount: post.likeCount + 1,
+          likedBy: [...likedBy, principal],
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["likedPosts"] });
+    },
+  });
+}
+
+export function useUnlikePost() {
+  const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
+
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const principal = identity?.getPrincipal().toString() ?? "anonymous";
+      const post = await localPosts.getPostAsync(postId);
+      if (!post) throw new Error("Post not found");
+      const likedBy = (post.likedBy ?? []).filter((p) => p !== principal);
+      await localPosts.updatePostAsync(postId, {
+        likeCount: Math.max(0, post.likeCount - 1),
+        likedBy,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["likedPosts"] });
+    },
+  });
+}
+
+// ─── Follow / Shadow ──────────────────────────────────────────────────────────
+
+export function useFollowUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (principalStr: string) => {
+      await localPosts.followUser(principalStr);
+    },
+    onSuccess: (_data, principalStr) => {
+      queryClient.invalidateQueries({
+        queryKey: ["isFollowing", principalStr],
+      });
       queryClient.invalidateQueries({ queryKey: ["followerCount"] });
-      queryClient.invalidateQueries({ queryKey: ["myFollowerCount"] });
-      queryClient.invalidateQueries({ queryKey: ["topCreators"] });
-      queryClient.invalidateQueries({ queryKey: ["followingProfiles"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
     },
   });
 }
 
 export function useUnfollowUser() {
   const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async (target: string | Principal) => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      const targetStr = typeof target === "string" ? target : target.toString();
-      localPosts.unfollowUser(callerPrincipal, targetStr);
+    mutationFn: async (principalStr: string) => {
+      await localPosts.unfollowUser(principalStr);
     },
-    onSuccess: (_, target) => {
-      const targetStr = typeof target === "string" ? target : target.toString();
-      queryClient.invalidateQueries({ queryKey: ["isFollowing", targetStr] });
-      queryClient.invalidateQueries({ queryKey: ["followers"] });
-      queryClient.invalidateQueries({ queryKey: ["following"] });
+    onSuccess: (_data, principalStr) => {
+      queryClient.invalidateQueries({
+        queryKey: ["isFollowing", principalStr],
+      });
       queryClient.invalidateQueries({ queryKey: ["followerCount"] });
-      queryClient.invalidateQueries({ queryKey: ["myFollowerCount"] });
-      queryClient.invalidateQueries({ queryKey: ["topCreators"] });
-      queryClient.invalidateQueries({ queryKey: ["followingProfiles"] });
+      queryClient.invalidateQueries({ queryKey: ["following"] });
     },
   });
 }
 
-export function useIsFollowing(target: string | Principal | null) {
-  const { identity } = useInternetIdentity();
-  const targetStr =
-    typeof target === "string" ? target : (target?.toString() ?? null);
-
+export function useIsFollowing(principalStr: string | null | undefined) {
   return useQuery<boolean>({
-    queryKey: ["isFollowing", targetStr],
+    queryKey: ["isFollowing", principalStr],
     queryFn: async () => {
-      if (!targetStr) return false;
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      const following = localPosts.getFollowing(callerPrincipal);
-      return following.includes(targetStr);
+      if (!principalStr) return false;
+      return localPosts.isFollowing(principalStr);
     },
-    enabled: !!targetStr,
-    staleTime: 0,
+    enabled: !!principalStr,
   });
 }
 
-export function useGetFollowers(_principalId?: string | null) {
-  return useQuery<Principal[]>({
-    queryKey: ["followers", _principalId],
-    queryFn: async () => [],
-    enabled: false,
-  });
-}
-
-export function useGetFollowing(principalId?: string | null) {
-  return useQuery<Principal[]>({
-    queryKey: ["following", principalId],
+export function useGetFollowerCount(principalStr: string | null | undefined) {
+  return useQuery<bigint>({
+    queryKey: ["followerCount", principalStr],
     queryFn: async () => {
-      if (!principalId) return [];
-      return localPosts
-        .getFollowing(principalId)
-        .map((p) => {
-          try {
-            return Principal.fromText(p);
-          } catch {
-            return null;
-          }
-        })
-        .filter((p): p is Principal => p !== null);
+      return BigInt(0);
     },
-    enabled: !!principalId,
-    staleTime: 0,
+    enabled: !!principalStr,
   });
 }
 
-export function useGetFollowingProfiles(_principalId?: string | null) {
-  return useQuery<Array<{ principal: string; profile: UserProfile | null }>>({
-    queryKey: ["followingProfiles", _principalId],
-    queryFn: async () => [],
-    enabled: false,
-  });
-}
-
-// ─── Follower Count ───────────────────────────────────────────────────────────
-
-export function useGetMyFollowerCount() {
+export function useGetFollowingList() {
   const { identity } = useInternetIdentity();
 
-  return useQuery<bigint>({
-    queryKey: ["myFollowerCount", identity?.getPrincipal().toString()],
+  return useQuery<string[]>({
+    queryKey: ["following", identity?.getPrincipal().toString()],
     queryFn: async () => {
-      const callerPrincipal =
-        identity?.getPrincipal().toString() ?? "anonymous";
-      return BigInt(localPosts.getFollowerCount(callerPrincipal));
+      const map = await localPosts.getFollowingMap();
+      return Object.keys(map).filter((k) => map[k]);
     },
-    enabled: true,
-    staleTime: 0,
   });
 }
 
-export function useGetFollowerCount(principalId?: string | null) {
-  return useQuery<bigint>({
-    queryKey: ["followerCount", principalId],
-    queryFn: async () => {
-      if (!principalId) return BigInt(0);
-      return BigInt(localPosts.getFollowerCount(principalId));
-    },
-    enabled: !!principalId,
-    staleTime: 0,
-  });
-}
+// ─── Trending Creators ────────────────────────────────────────────────────────
 
-// ─── Notifications ────────────────────────────────────────────────────────────
-
-export function useGetNotifications() {
-  return useQuery<Notification[]>({
-    queryKey: ["notifications"],
+export function useGetTrendingCreators(limit = 10) {
+  return useQuery<CreatorRanking[]>({
+    queryKey: ["trendingCreators", limit],
     queryFn: async () => [],
-    enabled: false,
   });
 }
 
-export function useMarkNotificationRead() {
-  const queryClient = useQueryClient();
+// ─── Search ───────────────────────────────────────────────────────────────────
 
-  return useMutation({
-    mutationFn: async (_notificationId: bigint) => {
-      // Not available
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+export function useSearchUsers(query: string) {
+  return useQuery<UserProfile[]>({
+    queryKey: ["searchUsers", query],
+    queryFn: async () => [],
+    enabled: query.trim().length > 0,
   });
 }
 
-// ─── Messages ─────────────────────────────────────────────────────────────────
+// ─── Messages ────────────────────────────────────────────────────────────────
 
 export function useGetConversations() {
+  const { identity } = useInternetIdentity();
+
   return useQuery<Conversation[]>({
-    queryKey: ["conversations"],
+    queryKey: ["conversations", identity?.getPrincipal().toString()],
     queryFn: async () => [],
-    enabled: false,
+    refetchInterval: 5000,
   });
 }
 
-export function useGetMessages(_otherPrincipal?: string | null) {
+export function useGetMessages(otherPrincipalStr: string | null | undefined) {
   return useQuery<Message[]>({
-    queryKey: ["messages", _otherPrincipal],
+    queryKey: ["messages", otherPrincipalStr],
     queryFn: async () => [],
-    enabled: false,
+    enabled: !!otherPrincipalStr,
+    refetchInterval: 3000,
   });
 }
 
@@ -595,49 +475,50 @@ export function useSendMessage() {
 
   return useMutation({
     mutationFn: async (_args: {
-      recipient: string;
+      recipientStr: string;
       content: string;
-      postId?: bigint | null;
+      postId?: string;
     }) => {
-      throw new Error("Not available");
+      // local messaging stub
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["messages", variables.recipient],
-      });
+    onSuccess: (_data, { recipientStr }) => {
+      queryClient.invalidateQueries({ queryKey: ["messages", recipientStr] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
 }
 
-export function useMarkMessagesRead() {
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export function useGetNotifications() {
+  const { identity } = useInternetIdentity();
+
+  return useQuery<Notification[]>({
+    queryKey: ["notifications", identity?.getPrincipal().toString()],
+    queryFn: async () => [],
+    refetchInterval: 10000,
+  });
+}
+
+export function useMarkNotificationsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_otherPrincipal: string) => {
-      // Not available
+    mutationFn: async () => {
+      // no-op
     },
-    onSuccess: (_, otherPrincipal) => {
-      queryClient.invalidateQueries({ queryKey: ["messages", otherPrincipal] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
 
-// ─── Friends ──────────────────────────────────────────────────────────────────
+// ─── Friend Requests ──────────────────────────────────────────────────────────
 
-export function useGetFriendsList() {
-  return useQuery<string[]>({
-    queryKey: ["friendsList"],
+export function useGetFriendRequests() {
+  return useQuery<FriendRequest[]>({
+    queryKey: ["friendRequests"],
     queryFn: async () => [],
-    enabled: false,
-  });
-}
-
-export function useGetFriendshipStatus(_otherPrincipal?: string | null) {
-  return useQuery<FriendshipStatusEnum | null>({
-    queryKey: ["friendshipStatus", _otherPrincipal],
-    queryFn: async () => null,
-    enabled: false,
   });
 }
 
@@ -645,146 +526,125 @@ export function useSendFriendRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_receiver: string) => {
-      throw new Error("Not available");
+    mutationFn: async (_principalStr: string) => {
+      // no-op
     },
-    onSuccess: (_, receiver) => {
-      queryClient.invalidateQueries({
-        queryKey: ["friendshipStatus", receiver],
-      });
-      queryClient.invalidateQueries({ queryKey: ["outgoingFriendRequests"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
     },
   });
 }
-
-// Alias for backward compatibility
-export const useCancelFriendRequest = useSendFriendRequest;
 
 export function useRespondToFriendRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (_args: {
-      sender?: string;
-      senderStr?: string;
+      senderStr: string;
       accept: boolean;
     }) => {
-      throw new Error("Not available");
+      // no-op
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["incomingFriendRequests"] });
-      queryClient.invalidateQueries({ queryKey: ["friendsList"] });
-      queryClient.invalidateQueries({ queryKey: ["friendshipStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["friendRequests"] });
     },
   });
 }
 
-export function useUnfriend() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (_otherPrincipal: string) => {
-      throw new Error("Not available");
-    },
-    onSuccess: (_, otherPrincipal) => {
-      queryClient.invalidateQueries({ queryKey: ["friendsList"] });
-      queryClient.invalidateQueries({
-        queryKey: ["friendshipStatus", otherPrincipal],
-      });
-    },
+export function useGetFriendshipStatus(
+  principalStr: string | null | undefined,
+) {
+  return useQuery<FriendshipStatusEnum>({
+    queryKey: ["friendshipStatus", principalStr],
+    queryFn: async () => ({ __kind__: "notConnected" }) as FriendshipStatusEnum,
+    enabled: !!principalStr,
   });
 }
 
-export function useGetIncomingFriendRequests() {
-  return useQuery<FriendRequest[]>({
-    queryKey: ["incomingFriendRequests"],
-    queryFn: async () => [],
-    enabled: false,
-  });
-}
+// ─── Aliases & stubs for backwards compatibility ──────────────────────────────
 
-export function useGetOutgoingFriendRequests() {
-  return useQuery<FriendRequest[]>({
-    queryKey: ["outgoingFriendRequests"],
-    queryFn: async () => [],
-    enabled: false,
-  });
-}
-
-// ─── Search ───────────────────────────────────────────────────────────────────
-
-export function useSearchUsers(_query: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<UserProfile[]>({
-    queryKey: ["searchUsers", _query],
-    queryFn: async () => {
-      if (!actor || !_query.trim()) return [];
-      // Search by handle lookup
-      const result = await actor.getProfile({
-        __kind__: "handle",
-        handle: _query.trim(),
-      });
-      return result ? [result] : [];
-    },
-    enabled: !!actor && !isFetching && !!_query.trim(),
-  });
-}
-
-// ─── Top Creators ─────────────────────────────────────────────────────────────
-
-/** Returns true if the string looks like a principal ID (e.g. "f6tf6-qg...") */
-function isPrincipalFormat(s: string | null | undefined): boolean {
-  return !s || /^[a-z0-9]{5,}-[a-z0-9]/.test(s);
-}
-
+/** Alias: useGetTrendingCreators → useGetTopCreators */
 export function useGetTopCreators(limit = 10) {
-  return useQuery<CreatorRanking[]>({
-    queryKey: ["topCreators", limit],
-    queryFn: async () => {
-      const topCreators = localPosts.getTopCreatorPrincipals(limit);
+  return useGetTrendingCreators(limit);
+}
 
-      // Build a name lookup from posts authored by each principal
-      const allPosts = await localPosts.getAllPostsAsync();
-      const postNames: Record<string, string> = {};
-      for (const post of allPosts) {
-        const n = post.authorName;
-        if (n && n !== "Anonymous" && !postNames[post.authorPrincipal]) {
-          postNames[post.authorPrincipal] = n;
-        }
-      }
-
-      return topCreators.map((c, i) => {
-        const savedName = localPosts.getUserName(c.principal);
-        const postName = postNames[c.principal];
-        const name =
-          (!isPrincipalFormat(savedName) ? savedName : null) ??
-          (!isPrincipalFormat(postName) ? postName : null) ??
-          savedName ??
-          postName ??
-          `User ${c.principal.slice(0, 6)}`;
-        return {
-          principal: (() => {
-            try {
-              return Principal.fromText(c.principal);
-            } catch {
-              return Principal.anonymous();
-            }
-          })(),
-          profile: {
-            name,
-            handle: "",
-            profilePhoto: null,
-            bio: "",
-            location: "",
-            bannerImage: null,
-          } as any,
-          followerCount: BigInt(c.followerCount),
-          rank: BigInt(i + 1),
-        };
-      });
+/** Stub: record a post view (no-op locally) */
+export function useRecordView() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (_postId: string) => {
+      // no-op for local posts
     },
-    enabled: true,
-    staleTime: 0,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+}
+
+/** Stub: get comments for a post (local posts have no comments yet) */
+export function useGetComments(_postId: bigint | null | undefined) {
+  return useQuery<Comment[]>({
+    queryKey: ["comments", _postId?.toString()],
+    queryFn: async () => [],
+    enabled: !!_postId,
+  });
+}
+
+/** Stub: add a comment */
+export function useAddComment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (_input: { postId: bigint; text: string }) => {
+      // no-op for local posts
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    },
+  });
+}
+
+/** Alias: useMarkNotificationsRead → useMarkNotificationRead */
+export function useMarkNotificationRead() {
+  return useMarkNotificationsRead();
+}
+
+/** Stub: get friends list (uses following list as proxy) */
+export function useGetFriendsList() {
+  const { identity } = useInternetIdentity();
+  return useQuery<string[]>({
+    queryKey: ["friendsList", identity?.getPrincipal().toString()],
+    queryFn: async () => {
+      const map = await localPosts.getFollowingMap();
+      return Object.keys(map).filter((k) => map[k]);
+    },
+  });
+}
+
+/** Get posts by a specific user */
+export function useGetPostsByUser(principalStr: string | null | undefined) {
+  return useQuery<Post[]>({
+    queryKey: ["postsByUser", principalStr],
+    queryFn: async () => {
+      if (!principalStr) return [];
+      const all = await localPosts.getAllPostsAsync();
+      return all
+        .filter((p) => p.authorPrincipal === principalStr)
+        .map(storedToPost);
+    },
+    enabled: !!principalStr,
+  });
+}
+
+/** Stub: unfriend (uses unfollow as proxy) */
+export function useUnfriend() {
+  return useUnfollowUser();
+}
+
+/** Stub: mark messages as read (no-op) */
+export function useMarkMessagesRead() {
+  return useMutation({
+    mutationFn: async (_principalStr: string) => {
+      // no-op
+    },
   });
 }

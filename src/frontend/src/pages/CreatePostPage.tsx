@@ -41,6 +41,7 @@ export default function CreatePostPage() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
+  const [destination, setDestination] = useState<"feed" | "shortsport">("feed");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,17 +82,14 @@ export default function CreatePostPage() {
         return;
       }
 
-      // Check duration — max 3 minutes (180 seconds)
+      // Check duration to route: ≤3 min → ShortSport, >3 min → Feed
       const tempVideo = document.createElement("video");
       const objectUrl = URL.createObjectURL(file);
       tempVideo.src = objectUrl;
       tempVideo.onloadedmetadata = () => {
         URL.revokeObjectURL(objectUrl);
-        if (tempVideo.duration > 180) {
-          toast.error("Videos must be under 3 minutes for ShortSport");
-          if (fileInputRef.current) fileInputRef.current.value = "";
-          return;
-        }
+        const dest = tempVideo.duration <= 180 ? "shortsport" : "feed";
+        setDestination(dest);
         // Valid video — set it
         setMediaFile(file);
         setError("");
@@ -106,6 +104,7 @@ export default function CreatePostPage() {
       return;
     }
 
+    setDestination("feed");
     setMediaFile(file);
     setError("");
     const url = URL.createObjectURL(file);
@@ -157,6 +156,7 @@ export default function CreatePostPage() {
         mediaFile: mediaFile ?? undefined,
         mediaType,
         caption: caption.trim(),
+        destination,
       });
 
       toast.success("Post created successfully!");
@@ -373,6 +373,22 @@ export default function CreatePostPage() {
           </div>
         )}
 
+        {/* Destination info */}
+        {(postType === "video" ||
+          postType === "image" ||
+          postType === "gif") && (
+          <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-2 border border-border/50">
+            <span className="text-xs text-muted-foreground">
+              This will be posted to{" "}
+              <strong className="text-gold-400">
+                {destination === "shortsport" ? "ShortSport" : "Home Feed"}
+              </strong>
+              {destination === "shortsport"
+                ? " (video ≤ 3 min)"
+                : " (video > 3 min or photo)"}
+            </span>
+          </div>
+        )}
         {/* Submit button */}
         <div className="pb-6 pt-2">
           <Button
@@ -399,7 +415,9 @@ export default function CreatePostPage() {
             ) : (
               <span className="flex items-center gap-2">
                 <Upload className="w-5 h-5" />
-                Post to Feed &amp; ShortSport
+                {destination === "shortsport"
+                  ? "Post to ShortSport"
+                  : "Post to Feed"}
               </span>
             )}
           </Button>

@@ -46,14 +46,14 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
     if (liked) {
       setLiked(false);
       setLikeCount((c) => c - 1);
-      await unlikePost.mutateAsync(post.id).catch(() => {
+      await unlikePost.mutateAsync(post.id.toString()).catch(() => {
         setLiked(true);
         setLikeCount((c) => c + 1);
       });
     } else {
       setLiked(true);
       setLikeCount((c) => c + 1);
-      await likePost.mutateAsync(post.id).catch(() => {
+      await likePost.mutateAsync(post.id.toString()).catch(() => {
         setLiked(false);
         setLikeCount((c) => c - 1);
       });
@@ -61,7 +61,7 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
   };
 
   const handleView = () => {
-    recordView.mutate(post.id);
+    recordView.mutate(post.id.toString());
   };
 
   return (

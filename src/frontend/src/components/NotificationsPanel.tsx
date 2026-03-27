@@ -111,7 +111,7 @@ export default function NotificationsPanel({
               key={notification.id.toString()}
               onClick={() => {
                 if (!notification.read) {
-                  markRead.mutate(notification.id);
+                  markRead.mutate();
                 }
               }}
               className={`w-full flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-surface-2 ${

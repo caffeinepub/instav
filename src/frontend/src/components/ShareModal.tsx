@@ -83,11 +83,11 @@ export default function ShareModal({
     if (selectedFriends.length === 0) return;
     try {
       await Promise.all(
-        selectedFriends.map((recipient) =>
+        selectedFriends.map((recipientStr) =>
           sendMessage.mutateAsync({
-            recipient,
+            recipientStr,
             content: `Check out this post: ${post.caption || "(no caption)"}`,
-            postId: post.id,
+            postId: post.id.toString(),
           }),
         ),
       );
@@ -102,7 +102,7 @@ export default function ShareModal({
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/shortsport?postId=${post.id}`;
+    const url = `${window.location.origin}/shortsport?postId=${post.id.toString()}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

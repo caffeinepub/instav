@@ -17,9 +17,9 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   type Post,
   useFollowUser,
-  useGetAllPosts,
   useGetFollowerCount,
   useGetLikedPosts,
+  useGetShortSportPosts,
   useIsFollowing,
   useLikePost,
   useUnfollowUser,
@@ -241,7 +241,7 @@ export default function ShortSportPage() {
   const search = useSearch({ from: "/shortsport" });
   const initialPostId = (search as { postId?: string }).postId;
 
-  const { data: allPosts = [], isLoading } = useGetAllPosts();
+  const { data: allPosts = [], isLoading } = useGetShortSportPosts();
   const { data: likedPosts = [] } = useGetLikedPosts();
   const likePost = useLikePost();
   const unlikePost = useUnlikePost();
@@ -337,9 +337,9 @@ export default function ShortSportPage() {
   const handleLikeToggle = useCallback(
     (post: Post) => {
       if (likedPostIds.has(post.id.toString())) {
-        unlikePost.mutate(post.id);
+        unlikePost.mutate(post.id.toString());
       } else {
-        likePost.mutate(post.id);
+        likePost.mutate(post.id.toString());
       }
     },
     [likedPostIds, likePost, unlikePost],
