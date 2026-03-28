@@ -195,7 +195,13 @@ function storedToPost(p: localPosts.StoredPost): Post {
   const dest =
     p.destination ?? (p.mediaType?.startsWith("video") ? "shortsport" : "feed");
   return {
-    id: BigInt(p.id.replace(/-/g, "").slice(0, 16)) || BigInt(p.timestamp),
+    id: (() => {
+      try {
+        return BigInt(`0x${p.id.replace(/-/g, "").slice(0, 16)}`);
+      } catch {
+        return BigInt(p.timestamp);
+      }
+    })(),
     authorPrincipal: (() => {
       try {
         return Principal.fromText(p.authorPrincipal);
