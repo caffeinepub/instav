@@ -80,6 +80,8 @@ interface ReelCardProps {
   isActive: boolean;
   isLiked: boolean;
   autoScroll: boolean;
+  muted: boolean;
+  onToggleMuted: () => void;
   onLikeToggle: () => void;
   onCommentOpen: () => void;
   onShare: () => void;
@@ -91,13 +93,14 @@ function ReelCard({
   isActive,
   isLiked,
   autoScroll,
+  muted,
+  onToggleMuted,
   onLikeToggle,
   onCommentOpen,
   onShare,
   onVideoEnd,
 }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [muted, setMuted] = useState(true);
   const [localLiked, setLocalLiked] = useState(isLiked);
   const [localLikeCount, setLocalLikeCount] = useState(Number(post.likeCount));
 
@@ -219,7 +222,7 @@ function ReelCard({
         {isVideo && (
           <button
             type="button"
-            onClick={() => setMuted((m) => !m)}
+            onClick={onToggleMuted}
             className="flex flex-col items-center gap-1"
           >
             <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
@@ -265,6 +268,7 @@ export default function ShortSportPage() {
     undefined,
   );
   const [autoScroll, setAutoScroll] = useState(false);
+  const [muted, setMuted] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Swipe / drag state
@@ -395,6 +399,8 @@ export default function ShortSportPage() {
         post={currentPost}
         isActive={true}
         autoScroll={autoScroll}
+        muted={muted}
+        onToggleMuted={() => setMuted((m) => !m)}
         isLiked={likedPostIds.has(currentPost.id.toString())}
         onLikeToggle={() => handleLikeToggle(currentPost)}
         onVideoEnd={handleVideoEnd}
