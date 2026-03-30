@@ -210,11 +210,12 @@ function storedToPost(p: localPosts.StoredPost): Post {
       }
     })(),
     authorName: p.authorName,
-    media: p.mediaDataUrl
-      ? ({
-          getDirectURL: () => p.mediaDataUrl as string,
-        } as unknown as ExternalBlob)
-      : undefined,
+    media: (() => {
+      const url = localPosts.getMediaUrl(p);
+      return url
+        ? ({ getDirectURL: () => url } as unknown as ExternalBlob)
+        : undefined;
+    })(),
     mediaType: p.mediaType,
     caption: p.caption,
     timestamp: BigInt(p.timestamp),
@@ -291,11 +292,6 @@ export function useCreatePost() {
     mutationFn: async (postInput: PostInput) => {
       const principal = identity?.getPrincipal().toString() ?? "anonymous";
 
-      let mediaDataUrl: string | null = null;
-      if (postInput.mediaFile) {
-        mediaDataUrl = await localPosts.fileToDataUrl(postInput.mediaFile);
-      }
-
       const dest: "feed" | "shortsport" =
         postInput.destination ??
         (postInput.mediaType?.startsWith("video") ? "shortsport" : "feed");
@@ -303,7 +299,8 @@ export function useCreatePost() {
       const stored = await localPosts.createPostAsync({
         authorPrincipal: principal,
         authorName: postInput.authorName,
-        mediaDataUrl,
+        mediaDataUrl: null,
+        mediaBlob: postInput.mediaFile ?? undefined,
         mediaType: postInput.mediaType,
         caption: postInput.caption,
         timestamp: Date.now(),
@@ -587,24 +584,67 @@ export function useRecordView() {
   });
 }
 
-/** Stub: get comments for a post (local posts have no comments yet) */
-export function useGetComments(_postId: bigint | null | undefined) {
+/** Get comments for a post — backed by IndexedDB, polls every 3s for real-time feel */
+export function useGetComments(postId: bigint | null | undefined) {
   return useQuery<Comment[]>({
-    queryKey: ["comments", _postId?.toString()],
-    queryFn: async () => [],
-    enabled: !!_postId,
+    queryKey: ["comments", postId?.toString()],
+    queryFn: async () => {
+      if (!postId) return [];
+      const stored = await localPosts.getCommentsForPost(postId.toString());
+      return stored.map((c) => ({
+        id: (() => {
+          try {
+            return BigInt(`0x${c.id.replace(/-/g, "").slice(0, 16)}`);
+          } catch {
+            return BigInt(c.timestamp);
+          }
+        })(),
+        postId: postId,
+        authorPrincipal: (() => {
+          try {
+            return Principal.fromText(c.authorPrincipal);
+          } catch {
+            return Principal.anonymous();
+          }
+        })(),
+        authorName: c.authorName,
+        text: c.text,
+        // Multiply ms by 1_000_000 to match nanosecond timestamps used by timeAgo
+        timestamp: BigInt(c.timestamp) * BigInt(1_000_000),
+      }));
+    },
+    enabled: !!postId,
+    refetchInterval: 3000,
   });
 }
 
-/** Stub: add a comment */
+/** Add a comment — stored in IndexedDB and immediately visible to all users on this device */
 export function useAddComment() {
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
+
   return useMutation({
-    mutationFn: async (_input: { postId: bigint; text: string }) => {
-      // no-op for local posts
+    mutationFn: async (input: {
+      postId: bigint;
+      text: string;
+      authorName?: string;
+    }) => {
+      const principal = identity?.getPrincipal().toString() ?? "anonymous";
+      const authorName =
+        input.authorName ??
+        (principal !== "anonymous" ? principal.slice(0, 8) : "User");
+      await localPosts.addComment({
+        postId: input.postId.toString(),
+        authorPrincipal: principal,
+        authorName,
+        text: input.text,
+        timestamp: Date.now(),
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["comments"] });
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["comments", input.postId.toString()],
+      });
     },
   });
 }

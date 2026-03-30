@@ -3,9 +3,10 @@
 // IndexedDB supports hundreds of MB (vs localStorage's ~5MB limit).
 
 const DB_NAME = "smileup_db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const POSTS_STORE = "posts";
 const META_STORE = "meta"; // key-value store for following map, etc.
+const COMMENTS_STORE = "comments";
 
 const FOLLOWING_KEY = "smileup_following";
 
@@ -14,6 +15,7 @@ export interface StoredPost {
   authorPrincipal: string;
   authorName: string;
   mediaDataUrl: string | null; // base64 data URL for image/video preview
+  mediaBlob?: Blob; // native Blob stored directly in IndexedDB
   mediaType: string; // "text", "image/jpeg", "video/mp4", etc.
   caption: string;
   timestamp: number; // Date.now()
@@ -21,6 +23,15 @@ export interface StoredPost {
   viewCount: number;
   likedBy: string[]; // array of principal strings who liked
   destination?: "feed" | "shortsport";
+}
+
+export interface StoredComment {
+  id: string;
+  postId: string;
+  authorPrincipal: string;
+  authorName: string;
+  text: string;
+  timestamp: number; // Date.now() in ms
 }
 
 // ─── IndexedDB helpers ────────────────────────────────────────────────────────
@@ -38,6 +49,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(META_STORE)) {
         db.createObjectStore(META_STORE);
+      }
+      if (!db.objectStoreNames.contains(COMMENTS_STORE)) {
+        db.createObjectStore(COMMENTS_STORE, { keyPath: "id" });
       }
     };
     req.onsuccess = (e) => {
@@ -116,6 +130,22 @@ async function migrateFromLocalStorage(): Promise<void> {
 // Run migration once
 migrateFromLocalStorage();
 
+// ─── Blob URL cache ───────────────────────────────────────────────────────────
+
+const _blobUrlCache = new Map<string, string>();
+
+/** Get a usable media URL for a post — uses cached blob URL or falls back to dataUrl */
+export function getMediaUrl(post: StoredPost): string | null {
+  if (post.mediaBlob) {
+    const cached = _blobUrlCache.get(post.id);
+    if (cached) return cached;
+    const url = URL.createObjectURL(post.mediaBlob);
+    _blobUrlCache.set(post.id, url);
+    return url;
+  }
+  return post.mediaDataUrl ?? null;
+}
+
 // ─── Post helpers ─────────────────────────────────────────────────────────────
 
 /** Convert a File to a base64 data URL */
@@ -192,6 +222,31 @@ export async function deletePostAsync(id: string): Promise<void> {
   const t = txn(db, POSTS_STORE, "readwrite");
   const store = t.objectStore(POSTS_STORE);
   await idbDelete(store, id);
+}
+
+// ─── Comment helpers ──────────────────────────────────────────────────────────
+
+export async function getCommentsForPost(
+  postId: string,
+): Promise<StoredComment[]> {
+  const db = await openDB();
+  const t = txn(db, COMMENTS_STORE, "readonly");
+  const store = t.objectStore(COMMENTS_STORE);
+  const all = await idbGetAll<StoredComment>(store);
+  return all
+    .filter((c) => c.postId === postId)
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export async function addComment(
+  comment: Omit<StoredComment, "id">,
+): Promise<StoredComment> {
+  const db = await openDB();
+  const t = txn(db, COMMENTS_STORE, "readwrite");
+  const store = t.objectStore(COMMENTS_STORE);
+  const newComment: StoredComment = { ...comment, id: generateId() };
+  await idbPut(store, newComment);
+  return newComment;
 }
 
 // ─── Following helpers ────────────────────────────────────────────────────────

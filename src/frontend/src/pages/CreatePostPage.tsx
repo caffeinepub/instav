@@ -16,7 +16,6 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ExternalBlob } from "../backend";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCreatePost, useGetCallerUserProfile } from "../hooks/useQueries";
 import * as localPosts from "../lib/localPosts";
@@ -38,7 +37,6 @@ export default function CreatePostPage() {
   const [caption, setCaption] = useState("");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const [destination, setDestination] = useState<"feed" | "shortsport">("feed");
@@ -66,7 +64,6 @@ export default function CreatePostPage() {
     setMediaFile(null);
     if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setMediaPreview(null);
-    setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -131,16 +128,6 @@ export default function CreatePostPage() {
     setIsUploading(true);
 
     try {
-      let mediaBlob: ExternalBlob | undefined = undefined;
-
-      if (mediaFile) {
-        const arrayBuffer = await mediaFile.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        mediaBlob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-          setUploadProgress(pct);
-        });
-      }
-
       const mediaType = mediaFile
         ? mediaFile.type ||
           (postType === "video"
@@ -152,7 +139,6 @@ export default function CreatePostPage() {
 
       await createPost.mutateAsync({
         authorName,
-        media: mediaBlob,
         mediaFile: mediaFile ?? undefined,
         mediaType,
         caption: caption.trim(),
@@ -167,7 +153,6 @@ export default function CreatePostPage() {
       toast.error(msg);
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -274,19 +259,6 @@ export default function CreatePostPage() {
                 >
                   <X className="w-4 h-4" />
                 </button>
-                {isUploading && uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-2">
-                    <div className="w-full bg-white/20 rounded-full h-1.5">
-                      <div
-                        className="bg-gold-500 h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-white text-xs mt-1 text-center">
-                      {uploadProgress}%
-                    </p>
-                  </div>
-                )}
               </div>
             ) : (
               <button
@@ -410,7 +382,7 @@ export default function CreatePostPage() {
             {isUploading || createPost.isPending ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {isUploading ? `Uploading… ${uploadProgress}%` : "Posting…"}
+                Posting…
               </span>
             ) : (
               <span className="flex items-center gap-2">

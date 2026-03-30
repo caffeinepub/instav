@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AuthPromptModal from "../components/AuthPromptModal";
 import CommentsSheet from "../components/CommentsSheet";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -28,14 +29,24 @@ import {
 
 interface FollowButtonProps {
   authorPrincipalStr: string;
+  onRequireAuth: () => void;
 }
 
-function FollowButton({ authorPrincipalStr }: FollowButtonProps) {
+function FollowButton({
+  authorPrincipalStr,
+  onRequireAuth,
+}: FollowButtonProps) {
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
   const { data: isFollowing } = useIsFollowing(authorPrincipalStr);
   const followMutation = useFollowUser();
   const unfollowMutation = useUnfollowUser();
 
   const handleToggle = () => {
+    if (!isAuthenticated) {
+      onRequireAuth();
+      return;
+    }
     if (isFollowing) {
       unfollowMutation.mutate(authorPrincipalStr);
     } else {
@@ -86,6 +97,7 @@ interface ReelCardProps {
   onCommentOpen: () => void;
   onShare: () => void;
   onVideoEnd: () => void;
+  onRequireAuth: () => void;
 }
 
 function ReelCard({
@@ -99,6 +111,7 @@ function ReelCard({
   onCommentOpen,
   onShare,
   onVideoEnd,
+  onRequireAuth,
 }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localLiked, setLocalLiked] = useState(isLiked);
@@ -160,7 +173,10 @@ function ReelCard({
           <span className="text-white font-semibold text-sm drop-shadow-lg">
             {post.authorName}
           </span>
-          <FollowButton authorPrincipalStr={post.authorPrincipal.toString()} />
+          <FollowButton
+            authorPrincipalStr={post.authorPrincipal.toString()}
+            onRequireAuth={onRequireAuth}
+          />
         </div>
         <ShadowCount principalStr={post.authorPrincipal.toString()} />
         {post.caption && (
@@ -240,7 +256,8 @@ function ReelCard({
 }
 
 export default function ShortSportPage() {
-  useInternetIdentity();
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
   const search = useSearch({ from: "/shortsport" });
   const initialPostId = (search as { postId?: string }).postId;
 
@@ -248,6 +265,8 @@ export default function ShortSportPage() {
   const { data: likedPosts = [] } = useGetLikedPosts();
   const likePost = useLikePost();
   const unlikePost = useUnlikePost();
+
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   // Video-only filter — no photos or GIFs
   const videoPosts = allPosts.filter(
@@ -340,13 +359,28 @@ export default function ShortSportPage() {
 
   const handleLikeToggle = useCallback(
     (post: Post) => {
+      if (!isAuthenticated) {
+        setAuthPromptOpen(true);
+        return;
+      }
       if (likedPostIds.has(post.id.toString())) {
         unlikePost.mutate(post.id.toString());
       } else {
         likePost.mutate(post.id.toString());
       }
     },
-    [likedPostIds, likePost, unlikePost],
+    [isAuthenticated, likedPostIds, likePost, unlikePost],
+  );
+
+  const handleCommentOpen = useCallback(
+    (postId: bigint) => {
+      if (!isAuthenticated) {
+        setAuthPromptOpen(true);
+        return;
+      }
+      setCommentsPostId(postId);
+    },
+    [isAuthenticated],
   );
 
   useEffect(() => {
@@ -382,79 +416,87 @@ export default function ShortSportPage() {
   const currentPost = videoPosts[currentIndex];
 
   return (
-    <div
-      ref={containerRef}
-      className={`fixed inset-0 bg-black overflow-hidden select-none ${
-        isGrabbing ? "cursor-grabbing" : "cursor-grab"
-      }`}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Reel */}
-      <ReelCard
-        key={currentPost.id.toString()}
-        post={currentPost}
-        isActive={true}
-        autoScroll={autoScroll}
-        muted={muted}
-        onToggleMuted={() => setMuted((m) => !m)}
-        isLiked={likedPostIds.has(currentPost.id.toString())}
-        onLikeToggle={() => handleLikeToggle(currentPost)}
-        onVideoEnd={handleVideoEnd}
-        onCommentOpen={() => setCommentsPostId(currentPost.id)}
-        onShare={() => {
-          if (navigator.share) {
-            navigator.share({
-              url: `${window.location.origin}/shortsport?postId=${currentPost.id}`,
-            });
-          }
-        }}
-      />
+    <>
+      <div
+        ref={containerRef}
+        className={`fixed inset-0 bg-black overflow-hidden select-none ${
+          isGrabbing ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Reel */}
+        <ReelCard
+          key={currentPost.id.toString()}
+          post={currentPost}
+          isActive={true}
+          autoScroll={autoScroll}
+          muted={muted}
+          onToggleMuted={() => setMuted((m) => !m)}
+          isLiked={likedPostIds.has(currentPost.id.toString())}
+          onLikeToggle={() => handleLikeToggle(currentPost)}
+          onVideoEnd={handleVideoEnd}
+          onCommentOpen={() => handleCommentOpen(currentPost.id)}
+          onRequireAuth={() => setAuthPromptOpen(true)}
+          onShare={() => {
+            if (navigator.share) {
+              navigator.share({
+                url: `${window.location.origin}/shortsport?postId=${currentPost.id}`,
+              });
+            }
+          }}
+        />
 
-      {/* Top dashboard bar: progress dots + auto-scroll toggle */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-3 pb-2 bg-gradient-to-b from-black/60 to-transparent">
-        {/* Progress dots */}
-        <div className="flex gap-1 flex-1">
-          {videoPosts.slice(0, 10).map((p: Post, i: number) => (
-            <div
-              key={p.id.toString()}
-              className={`h-1 rounded-full transition-all ${
-                i === currentIndex ? "w-4 bg-white" : "w-1 bg-white/40"
-              }`}
-            />
-          ))}
+        {/* Top dashboard bar: progress dots + auto-scroll toggle */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-3 pb-2 bg-gradient-to-b from-black/60 to-transparent">
+          {/* Progress dots */}
+          <div className="flex gap-1 flex-1">
+            {videoPosts.slice(0, 10).map((p: Post, i: number) => (
+              <div
+                key={p.id.toString()}
+                className={`h-1 rounded-full transition-all ${
+                  i === currentIndex ? "w-4 bg-white" : "w-1 bg-white/40"
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Auto-scroll toggle — fixed in the top-right of the dashboard */}
+          <button
+            type="button"
+            onClick={() => setAutoScroll((v) => !v)}
+            data-ocid="shortsport.autoscroll_toggle"
+            title={autoScroll ? "Stop auto-scroll" : "Auto-scroll"}
+            className={`ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              autoScroll
+                ? "bg-gold-500 text-black shadow-gold-glow"
+                : "bg-white/10 text-white border border-white/20"
+            }`}
+          >
+            {autoScroll ? (
+              <PauseCircle className="w-3.5 h-3.5" />
+            ) : (
+              <PlayCircle className="w-3.5 h-3.5" />
+            )}
+            {autoScroll ? "Auto ON" : "Auto"}
+          </button>
         </div>
 
-        {/* Auto-scroll toggle — fixed in the top-right of the dashboard */}
-        <button
-          type="button"
-          onClick={() => setAutoScroll((v) => !v)}
-          data-ocid="shortsport.autoscroll_toggle"
-          title={autoScroll ? "Stop auto-scroll" : "Auto-scroll"}
-          className={`ml-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-            autoScroll
-              ? "bg-gold-500 text-black shadow-gold-glow"
-              : "bg-white/10 text-white border border-white/20"
-          }`}
-        >
-          {autoScroll ? (
-            <PauseCircle className="w-3.5 h-3.5" />
-          ) : (
-            <PlayCircle className="w-3.5 h-3.5" />
-          )}
-          {autoScroll ? "Auto ON" : "Auto"}
-        </button>
+        {/* Comments sheet */}
+        <CommentsSheet
+          postId={commentsPostId}
+          isOpen={commentsPostId !== undefined}
+          onClose={() => setCommentsPostId(undefined)}
+        />
       </div>
 
-      {/* Comments sheet */}
-      <CommentsSheet
-        postId={commentsPostId}
-        isOpen={commentsPostId !== undefined}
-        onClose={() => setCommentsPostId(undefined)}
+      <AuthPromptModal
+        open={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
       />
-    </div>
+    </>
   );
 }

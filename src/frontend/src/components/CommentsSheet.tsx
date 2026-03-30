@@ -12,9 +12,9 @@ import {
   type Comment,
   type Post,
   useAddComment,
+  useGetCallerUserProfile,
   useGetComments,
 } from "../hooks/useQueries";
-import { useGetCallerUserProfile } from "../hooks/useQueries";
 import AvatarPlaceholder from "./AvatarPlaceholder";
 
 interface CommentsSheetProps {
@@ -62,10 +62,10 @@ export default function CommentsSheet({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim() || resolvedPostId === undefined) return;
-    // authorName available for future use: callerProfile?.name
     await addComment.mutateAsync({
       postId: resolvedPostId,
       text: commentText.trim(),
+      authorName: callerProfile?.name ?? "User",
     });
     setCommentText("");
   };

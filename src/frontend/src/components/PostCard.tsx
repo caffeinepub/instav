@@ -1,5 +1,6 @@
 import { Bookmark, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
 import React, { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import type { Post } from "../hooks/useQueries";
 import {
   useGetCallerUserProfile,
@@ -7,6 +8,7 @@ import {
   useRecordView,
   useUnlikePost,
 } from "../hooks/useQueries";
+import AuthPromptModal from "./AuthPromptModal";
 import AvatarPlaceholder from "./AvatarPlaceholder";
 import CommentsSheet from "./CommentsSheet";
 import ShareModal from "./ShareModal";
@@ -27,11 +29,15 @@ function timeAgo(timestamp: bigint): string {
 }
 
 export default function PostCard({ post, isLiked = false }: PostCardProps) {
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+
   const [liked, setLiked] = useState(isLiked);
   const [likeCount, setLikeCount] = useState(Number(post.likeCount));
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
   const likePost = useLikePost();
   const unlikePost = useUnlikePost();
@@ -42,7 +48,19 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
   const mediaUrl = post.media?.getDirectURL();
   const isVideo = post.mediaType?.startsWith("video");
 
+  const requireAuth = (action: () => void) => {
+    if (!isAuthenticated) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    action();
+  };
+
   const handleLike = async () => {
+    if (!isAuthenticated) {
+      setAuthPromptOpen(true);
+      return;
+    }
     if (liked) {
       setLiked(false);
       setLikeCount((c) => c - 1);
@@ -147,7 +165,7 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
 
         <button
           type="button"
-          onClick={() => setCommentsOpen(true)}
+          onClick={() => requireAuth(() => setCommentsOpen(true))}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
         >
           <MessageCircle className="w-4 h-4" />
@@ -170,7 +188,7 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
 
         <button
           type="button"
-          onClick={() => setBookmarked((b) => !b)}
+          onClick={() => requireAuth(() => setBookmarked((b) => !b))}
           className={`p-2 rounded-xl transition-colors ${
             bookmarked
               ? "text-gold-400 bg-gold-500/10"
@@ -190,6 +208,11 @@ export default function PostCard({ post, isLiked = false }: PostCardProps) {
       />
 
       <ShareModal post={post} open={shareOpen} onOpenChange={setShareOpen} />
+
+      <AuthPromptModal
+        open={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
+      />
     </article>
   );
 }

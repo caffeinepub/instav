@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Search } from "lucide-react";
+import { Bell, LogIn, LogOut, Search } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useGetNotifications } from "../hooks/useQueries";
@@ -10,7 +10,7 @@ import NotificationsPanel from "./NotificationsPanel";
 export default function TopBar() {
   const navigate = useNavigate();
   const routerState = useRouterState();
-  const { identity, clear, loginStatus } = useInternetIdentity();
+  const { identity, clear, login, loginStatus } = useInternetIdentity();
   const queryClient = useQueryClient();
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -62,7 +62,7 @@ export default function TopBar() {
                   type="button"
                   onClick={() => setShowNotifications((v) => !v)}
                   className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
-                  style={{}}
+                  aria-label="Notifications"
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background =
                       "oklch(1 0 0 / 5%)";
@@ -71,7 +71,6 @@ export default function TopBar() {
                     (e.currentTarget as HTMLButtonElement).style.background =
                       "transparent";
                   }}
-                  aria-label="Notifications"
                 >
                   <Bell size={18} className="text-foreground/80" />
                   {unreadCount > 0 && (
@@ -90,6 +89,7 @@ export default function TopBar() {
                 type="button"
                 onClick={() => navigate({ to: "/explore" })}
                 className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                aria-label="Search"
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background =
                     "oklch(1 0 0 / 5%)";
@@ -98,11 +98,29 @@ export default function TopBar() {
                   (e.currentTarget as HTMLButtonElement).style.background =
                     "transparent";
                 }}
-                aria-label="Search"
               >
                 <Search size={18} className="text-foreground/80" />
               </button>
             </>
+          )}
+
+          {!isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/explore" })}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+              aria-label="Search"
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "oklch(1 0 0 / 5%)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "transparent";
+              }}
+            >
+              <Search size={18} className="text-foreground/80" />
+            </button>
           )}
         </div>
 
@@ -129,8 +147,29 @@ export default function TopBar() {
           </button>
         </div>
 
-        {/* Right — Sign Out (only on /profile page) */}
-        <div className="ml-auto flex items-center">
+        {/* Right */}
+        <div className="ml-auto flex items-center gap-1">
+          {!isAuthenticated && (
+            <Button
+              size="sm"
+              onClick={() => login()}
+              disabled={loginStatus === "logging-in"}
+              className="gap-1.5 rounded-full text-xs font-semibold"
+              style={{
+                background: "linear-gradient(135deg, #f5c842, #e8a020)",
+                color: "oklch(0.07 0.006 265)",
+                border: "none",
+              }}
+            >
+              {loginStatus === "logging-in" ? (
+                <span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <LogIn size={13} />
+              )}
+              Sign In
+            </Button>
+          )}
+
           {isAuthenticated && isProfilePage && (
             <Button
               variant="outline"
